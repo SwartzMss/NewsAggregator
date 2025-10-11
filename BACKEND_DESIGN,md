@@ -1,0 +1,327 @@
+
+# 后端模块化设计（MVP，无鉴权）
+> 目标：基于《DB_SCHEMA.md》的表结构，提供**可运行、可扩展**的后端服务；仅 HTTP 明文、无鉴权；满足前端「新增/管理 RSS、查看文章列表」的需要。
+
+---
+
+## 0. 技术栈与依赖（建议）
+- 运行时：Rust + Tokio（异步）
+- Web：Axum（路由/提取器/JSON）
+- 数据库：SQLx（异步 PG，使用编译期宏/或运行时 `offline`）
+- 抓取：Reqwest（HTTP 客户端，启用 `rustls`），`rss`/`atom_syndication`（解析）
+- 配置 & 观察：`serde` / `serde_yaml`、`tracing`
+- 时间：`chrono`（统一 UTC）
+
+**Cargo（关键）**
+```
+axum, tokio, sqlx = { features = ["runtime-tokio", "postgres", "chrono"] }
+reqwest = { features = ["json", "gzip", "brotli", "deflate", "rustls-tls"] }
+rss = "2"
+serde, serde_json, serde_yaml, chrono, tracing, tracing-subscriber
+```
+
+---
+
+## 1. 目录结构（模块拆分）
+
+```
+backend/
+├─ Cargo.toml
+├─ src/
+│  ├─ main.rs
+│  ├─ app.rs                    # AppState、路由装配、配置加载
+│  ├─ config.rs                 # 配置结构/加载
+│  ├─ api/                      # 控制器（路由处理）
+│  │  ├─ mod.rs
+│  │  ├─ health.rs              # GET /healthz
+│  │  ├─ articles.rs            # GET /articles
+│  │  ├─ sources.rs             # GET/POST/PATCH/DELETE /sources
+│  │  └─ feeds.rs               # GET/POST/PATCH/DELETE /feeds
+│  ├─ service/                  # 业务服务层（组合仓库 + 规则）
+│  │  ├─ mod.rs
+│  │  ├─ articles.rs
+│  │  ├─ sources.rs
+│  │  └─ feeds.rs
+│  ├─ repo/                     # 数据访问层（SQLx）
+│  │  ├─ mod.rs
+│  │  ├─ articles_repo.rs
+│  │  ├─ sources_repo.rs
+│  │  └─ feeds_repo.rs
+│  ├─ fetcher/                  # 抓取器（定时、并发、解析、写库）
+│  │  ├─ mod.rs
+│  │  ├─ scheduler.rs           # 轮询、并发控制
+│  │  ├─ worker.rs              # 单 feed 拉取流程
+│  │  └─ parse.rs               # RSS/Atom -> Article 映射
+│  ├─ model/                    # DTO/实体（API 入出 & DB 行）
+│  │  ├─ mod.rs
+│  │  ├─ article.rs
+│  │  ├─ feed.rs
+│  │  └─ source.rs
+│  ├─ util/                     # 通用工具（时间/错误/分页/URL 规范化）
+│  │  ├─ mod.rs
+│  │  ├─ pagination.rs
+│  │  ├─ time.rs
+│  │  └─ urlnorm.rs
+│  └─ error.rs                  # 统一错误类型到 HTTP 响应
+├─ config/
+│  ├─ config.example.yaml
+│  └─ feeds.bootstrap.txt       # 可选：首次导入
+└─ migrations/                  # sqlx migrate（可选：初始建表 SQL）
+```
+
+**分层说明**
+- **API** 只做参数解析与响应封装；不写 SQL。
+- **Service** 组合多个 Repo 并实现业务规则（例如新增 feed 时自动 upsert source）。
+- **Repo** 仅负责 SQL（`INSERT/UPDATE/SELECT`）。
+- **Fetcher** 独立于 HTTP 路由运行（Tokio 任务）。
+
+---
+
+## 2. 配置（无鉴权）
+
+`config/config.yaml`
+```yaml
+server:
+  bind: "127.0.0.1:8080"
+
+db:
+  url: "postgres://user:pass@localhost:5432/news"   # 指向 news schema
+
+fetcher:
+  interval_secs: 600
+  concurrency: 8
+  timeout_secs: 10
+
+feeds:
+  bootstrap_file: "config/feeds.bootstrap.txt"      # 可空；启动一次性导入
+```
+
+加载策略：启动时读取 YAML。
+
+---
+
+## 3. 数据模型映射（与 DB 对齐）
+
+### 3.1 API 出参（精简）
+```jsonc
+// ArticleOut
+{
+  "id": 1001,
+  "title": "Global markets rally...",
+  "url": "https://...",
+  "source": "reuters.com",
+  "description": "Stocks rose...",
+  "language": "en",
+  "published_at": "2025-10-11T06:42:00Z"
+}
+
+// FeedOut
+{
+  "id": 10,
+  "url": "https://www.reuters.com/world/rss",
+  "title": "Reuters: World",
+  "site_url": "https://www.reuters.com/world/",
+  "source_id": 1,
+  "language": "en",
+  "country": null,
+  "enabled": true,
+  "fetch_interval_seconds": 600,
+  "last_fetch_at": "2025-10-11T07:00:00Z",
+  "last_fetch_status": 200,
+  "fail_count": 0
+}
+
+// SourceOut
+{
+  "id": 1,
+  "domain": "reuters.com",
+  "display_name": "Reuters"
+}
+```
+
+### 3.2 API 入参
+```jsonc
+// POST /feeds
+{
+  "url": "https://www.reuters.com/world/rss",
+  "domain": "reuters.com",     // 用于 upsert sources
+  "title": null,
+  "site_url": null,
+  "language": "en",
+  "country": null,
+  "enabled": true,
+  "fetch_interval_seconds": 600
+}
+
+// PATCH /feeds/:id
+{
+  "enabled": false,
+  "fetch_interval_seconds": 1800,
+  "language": "en"
+}
+
+// POST /sources
+{ "domain": "reuters.com", "display_name": "Reuters" }
+```
+
+---
+
+## 4. HTTP 接口（无鉴权）
+
+### 4.1 健康检查
+- `GET /healthz` → `200 {"ok":true}`
+
+### 4.2 文章列表（匿名）
+- `GET /articles`
+  - `page`=1, `page_size`=20(≤50), `lang`, `source_id`, `from`, `to`
+  - **排序**：`published_at DESC`
+  - **SQL**：
+    ```sql
+    SELECT id, title, url, source, description, language, published_at
+    FROM news.articles
+    WHERE ($1::text IS NULL OR language = $1)
+      AND ($2::bigint IS NULL OR source_id = $2)
+      AND published_at BETWEEN $3 AND $4
+    ORDER BY published_at DESC
+    LIMIT $5 OFFSET $6;
+    ```
+
+### 4.3 Sources（管理但无鉴权）
+- `GET /sources`：分页/全部
+- `POST /sources`：upsert by domain
+- `PATCH /sources/:id`：更新 display_name
+- `DELETE /sources/:id`：可选（建议逻辑删除留痕，MVP 可物理删）
+
+### 4.4 Feeds（管理但无鉴权）
+- `GET /feeds`：列表 + 状态字段
+- `POST /feeds`：新增/更新（内部自动 upsert `sources`）
+- `PATCH /feeds/:id`：修改 enabled/interval/language/country 等
+- `DELETE /feeds/:id`：可选（物理删或设置 `enabled=false`）
+
+> 注：无鉴权意味着**所有人都能操作**，请仅在内网使用或由反向代理限制访问。
+
+---
+
+## 5. 抓取器（Fetcher）设计
+
+### 5.1 调度策略
+- 每 `interval_secs` 触发一次轮询；并发度 `concurrency`。
+- 仅抓取 `enabled=true` 的 feeds。
+- 每个 feed 请求时带上：
+  - `If-None-Match: last_etag`（如果有）
+  - `If-Modified-Since: last_modified`（如果有）
+
+### 5.2 单 Feed 流程（伪代码）
+```
+row = SELECT * FROM news.feeds WHERE id=?
+req = GET row.url with headers (If-None-Match/If-Modified-Since)
+
+resp = http.send(req)
+
+if resp.status == 304:
+  UPDATE feeds SET last_fetch_at=now(), last_fetch_status=304, fail_count=0 WHERE id=?
+  return
+
+if resp.status == 200:
+  // parse RSS -> items
+  for item in items:
+    INSERT INTO news.articles (..., published_at, fetched_at=now())  // 允许重复
+  UPDATE feeds SET
+      last_fetch_at=now(),
+      last_fetch_status=200,
+      fail_count=0,
+      last_etag=resp.headers["ETag"]?,
+      last_modified=resp.headers["Last-Modified"]?
+  WHERE id=?
+else:
+  UPDATE feeds SET
+      last_fetch_at=now(),
+      last_fetch_status=resp.status,
+      fail_count=fail_count+1
+  WHERE id=?
+```
+
+### 5.3 解析要点
+- 取 `item.title`、`item.link`、`item.description`
+- `published_at` 解析顺序：`pubDate`(RFC2822) → DublinCore `dc:date`(RFC3339) → `updated` → fallback `now()`
+- `language`：优先 item/频道提供；否则使用 `feed.language` 兜底
+
+---
+
+## 6. Service & Repo 主要函数（签名草案）
+
+### 6.1 Sources
+```rust
+// repo/sources_repo.rs
+async fn upsert_source(pool: &PgPool, domain: &str, display_name: Option<&str>) -> Result<i64>;
+async fn list_sources(pool: &PgPool, page: i64, size: i64) -> Result<Vec<SourceRow>>;
+async fn update_source(pool: &PgPool, id: i64, display_name: Option<&str>) -> Result<()>;
+async fn delete_source(pool: &PgPool, id: i64) -> Result<()>;
+
+// service/sources.rs
+async fn create_or_update_source(&self, domain: String, display_name: Option<String>) -> Result<SourceOut>;
+```
+
+### 6.2 Feeds
+```rust
+// repo/feeds_repo.rs
+async fn upsert_feed(pool: &PgPool, data: FeedUpsert) -> Result<FeedRow>;
+async fn list_feeds(pool: &PgPool, enabled: Option<bool>, page: i64, size: i64) -> Result<Vec<FeedRow>>;
+async fn update_feed_status(pool: &PgPool, id: i64, enabled: bool) -> Result<()>;
+async fn delete_feed(pool: &PgPool, id: i64) -> Result<()>;
+async fn get_due_feeds(pool: &PgPool, limit: i64) -> Result<Vec<FeedRow>>; // 可按 enabled=true 取全量
+
+// service/feeds.rs
+async fn create_or_update_feed(&self, payload: FeedUpsertPayload) -> Result<FeedOut>;
+```
+
+### 6.3 Articles
+```rust
+// repo/articles_repo.rs
+async fn insert_article(pool: &PgPool, a: NewArticle) -> Result<i64>;
+async fn list_articles(pool: &PgPool, q: ArticleListQuery) -> Result<(Vec<ArticleRow>, i64 /*total_hint*/)>;
+
+// service/articles.rs
+async fn list(&self, q: ArticleListQuery) -> Result<Page<ArticleOut>>;
+```
+
+---
+
+## 7. 错误与响应
+- 统一错误结构：`{ "error": { "code": "BadRequest", "message": "..." } }`
+- 常见：400 参数缺失/非法；404 资源不存在；500 内部错误。
+- Axum 层将 `AppError` 自动转换为 `IntoResponse`。
+
+---
+
+## 8. 性能与演进点
+- 索引：确保 `articles(published_at DESC)` 命中。
+- 连接池：SQLx `PgPool` 配置 `max_connections`（如 10–20）。
+- 并发抓取：`concurrency` 可根据网络与源站限制调整。
+- 演进：
+  - + 去重（url_hash）与近似去重索引；
+  - + 检索（pg_trgm 或全文）；
+  - + 留存清理/分区；
+  - + 鉴权（简单 Token 或自建用户体系）。
+
+---
+
+## 9. 启动顺序（开发）
+1. 创建数据库并执行《DB_SCHEMA_MVP_SIMPLE.md》DDL。  
+2. 准备 `config/config.yaml`（或设置 `DATABASE_URL`）。  
+3. `cargo run` 启动；观察日志 `Listening on ...`。  
+4. `GET /healthz` 检查存活；`POST /feeds` 新增一个 RSS；等待一轮抓取后 `GET /articles` 能看到数据。
+
+---
+
+## 10. 前端约定（对接）
+- 所有接口均为 JSON。
+- 时间字段均为 **UTC ISO8601** 字符串；前端本地化显示。  
+- 列表接口均包含分页参数与 `total_hint`。
+
+---
+
+## 11. 安全声明（MVP）
+- 本版**无鉴权**，请仅在内网或受控环境使用；
+- 如需公网暴露，请至少在反向代理上配置 IP 白名单或 Basic Auth。
+
