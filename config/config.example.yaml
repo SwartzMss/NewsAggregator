@@ -1,0 +1,14 @@
+# Example configuration for the NewsAggregator backend.
+# Copy to config/config.yaml and adjust values or load via environment vars.
+server:
+  bind: "0.0.0.0:80"
+
+db:
+  url: "postgres://user:pass@localhost:5432/news"
+  max_connections: 10
+
+fetcher:
+  interval_secs: 300
+  batch_size: 8
+  concurrency: 4
+  request_timeout_secs: 15
