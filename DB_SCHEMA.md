@@ -1,157 +1,229 @@
 
-# 数据库设计（MVP 极简版，无模糊匹配、无去重）
+# 数据库设计（MVP 极简，无 sources 版）
 
-> 目标：**先能写入，再能读取**。不做重复判定、不做模糊/全文检索。后续再演进。
-
----
-
-## 0. 范围与约定
-- 只使用 **PostgreSQL**，创建独立 schema `news`。
-- 不安装任何扩展（不需要 `pg_trgm` / `unaccent` / `tsvector`）。
-- 允许**重复文章**（不做唯一约束、不做去重字段）。
-- 只提供**按时间倒序**、**按语言/来源筛选**的基础查询索引。
+> 目标：**先能写入，再能读取**。不做重复判定、不做模糊/全文检索。去掉 `sources` 表，直接在 `feeds` 与 `articles` 上保存来源域名/展示名。
 
 ---
 
-## 1. Schema 初始化
+## 1) 全量 DDL（全新安装）
 
 ```sql
+-- Schema
 CREATE SCHEMA IF NOT EXISTS news;
-```
 
----
-
-## 2. 表结构（极简）
-
-### 2.1 `news.sources` —— 媒体来源（域名/机构）
-```sql
-CREATE TABLE IF NOT EXISTS news.sources (
-  id            BIGSERIAL PRIMARY KEY,
-  domain        TEXT NOT NULL UNIQUE,          -- 如 reuters.com
-  display_name  TEXT,                          -- 如 "Reuters"
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-```
-
-### 2.2 `news.feeds` —— RSS/Atom 订阅源
-> 含条件请求与抓取状态字段；便于省流/排错。
-```sql
+-- =========================
+-- 订阅源：每条就是一个 RSS/Atom 频道
+-- =========================
 CREATE TABLE IF NOT EXISTS news.feeds (
-  id              BIGSERIAL PRIMARY KEY,
-  url             TEXT NOT NULL UNIQUE,        -- RSS 源地址
-  title           TEXT,                        -- channel.title（抓到后回填）
-  site_url        TEXT,                        -- 频道/站点主页
-  source_id       BIGINT REFERENCES news.sources(id),
-  language        TEXT,                        -- 频道默认语言（可空）
-  country         TEXT,                        -- 频道默认国家（可空）
+  id                         BIGSERIAL PRIMARY KEY,
+  url                        TEXT NOT NULL UNIQUE,     -- RSS 源地址
+  title                      TEXT,                     -- channel.title（抓到后回填）
+  site_url                   TEXT,                     -- 频道/站点主页
 
-  enabled         BOOLEAN NOT NULL DEFAULT TRUE,
-  fetch_interval_seconds INTEGER NOT NULL DEFAULT 600,
+  -- 直接保存来源信息在 feed 上（不再有 sources 表）
+  source_domain              TEXT NOT NULL,            -- 例如 reuters.com（去掉 www.）
+  source_display_name        TEXT,                     -- 例如 Reuters（可空）
 
-  -- 条件请求与抓取状态
-  last_etag         TEXT,
-  last_modified     TIMESTAMPTZ,
-  last_fetch_at     TIMESTAMPTZ,
-  last_fetch_status SMALLINT,                  -- 200/304/429/5xx...
-  fail_count        INTEGER NOT NULL DEFAULT 0,
+  language                   TEXT,                     -- 频道默认语言（可空）
+  country                    TEXT,                     -- 频道默认国家（可空）
 
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  enabled                    BOOLEAN NOT NULL DEFAULT TRUE,
+  fetch_interval_seconds     INTEGER NOT NULL DEFAULT 600,
+
+  -- 条件请求与抓取状态（省流/排错）
+  last_etag                  TEXT,
+  last_modified              TIMESTAMPTZ,
+  last_fetch_at              TIMESTAMPTZ,
+  last_fetch_status          SMALLINT,                 -- 200/304/429/5xx...
+  fail_count                 INTEGER NOT NULL DEFAULT 0,
+
+  created_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_feeds_enabled ON news.feeds(enabled);
-```
 
-### 2.3 `news.articles` —— 文章（无去重约束）
-> **不做去重**：允许同一链接/标题多次写入。  
-> **最少字段**：标题、链接、来源、语言、时间、摘要、关联 feed/source。
-```sql
+-- =========================
+-- 文章：允许重复（本期不做去重/唯一约束）
+-- =========================
 CREATE TABLE IF NOT EXISTS news.articles (
-  id             BIGSERIAL PRIMARY KEY,
+  id                   BIGSERIAL PRIMARY KEY,
 
-  feed_id        BIGINT REFERENCES news.feeds(id)   ON DELETE SET NULL,
-  source_id      BIGINT REFERENCES news.sources(id) ON DELETE SET NULL,
+  feed_id              BIGINT REFERENCES news.feeds(id) ON DELETE SET NULL,
 
-  title          TEXT NOT NULL,
-  url            TEXT NOT NULL,
-  source         TEXT NOT NULL,                     -- 展示用：域名或频道名
-  description    TEXT,
-  language       TEXT,
+  title                TEXT NOT NULL,
+  url                  TEXT NOT NULL,
+  description          TEXT,
+  language             TEXT,
 
-  published_at   TIMESTAMPTZ NOT NULL,             -- 统一 UTC
-  fetched_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  -- 直接记录来源字段，便于筛选与展示
+  source_domain        TEXT NOT NULL,                  -- 例如 reuters.com
+  source_display_name  TEXT,                           -- 例如 Reuters（可空）
+
+  published_at         TIMESTAMPTZ NOT NULL,           -- 统一 UTC
+  fetched_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 基础查询索引（按时间倒序 + 语言/来源筛选）
-CREATE INDEX IF NOT EXISTS idx_articles_published_at ON news.articles(published_at DESC);
-CREATE INDEX IF NOT EXISTS idx_articles_language     ON news.articles(language);
-CREATE INDEX IF NOT EXISTS idx_articles_source_id    ON news.articles(source_id);
+-- 基础查询索引：按时间倒序 + 语言/来源筛选
+CREATE INDEX IF NOT EXISTS idx_articles_published_at    ON news.articles(published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_articles_language        ON news.articles(language);
+CREATE INDEX IF NOT EXISTS idx_articles_source_domain   ON news.articles(source_domain);
 ```
 
 ---
 
-## 3. 写入与读取（示例）
+## 2) 从旧版迁移（含 `sources`/`source_id` → 无 `sources`）
 
-### 3.1 Upsert 来源与 Feed（可选）
+> 若你的库里已经存在旧结构，用下面这段迁移，执行前建议备份。
+
 ```sql
--- sources：存在则更新展示名，不存在则创建
-INSERT INTO news.sources (domain, display_name)
-VALUES ($1, $2)
-ON CONFLICT (domain) DO UPDATE
-SET display_name = EXCLUDED.display_name
-RETURNING id;
+BEGIN;
 
--- feeds：存在则回填标题/站点，新增则创建
-INSERT INTO news.feeds (url, title, site_url, source_id, language, country)
-VALUES ($1, $2, $3, $4, $5, $6)
-ON CONFLICT (url) DO UPDATE
-SET title      = COALESCE(EXCLUDED.title, news.feeds.title),
-    site_url   = COALESCE(EXCLUDED.site_url, news.feeds.site_url),
-    updated_at = NOW()
-RETURNING id;
+-- 1) feeds 表新增新字段（若已存在则跳过）
+ALTER TABLE news.feeds
+  ADD COLUMN IF NOT EXISTS source_domain TEXT,
+  ADD COLUMN IF NOT EXISTS source_display_name TEXT;
+
+-- 2) 用旧 sources 表内容回填 feeds.source_domain / source_display_name
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema='news' AND table_name='sources'
+  ) THEN
+    UPDATE news.feeds f
+    SET source_domain = COALESCE(
+          f.source_domain,
+          (SELECT s.domain FROM news.sources s WHERE s.id = f.source_id)
+        ),
+        source_display_name = COALESCE(
+          f.source_display_name,
+          (SELECT s.display_name FROM news.sources s WHERE s.id = f.source_id)
+        );
+  END IF;
+END$$;
+
+-- 3) 设 feeds.source_domain 为 NOT NULL
+ALTER TABLE news.feeds
+  ALTER COLUMN source_domain SET NOT NULL;
+
+-- 4) 文章表新增新字段
+ALTER TABLE news.articles
+  ADD COLUMN IF NOT EXISTS source_domain TEXT,
+  ADD COLUMN IF NOT EXISTS source_display_name TEXT;
+
+-- 5) 用 feed 的域名/展示名回填文章
+UPDATE news.articles a
+SET source_domain = COALESCE(a.source_domain, f.source_domain),
+    source_display_name = COALESCE(a.source_display_name, f.source_display_name)
+FROM news.feeds f
+WHERE a.feed_id = f.id;
+
+-- 6) 设 articles.source_domain 为 NOT NULL
+ALTER TABLE news.articles
+  ALTER COLUMN source_domain SET NOT NULL;
+
+-- 7) 删除 articles.source_id（如果存在）
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='news' AND table_name='articles' AND column_name='source_id'
+  ) THEN
+    ALTER TABLE news.articles DROP COLUMN source_id;
+  END IF;
+END$$;
+
+-- 8) 删除 feeds.source_id（如果存在）
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='news' AND table_name='feeds' AND column_name='source_id'
+  ) THEN
+    ALTER TABLE news.feeds DROP COLUMN source_id;
+  END IF;
+END$$;
+
+-- 9) 删除旧索引（如果存在）
+DROP INDEX IF EXISTS news.idx_articles_source_id;
+
+-- 10) 删除 sources 表（如果存在）
+DROP TABLE IF EXISTS news.sources;
+
+-- 11) 新索引（若未创建）
+CREATE INDEX IF NOT EXISTS idx_articles_source_domain ON news.articles(source_domain);
+
+COMMIT;
 ```
 
-### 3.2 插入文章（允许重复）
+---
+
+## 3) 字段说明表
+
+### 3.1 `news.feeds`（RSS 频道）
+
+| 列名 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| id | BIGSERIAL | PK | 自增主键 |
+| url | TEXT | UNIQUE, NOT NULL | RSS/Atom 源地址 |
+| title | TEXT |  | RSS `channel.title`，抓到后回填 |
+| site_url | TEXT |  | 频道/站点主页 |
+| source_domain | TEXT | NOT NULL | 来源域名（如 `reuters.com`；从 `url/site_url` 解析或前端提交） |
+| source_display_name | TEXT |  | 来源展示名（如 `Reuters`），可为空 |
+| language | TEXT |  | 频道默认语言（可空） |
+| country | TEXT |  | 频道默认国家/地区（可空） |
+| enabled | BOOLEAN | DEFAULT true | 是否启用抓取 |
+| fetch_interval_seconds | INTEGER | DEFAULT 600 | 抓取间隔（秒） |
+| last_etag | TEXT |  | 上次响应的 ETag（条件请求） |
+| last_modified | TIMESTAMPTZ |  | 上次响应的 Last-Modified（条件请求） |
+| last_fetch_at | TIMESTAMPTZ |  | 上次抓取时间（UTC） |
+| last_fetch_status | SMALLINT |  | 上次抓取 HTTP 状态码（200/304/429/5xx） |
+| fail_count | INTEGER | DEFAULT 0 | 连续失败次数（用于退避/熔断） |
+| created_at | TIMESTAMPTZ | DEFAULT now() | 创建时间 |
+| updated_at | TIMESTAMPTZ | DEFAULT now() | 最近更新时间 |
+
+> 索引：`idx_feeds_enabled(enabled)`。
+
+### 3.2 `news.articles`（文章）
+
+| 列名 | 类型 | 约束 | 说明 |
+|---|---|---|---|
+| id | BIGSERIAL | PK | 自增主键 |
+| feed_id | BIGINT | FK → news.feeds(id) ON DELETE SET NULL | 来源 feed（频道）ID |
+| title | TEXT | NOT NULL | 标题 |
+| url | TEXT | NOT NULL | 原文链接 |
+| description | TEXT |  | 摘要（可空） |
+| language | TEXT |  | 语言代码（可空） |
+| source_domain | TEXT | NOT NULL | 来源域名（与 `feeds.source_domain` 对齐） |
+| source_display_name | TEXT |  | 来源展示名（可空） |
+| published_at | TIMESTAMPTZ | NOT NULL | 发布时间（UTC；解析失败可回退为抓取时刻） |
+| fetched_at | TIMESTAMPTZ | DEFAULT now() | 抓取入库时间 |
+
+> 索引：  
+> `idx_articles_published_at(published_at DESC)`  
+> `idx_articles_language(language)`  
+> `idx_articles_source_domain(source_domain)`
+
+---
+
+## 4) 最小 SQL 示例
+
+**写入文章（允许重复）**
 ```sql
 INSERT INTO news.articles
-(feed_id, source_id, title, url, source, description, language, published_at, fetched_at)
+(feed_id, title, url, description, language, source_domain, source_display_name, published_at, fetched_at)
 VALUES
-($1,     $2,        $3,    $4,  $5,     $6,          $7,        $8,          NOW());
+($1,      $2,    $3,  $4,          $5,       $6,            $7,                  $8,          NOW());
 ```
 
-### 3.3 基础列表/检索（只做精确筛选）
+**文章列表（按时间倒序 + 精确筛选）**
 ```sql
--- 按时间倒序 + 可选语言/来源（source_id）过滤 + 分页
-SELECT id, title, url, source, description, language, published_at
+SELECT id, title, url, description, language, source_domain, source_display_name, published_at
 FROM news.articles
 WHERE ($1::text IS NULL OR language = $1)
-  AND ($2::bigint IS NULL OR source_id = $2)
+  AND ($2::text IS NULL OR source_domain = $2)
   AND published_at BETWEEN $3 AND $4
 ORDER BY published_at DESC
 LIMIT $5 OFFSET $6;
 ```
-
-> 说明：若不传过滤条件，对应参数传 `NULL` 即可。
-
----
-
-## 4. 留存（可选，后续加）
-- MVP 不强制清理。后续若要控制体量，可以按天清理：
-```sql
-DELETE FROM news.articles
-WHERE published_at < (NOW() AT TIME ZONE 'UTC') - INTERVAL '30 days';
-```
-
----
-
-## 5. 迁移说明
-- 将本文件保存为 `V1__init_mvp.sql`，用迁移工具（如 `sqlx migrate`）或直接 `psql` 执行。  
-- 以后若要加 **去重/模糊/全文/分区**，另行新增迁移文件，不修改本版。
-
----
-
-## 6. 后续演进点（非 MVP）
-- 去重（`url_hash UNIQUE` + 近似去重表达式索引）。
-- 检索增强（`pg_trgm` + ILIKE / `tsvector` + GIN）。
-- 留存与分区（按月分区或 TimescaleDB）。
-- 抓取调度策略（根据 `last_fetch_status/fail_count` 退避/熔断）。
