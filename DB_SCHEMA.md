@@ -1,11 +1,11 @@
 
-# 数据库设计（MVP 极简，无 sources 版）
+# 数据库设计（MVP 极简）
 
-> 目标：**先能写入，再能读取**。不做重复判定、不做模糊/全文检索。去掉 `sources` 表，直接在 `feeds` 与 `articles` 上保存来源域名/展示名。
+> 适用于 **全新数据库** 安装：仅创建 `news.feeds` 与 `news.articles` 两张表；允许重复文章；不做模糊/全文检索。
 
 ---
 
-## 1) 全量 DDL（全新安装）
+## 1) 一次性 DDL（直接执行）
 
 ```sql
 -- Schema
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS news.feeds (
   title                      TEXT,                     -- channel.title（抓到后回填）
   site_url                   TEXT,                     -- 频道/站点主页
 
-  -- 直接保存来源信息在 feed 上（不再有 sources 表）
+  -- 直接保存来源信息在 feed 上
   source_domain              TEXT NOT NULL,            -- 例如 reuters.com（去掉 www.）
   source_display_name        TEXT,                     -- 例如 Reuters（可空）
 
@@ -72,96 +72,9 @@ CREATE INDEX IF NOT EXISTS idx_articles_source_domain   ON news.articles(source_
 
 ---
 
-## 2) 从旧版迁移（含 `sources`/`source_id` → 无 `sources`）
+## 2) 字段说明
 
-> 若你的库里已经存在旧结构，用下面这段迁移，执行前建议备份。
-
-```sql
-BEGIN;
-
--- 1) feeds 表新增新字段（若已存在则跳过）
-ALTER TABLE news.feeds
-  ADD COLUMN IF NOT EXISTS source_domain TEXT,
-  ADD COLUMN IF NOT EXISTS source_display_name TEXT;
-
--- 2) 用旧 sources 表内容回填 feeds.source_domain / source_display_name
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM information_schema.tables
-    WHERE table_schema='news' AND table_name='sources'
-  ) THEN
-    UPDATE news.feeds f
-    SET source_domain = COALESCE(
-          f.source_domain,
-          (SELECT s.domain FROM news.sources s WHERE s.id = f.source_id)
-        ),
-        source_display_name = COALESCE(
-          f.source_display_name,
-          (SELECT s.display_name FROM news.sources s WHERE s.id = f.source_id)
-        );
-  END IF;
-END$$;
-
--- 3) 设 feeds.source_domain 为 NOT NULL
-ALTER TABLE news.feeds
-  ALTER COLUMN source_domain SET NOT NULL;
-
--- 4) 文章表新增新字段
-ALTER TABLE news.articles
-  ADD COLUMN IF NOT EXISTS source_domain TEXT,
-  ADD COLUMN IF NOT EXISTS source_display_name TEXT;
-
--- 5) 用 feed 的域名/展示名回填文章
-UPDATE news.articles a
-SET source_domain = COALESCE(a.source_domain, f.source_domain),
-    source_display_name = COALESCE(a.source_display_name, f.source_display_name)
-FROM news.feeds f
-WHERE a.feed_id = f.id;
-
--- 6) 设 articles.source_domain 为 NOT NULL
-ALTER TABLE news.articles
-  ALTER COLUMN source_domain SET NOT NULL;
-
--- 7) 删除 articles.source_id（如果存在）
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema='news' AND table_name='articles' AND column_name='source_id'
-  ) THEN
-    ALTER TABLE news.articles DROP COLUMN source_id;
-  END IF;
-END$$;
-
--- 8) 删除 feeds.source_id（如果存在）
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema='news' AND table_name='feeds' AND column_name='source_id'
-  ) THEN
-    ALTER TABLE news.feeds DROP COLUMN source_id;
-  END IF;
-END$$;
-
--- 9) 删除旧索引（如果存在）
-DROP INDEX IF EXISTS news.idx_articles_source_id;
-
--- 10) 删除 sources 表（如果存在）
-DROP TABLE IF EXISTS news.sources;
-
--- 11) 新索引（若未创建）
-CREATE INDEX IF NOT EXISTS idx_articles_source_domain ON news.articles(source_domain);
-
-COMMIT;
-```
-
----
-
-## 3) 字段说明表
-
-### 3.1 `news.feeds`（RSS 频道）
+### 2.1 `news.feeds`（RSS 频道）
 
 | 列名 | 类型 | 约束 | 说明 |
 |---|---|---|---|
@@ -169,7 +82,7 @@ COMMIT;
 | url | TEXT | UNIQUE, NOT NULL | RSS/Atom 源地址 |
 | title | TEXT |  | RSS `channel.title`，抓到后回填 |
 | site_url | TEXT |  | 频道/站点主页 |
-| source_domain | TEXT | NOT NULL | 来源域名（如 `reuters.com`；从 `url/site_url` 解析或前端提交） |
+| source_domain | TEXT | NOT NULL | 来源域名（如 `reuters.com`，从 `url/site_url` 解析或前端提交） |
 | source_display_name | TEXT |  | 来源展示名（如 `Reuters`），可为空 |
 | language | TEXT |  | 频道默认语言（可空） |
 | country | TEXT |  | 频道默认国家/地区（可空） |
@@ -185,7 +98,7 @@ COMMIT;
 
 > 索引：`idx_feeds_enabled(enabled)`。
 
-### 3.2 `news.articles`（文章）
+### 2.2 `news.articles`（文章）
 
 | 列名 | 类型 | 约束 | 说明 |
 |---|---|---|---|
@@ -207,7 +120,26 @@ COMMIT;
 
 ---
 
-## 4) 最小 SQL 示例
+## 3) 最小 SQL 示例
+
+**写入 feed（新增或忽略重复 URL）**
+```sql
+INSERT INTO news.feeds
+(url, title, site_url, source_domain, source_display_name, language, country, enabled, fetch_interval_seconds)
+VALUES
+($1,  $2,    $3,      $4,             $5,                  $6,       $7,       $8,      $9)
+ON CONFLICT (url) DO UPDATE
+SET title = COALESCE(EXCLUDED.title, news.feeds.title),
+    site_url = COALESCE(EXCLUDED.site_url, news.feeds.site_url),
+    source_domain = EXCLUDED.source_domain,
+    source_display_name = COALESCE(EXCLUDED.source_display_name, news.feeds.source_display_name),
+    language = COALESCE(EXCLUDED.language, news.feeds.language),
+    country = COALESCE(EXCLUDED.country, news.feeds.country),
+    enabled = EXCLUDED.enabled,
+    fetch_interval_seconds = EXCLUDED.fetch_interval_seconds,
+    updated_at = NOW()
+RETURNING id;
+```
 
 **写入文章（允许重复）**
 ```sql
@@ -227,3 +159,10 @@ WHERE ($1::text IS NULL OR language = $1)
 ORDER BY published_at DESC
 LIMIT $5 OFFSET $6;
 ```
+
+---
+
+## 4) 约定与建议
+- 全部时间字段统一为 **UTC**；前端自行本地化显示。
+- 解析 `source_domain` 时去除 `www.` 等前缀。
+- 先不做去重/模糊检索；后续需要时再新增字段与索引（不破坏现有表）。
