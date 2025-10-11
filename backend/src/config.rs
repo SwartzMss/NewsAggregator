@@ -21,10 +21,17 @@ pub struct FetcherConfig {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct LoggingConfig {
+    pub file: String,
+    pub level: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct AppConfig {
     pub server: ServerConfig,
     pub db: DbConfig,
     pub fetcher: FetcherConfig,
+    pub logging: LoggingConfig,
 }
 
 impl AppConfig {
@@ -36,6 +43,9 @@ impl AppConfig {
         let batch_size = parse_env("FETCH_BATCH_SIZE", 8)?;
         let concurrency = parse_env("FETCH_CONCURRENCY", 4)?;
         let request_timeout_secs = parse_env("FETCH_TIMEOUT_SECS", 15)?;
+        let log_file =
+            std::env::var("LOG_FILE_PATH").unwrap_or_else(|_| "logs/backend.log".to_string());
+        let log_level = std::env::var("LOG_LEVEL").ok();
 
         Ok(Self {
             server: ServerConfig { bind },
@@ -48,6 +58,10 @@ impl AppConfig {
                 batch_size,
                 concurrency,
                 request_timeout_secs,
+            },
+            logging: LoggingConfig {
+                file: log_file,
+                level: log_level,
             },
         })
     }

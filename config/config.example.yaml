@@ -12,3 +12,7 @@ fetcher:
   batch_size: 8
   concurrency: 4
   request_timeout_secs: 15
+
+logging:
+  file: "logs/backend.log"
+  level: "info"
