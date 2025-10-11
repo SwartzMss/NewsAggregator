@@ -22,3 +22,5 @@ target
 
 # Local runtime configuration
 config/config.yaml
+
+backend/logs/
