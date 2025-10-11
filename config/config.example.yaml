@@ -1,7 +1,7 @@
 # Example configuration for the NewsAggregator backend.
 # Copy to config/config.yaml and adjust values or load via environment vars.
 server:
-  bind: "0.0.0.0:80"
+  bind: "127.0.0.1:8081"
 
 db:
   url: "postgres://user:pass@localhost:5432/news"
