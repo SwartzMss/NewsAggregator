@@ -91,9 +91,8 @@ pub async fn upsert_feed(pool: &PgPool, record: FeedUpsertRecord) -> Result<Feed
             $2,
             $3,
             $4,
-            $5,
-            COALESCE($6, TRUE),
-            COALESCE($7, 600)
+            COALESCE($5, TRUE),
+            COALESCE($6, 600)
         )
         ON CONFLICT (url) DO UPDATE SET
             title = COALESCE(EXCLUDED.title, news.feeds.title),
