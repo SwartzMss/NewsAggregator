@@ -14,7 +14,8 @@ chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 thiserror = "1"
-tower-http = { version = "0.4", features = ["trace"] }
+tower-http = { version = "0.5", features = ["trace", "cors"] }
+tower = "0.5"
 anyhow = "1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "gzip", "brotli", "deflate", "rustls-tls"] }
 feed-rs = "1"
