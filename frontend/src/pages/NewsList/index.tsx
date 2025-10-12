@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { getArticles } from "../../lib/api";
 import { ArticleCard } from "./ArticleCard";
 import { Toolbar } from "./Toolbar";
+import { ArticleOut, PageResp } from "../../types/api";
 
 const toLocalInputValue = (value?: string | null) => {
   if (!value) return "";
@@ -28,7 +29,7 @@ export function NewsListPage() {
   const from = params.get("from") ?? undefined;
   const to = params.get("to") ?? undefined;
 
-  const query = useQuery({
+  const query = useQuery<PageResp<ArticleOut>, Error>({
     queryKey: ["articles", { from, to, page, pageSize }],
     queryFn: () =>
       getArticles({
@@ -37,13 +38,17 @@ export function NewsListPage() {
         page,
         page_size: pageSize,
       }),
-    keepPreviousData: true,
+    placeholderData: (previousData) => previousData,
   });
 
   const totalPages = useMemo(() => {
-    if (!query.data) return 1;
-    const total = query.data.total_hint;
-    return total > 0 ? Math.max(1, Math.ceil(total / query.data.page_size)) : query.data.items.length > 0 ? page : 1;
+    const data = query.data;
+    if (!data) return 1;
+    const total = data.total_hint;
+    if (total > 0) {
+      return Math.max(1, Math.ceil(total / data.page_size));
+    }
+    return data.items.length > 0 ? page : 1;
   }, [query.data, page]);
 
   const handleSubmitFilters = (values: { from?: string; to?: string; pageSize: number }) => {

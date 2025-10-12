@@ -18,9 +18,7 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
           title                      TEXT,
           site_url                   TEXT,
           source_domain              TEXT NOT NULL,
-          source_display_name        TEXT,
           language                   TEXT,
-          country                    TEXT,
           enabled                    BOOLEAN NOT NULL DEFAULT TRUE,
           fetch_interval_seconds     INTEGER NOT NULL DEFAULT 600,
           last_etag                  TEXT,
@@ -31,6 +29,15 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
           created_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           updated_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
+        "#,
+    )
+    .await?;
+
+    tx.execute(
+        r#"
+        ALTER TABLE news.feeds
+          DROP COLUMN IF EXISTS source_display_name,
+          DROP COLUMN IF EXISTS country;
         "#,
     )
     .await?;
@@ -52,10 +59,17 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
           description          TEXT,
           language             TEXT,
           source_domain        TEXT NOT NULL,
-          source_display_name  TEXT,
           published_at         TIMESTAMPTZ NOT NULL,
           fetched_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
+        "#,
+    )
+    .await?;
+
+    tx.execute(
+        r#"
+        ALTER TABLE news.articles
+          DROP COLUMN IF EXISTS source_display_name;
         "#,
     )
     .await?;

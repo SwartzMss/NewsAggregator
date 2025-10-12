@@ -40,7 +40,7 @@ export function FeedTable({ feeds, onToggle, onEdit, onDelete, busyIds }: FeedTa
             return (
               <tr key={feed.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">
-                  {feed.title || feed.source_display_name || feed.source_domain}
+                  {feed.title || feed.source_domain}
                 </td>
                 <td className="px-4 py-3 text-slate-600">
                   <a href={feed.url} target="_blank" rel="noopener noreferrer" className="hover:underline">

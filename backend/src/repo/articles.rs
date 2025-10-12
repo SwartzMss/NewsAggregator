@@ -9,7 +9,6 @@ pub struct ArticleRow {
     pub description: Option<String>,
     pub language: Option<String>,
     pub source_domain: String,
-    pub source_display_name: Option<String>,
     pub published_at: DateTime<Utc>,
 }
 
@@ -28,7 +27,6 @@ pub struct NewArticle {
     pub description: Option<String>,
     pub language: Option<String>,
     pub source_domain: String,
-    pub source_display_name: Option<String>,
     pub published_at: DateTime<Utc>,
 }
 
@@ -44,7 +42,6 @@ pub async fn list_articles(
                description,
                language,
                source_domain,
-               source_display_name,
                published_at
         FROM news.articles
         WHERE ($1::timestamptz IS NULL OR published_at >= $1)
@@ -93,12 +90,11 @@ pub async fn insert_articles(pool: &PgPool, articles: Vec<NewArticle>) -> Result
                 description,
                 language,
                 source_domain,
-                source_display_name,
                 published_at,
                 fetched_at
             )
             VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, NOW()
+                $1, $2, $3, $4, $5, $6, $7, NOW()
             )
             "#,
         )
@@ -108,7 +104,6 @@ pub async fn insert_articles(pool: &PgPool, articles: Vec<NewArticle>) -> Result
         .bind(article.description)
         .bind(article.language)
         .bind(article.source_domain)
-        .bind(article.source_display_name)
         .bind(article.published_at)
         .execute(&mut *tx)
         .await?;

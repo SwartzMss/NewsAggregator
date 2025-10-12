@@ -3,7 +3,7 @@ import { formatDateTime, formatRelative } from "../../lib/time";
 import { extractDomain } from "../../lib/domain";
 
 export function ArticleCard({ article }: { article: ArticleOut }) {
-  const domain = article.source_display_name ?? extractDomain(article.source_domain);
+  const domain = extractDomain(article.source_domain);
   return (
     <article className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 transition hover:shadow-md">
       <div className="flex items-start justify-between gap-4">

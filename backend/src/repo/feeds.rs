@@ -8,9 +8,7 @@ pub struct FeedRow {
     pub title: Option<String>,
     pub site_url: Option<String>,
     pub source_domain: String,
-    pub source_display_name: Option<String>,
     pub language: Option<String>,
-    pub country: Option<String>,
     pub enabled: bool,
     pub fetch_interval_seconds: i32,
     pub last_fetch_at: Option<DateTime<Utc>>,
@@ -23,7 +21,6 @@ pub struct DueFeedRow {
     pub id: i64,
     pub url: String,
     pub source_domain: String,
-    pub source_display_name: Option<String>,
     pub language: Option<String>,
     pub last_etag: Option<String>,
     pub last_modified: Option<DateTime<Utc>>,
@@ -34,9 +31,7 @@ pub struct FeedUpsertRecord {
     pub title: Option<String>,
     pub site_url: Option<String>,
     pub source_domain: String,
-    pub source_display_name: Option<String>,
     pub language: Option<String>,
-    pub country: Option<String>,
     pub enabled: Option<bool>,
     pub fetch_interval_seconds: Option<i32>,
 }
@@ -49,9 +44,7 @@ pub async fn list_feeds(pool: &PgPool) -> Result<Vec<FeedRow>, sqlx::Error> {
                title,
                site_url,
                source_domain,
-               source_display_name,
                language,
-               country,
                enabled,
                fetch_interval_seconds,
                last_fetch_at,
@@ -71,7 +64,6 @@ pub async fn list_due_feeds(pool: &PgPool, limit: i64) -> Result<Vec<DueFeedRow>
         SELECT id,
                url,
                source_domain,
-               source_display_name,
                language,
                last_etag,
                last_modified
@@ -98,9 +90,7 @@ pub async fn upsert_feed(pool: &PgPool, record: FeedUpsertRecord) -> Result<Feed
             title,
             site_url,
             source_domain,
-            source_display_name,
             language,
-            country,
             enabled,
             fetch_interval_seconds
         )
@@ -110,18 +100,14 @@ pub async fn upsert_feed(pool: &PgPool, record: FeedUpsertRecord) -> Result<Feed
             $3,
             $4,
             $5,
-            $6,
-            $7,
-            COALESCE($8, TRUE),
-            COALESCE($9, 600)
+            COALESCE($6, TRUE),
+            COALESCE($7, 600)
         )
         ON CONFLICT (url) DO UPDATE SET
             title = COALESCE(EXCLUDED.title, news.feeds.title),
             site_url = COALESCE(EXCLUDED.site_url, news.feeds.site_url),
             source_domain = EXCLUDED.source_domain,
-            source_display_name = COALESCE(EXCLUDED.source_display_name, news.feeds.source_display_name),
             language = COALESCE(EXCLUDED.language, news.feeds.language),
-            country = COALESCE(EXCLUDED.country, news.feeds.country),
             enabled = COALESCE(EXCLUDED.enabled, news.feeds.enabled),
             fetch_interval_seconds = COALESCE(EXCLUDED.fetch_interval_seconds, news.feeds.fetch_interval_seconds),
             updated_at = NOW()
@@ -130,9 +116,7 @@ pub async fn upsert_feed(pool: &PgPool, record: FeedUpsertRecord) -> Result<Feed
                   title,
                   site_url,
                   source_domain,
-                  source_display_name,
                   language,
-                  country,
                   enabled,
                   fetch_interval_seconds,
                   last_fetch_at,
@@ -144,9 +128,7 @@ pub async fn upsert_feed(pool: &PgPool, record: FeedUpsertRecord) -> Result<Feed
     .bind(record.title)
     .bind(record.site_url)
     .bind(record.source_domain)
-    .bind(record.source_display_name)
     .bind(record.language)
-    .bind(record.country)
     .bind(record.enabled)
     .bind(record.fetch_interval_seconds)
     .fetch_one(pool)

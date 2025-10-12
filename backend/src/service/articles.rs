@@ -45,7 +45,6 @@ pub async fn list(pool: &PgPool, query: ArticleListQuery) -> AppResult<PageResp<
             description: row.description,
             language: row.language,
             source_domain: row.source_domain,
-            source_display_name: row.source_display_name,
             published_at: row.published_at.to_rfc3339(),
         })
         .collect();

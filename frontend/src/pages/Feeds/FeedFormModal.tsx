@@ -12,9 +12,7 @@ export type FeedFormModalProps = {
 const emptyForm: FeedUpsertPayload = {
   url: "",
   source_domain: "",
-  source_display_name: "",
   language: "",
-  country: "",
   enabled: true,
   fetch_interval_seconds: 600,
   title: "",
@@ -33,9 +31,7 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
           id: initial.id,
           url: initial.url,
           source_domain: initial.source_domain,
-          source_display_name: initial.source_display_name ?? "",
           language: initial.language ?? "",
-          country: initial.country ?? "",
           enabled: initial.enabled,
           fetch_interval_seconds: initial.fetch_interval_seconds,
           title: initial.title ?? "",
@@ -90,9 +86,7 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
     try {
       await onSubmit({
         ...form,
-        source_display_name: form.source_display_name?.trim() || undefined,
         language: form.language?.trim() || undefined,
-        country: form.country?.trim() || undefined,
         title: form.title?.trim() || undefined,
         site_url: form.site_url?.trim() || undefined,
       });
@@ -134,15 +128,6 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
               />
             </label>
             <label className="flex flex-col text-sm font-medium text-slate-600">
-              展示名称
-              <input
-                name="source_display_name"
-                value={form.source_display_name ?? ""}
-                onChange={handleChange}
-                className="mt-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </label>
-            <label className="flex flex-col text-sm font-medium text-slate-600">
               标题覆盖
               <input
                 name="title"
@@ -168,16 +153,6 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
                 value={form.language ?? ""}
                 onChange={handleChange}
                 placeholder="en"
-                className="mt-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </label>
-            <label className="flex flex-col text-sm font-medium text-slate-600">
-              默认国家/地区
-              <input
-                name="country"
-                value={form.country ?? ""}
-                onChange={handleChange}
-                placeholder="US"
                 className="mt-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </label>

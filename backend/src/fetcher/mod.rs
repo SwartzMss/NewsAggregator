@@ -276,7 +276,6 @@ fn convert_entry(feed: &DueFeedRow, entry: &Entry) -> Option<NewArticle> {
         description,
         language,
         source_domain: feed.source_domain.clone(),
-        source_display_name: feed.source_display_name.clone(),
         published_at,
     })
 }

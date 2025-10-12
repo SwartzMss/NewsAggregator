@@ -8,7 +8,6 @@ pub struct ArticleOut {
     pub description: Option<String>,
     pub language: Option<String>,
     pub source_domain: String,
-    pub source_display_name: Option<String>,
     pub published_at: String,
 }
 
@@ -19,9 +18,7 @@ pub struct FeedOut {
     pub title: Option<String>,
     pub site_url: Option<String>,
     pub source_domain: String,
-    pub source_display_name: Option<String>,
     pub language: Option<String>,
-    pub country: Option<String>,
     pub enabled: bool,
     pub fetch_interval_seconds: i32,
     pub last_fetch_at: Option<String>,
@@ -51,9 +48,7 @@ pub struct FeedUpsertPayload {
     pub id: Option<i64>,
     pub url: String,
     pub source_domain: String,
-    pub source_display_name: Option<String>,
     pub language: Option<String>,
-    pub country: Option<String>,
     pub enabled: Option<bool>,
     pub fetch_interval_seconds: Option<i32>,
     pub title: Option<String>,

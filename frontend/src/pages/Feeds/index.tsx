@@ -131,7 +131,9 @@ export function FeedsPage() {
         open={modalOpen}
         initial={editingFeed}
         onClose={resetModal}
-        onSubmit={(payload) => upsertMutation.mutateAsync(payload)}
+        onSubmit={async (payload) => {
+          await upsertMutation.mutateAsync(payload);
+        }}
         submitting={upsertMutation.isPending}
       />
     </div>
