@@ -45,6 +45,13 @@ pub async fn upsert(pool: &sqlx::PgPool, payload: FeedUpsertPayload) -> AppResul
 
     let row = repo::feeds::upsert_feed(pool, record).await?;
 
+    tracing::info!(
+        feed_id = row.id,
+        url = row.url,
+        enabled = row.enabled,
+        "feed saved"
+    );
+
     if let Some(expected) = id {
         if row.id != expected {
             return Err(AppError::BadRequest(format!(
@@ -61,6 +68,7 @@ pub async fn delete(pool: &sqlx::PgPool, id: i64) -> AppResult<()> {
     if affected == 0 {
         return Err(AppError::BadRequest(format!("feed {id} not found")));
     }
+    tracing::info!(feed_id = id, "feed deleted");
     Ok(())
 }
 
