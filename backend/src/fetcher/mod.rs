@@ -191,7 +191,7 @@ async fn process_feed(
 
     let entries = std::mem::take(&mut parsed_feed.entries);
     let mut articles = Vec::new();
-    for entry in entries {
+    for entry in &entries {
         if let Some(article) = convert_entry(&feed, &entry) {
             articles.push(article);
         }
@@ -213,6 +213,12 @@ async fn process_feed(
 
     let site_url = parsed_feed.links.first().map(|link| link.href.clone());
 
+    let language = feed
+        .language
+        .clone()
+        .or(parsed_feed.language.clone())
+        .or_else(|| entries.iter().find_map(|entry| entry.language.clone()));
+
     feeds::mark_success(
         &pool,
         feed.id,
@@ -221,7 +227,7 @@ async fn process_feed(
         last_modified_header,
         title,
         site_url,
-        parsed_feed.language.clone(),
+        language,
     )
     .await?;
 
