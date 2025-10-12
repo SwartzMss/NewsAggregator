@@ -9,6 +9,7 @@ use tokio::{
     task::JoinSet,
     time::{interval, MissedTickBehavior},
 };
+use tracing::{debug, info, warn};
 
 use crate::{
     config::FetcherConfig,
@@ -76,7 +77,7 @@ impl Fetcher {
         loop {
             ticker.tick().await;
             if let Err(err) = Self::run_once(pool.clone(), client.clone(), &config).await {
-                tracing::warn!(error = ?err, "fetcher iteration failed");
+                warn!(error = ?err, "fetcher iteration failed");
             }
         }
     }
@@ -88,8 +89,11 @@ impl Fetcher {
     ) -> anyhow::Result<()> {
         let feeds = feeds::list_due_feeds(&pool, config.batch_size as i64).await?;
         if feeds.is_empty() {
+            debug!("no feeds eligible this round");
             return Ok(());
         }
+
+        info!(count = feeds.len(), "starting fetch round");
 
         let concurrency = config.concurrency as usize;
         let mut set = JoinSet::new();
@@ -99,9 +103,9 @@ impl Fetcher {
             let client_cloned = client.clone();
 
             set.spawn(async move {
-                tracing::debug!(feed_id = feed.id, url = %feed.url, "fetching feed");
+                debug!(feed_id = feed.id, url = %feed.url, "fetching feed");
                 if let Err(err) = process_feed(pool_cloned, client_cloned, feed).await {
-                    tracing::debug!(error = ?err, "failed to process feed");
+                    warn!(error = ?err, "failed to process feed");
                 }
             });
 
@@ -145,6 +149,11 @@ async fn process_feed(
 
     if status == StatusCode::NOT_MODIFIED {
         feeds::mark_not_modified(&pool, feed.id, status.as_u16() as i16).await?;
+        debug!(
+            feed_id = feed.id,
+            status = status.as_u16(),
+            "feed not modified"
+        );
         return Ok(());
     }
 
@@ -188,8 +197,16 @@ async fn process_feed(
         }
     }
 
-    if !articles.is_empty() {
+    let article_count = articles.len();
+    if article_count > 0 {
         articles::insert_articles(&pool, articles).await?;
+        info!(
+            feed_id = feed.id,
+            count = article_count,
+            "inserted articles"
+        );
+    } else {
+        debug!(feed_id = feed.id, "no new articles parsed");
     }
 
     let title = parsed_feed.title.as_ref().map(|text| text.content.clone());
@@ -207,6 +224,13 @@ async fn process_feed(
         parsed_feed.language.clone(),
     )
     .await?;
+
+    info!(
+        feed_id = feed.id,
+        status = status.as_u16(),
+        last_fetch_at = ?Utc::now(),
+        "feed fetch successful"
+    );
 
     Ok(())
 }
@@ -258,5 +282,6 @@ async fn record_failure(
 ) -> anyhow::Result<()> {
     let status = http_status.map(|s| s.as_u16() as i16).unwrap_or(0);
     feeds::mark_failure(pool, feed_id, status).await?;
+    warn!(feed_id, status, "marked feed fetch failure");
     Ok(())
 }
