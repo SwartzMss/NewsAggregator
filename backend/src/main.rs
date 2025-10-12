@@ -64,8 +64,15 @@ fn setup_tracing(config: &config::AppConfig) -> anyhow::Result<()> {
     static FILE_GUARD: OnceLock<tracing_appender::non_blocking::WorkerGuard> = OnceLock::new();
     let _ = FILE_GUARD.set(guard);
 
-    let stdout_layer = fmt_layer().with_writer(std::io::stdout);
-    let file_layer = fmt_layer().with_writer(non_blocking).with_ansi(false);
+    let stdout_layer = fmt_layer()
+        .with_writer(std::io::stdout)
+        .with_file(true)
+        .with_line_number(true);
+    let file_layer = fmt_layer()
+        .with_writer(non_blocking)
+        .with_ansi(false)
+        .with_file(true)
+        .with_line_number(true);
 
     Registry::default()
         .with(env_filter)
