@@ -187,7 +187,6 @@ pub async fn mark_success(
     feed_id: i64,
     status: i16,
     etag: Option<String>,
-    last_modified: Option<DateTime<Utc>>,
     title: Option<String>,
     site_url: Option<String>,
 ) -> Result<(), sqlx::Error> {
@@ -197,9 +196,8 @@ pub async fn mark_success(
         SET last_fetch_at = NOW(),
             last_fetch_status = $2,
             last_etag = $3,
-            last_modified = $4,
-            title = COALESCE($5, title),
-            site_url = COALESCE($6, site_url),
+            title = COALESCE($4, title),
+            site_url = COALESCE($5, site_url),
             fail_count = 0,
             updated_at = NOW()
         WHERE id = $1
@@ -208,7 +206,6 @@ pub async fn mark_success(
     .bind(feed_id)
     .bind(status)
     .bind(etag)
-    .bind(last_modified)
     .bind(title)
     .bind(site_url)
     .execute(pool)

@@ -183,7 +183,7 @@ async fn process_feed(
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_string());
 
-    let last_modified_header = headers
+    let _last_modified_header = headers
         .get(reqwest::header::LAST_MODIFIED)
         .and_then(|value| value.to_str().ok())
         .and_then(|raw| parse_http_date(raw).ok())
@@ -218,7 +218,6 @@ async fn process_feed(
         feed.id,
         status.as_u16() as i16,
         etag,
-        last_modified_header,
         title,
         site_url,
     )

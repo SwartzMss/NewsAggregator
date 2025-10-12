@@ -37,7 +37,8 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
         ALTER TABLE news.feeds
           DROP COLUMN IF EXISTS source_display_name,
           DROP COLUMN IF EXISTS country,
-          DROP COLUMN IF EXISTS language;
+          DROP COLUMN IF EXISTS language,
+          DROP COLUMN IF EXISTS last_modified;
         "#,
     )
     .await?;
