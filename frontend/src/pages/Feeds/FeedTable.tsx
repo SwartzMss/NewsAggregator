@@ -26,7 +26,6 @@ export function FeedTable({ feeds, onToggle, onEdit, onDelete, busyIds }: FeedTa
             <th className="px-4 py-3">标题</th>
             <th className="px-4 py-3">RSS URL</th>
             <th className="px-4 py-3">域名</th>
-            <th className="px-4 py-3">语言</th>
             <th className="px-4 py-3">启用</th>
             <th className="px-4 py-3">最近抓取</th>
             <th className="px-4 py-3">状态码</th>
@@ -48,7 +47,6 @@ export function FeedTable({ feeds, onToggle, onEdit, onDelete, busyIds }: FeedTa
                   </a>
                 </td>
                 <td className="px-4 py-3 text-slate-600">{feed.source_domain}</td>
-                <td className="px-4 py-3 text-slate-600">{feed.language ?? "-"}</td>
                 <td className="px-4 py-3 text-slate-600">
                   <label className="inline-flex items-center gap-2 text-sm">
                     <input

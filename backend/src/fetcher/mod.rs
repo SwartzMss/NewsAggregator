@@ -213,12 +213,6 @@ async fn process_feed(
 
     let site_url = parsed_feed.links.first().map(|link| link.href.clone());
 
-    let language = feed
-        .language
-        .clone()
-        .or(parsed_feed.language.clone())
-        .or_else(|| entries.iter().find_map(|entry| entry.language.clone()));
-
     feeds::mark_success(
         &pool,
         feed.id,
@@ -227,7 +221,6 @@ async fn process_feed(
         last_modified_header,
         title,
         site_url,
-        language,
     )
     .await?;
 
@@ -260,7 +253,7 @@ fn convert_entry(feed: &DueFeedRow, entry: &Entry) -> Option<NewArticle> {
         .map(|summary| summary.content.clone())
         .filter(|s| !s.trim().is_empty());
 
-    let language = entry.language.clone().or_else(|| feed.language.clone());
+    let language = entry.language.clone();
 
     let published_at = entry
         .published

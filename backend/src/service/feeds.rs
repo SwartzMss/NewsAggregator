@@ -14,7 +14,6 @@ pub async fn upsert(pool: &sqlx::PgPool, payload: FeedUpsertPayload) -> AppResul
         id,
         url,
         source_domain,
-        language,
         enabled,
         fetch_interval_seconds,
         title,
@@ -34,7 +33,6 @@ pub async fn upsert(pool: &sqlx::PgPool, payload: FeedUpsertPayload) -> AppResul
         title,
         site_url,
         source_domain,
-        language,
         enabled,
         fetch_interval_seconds,
     };
@@ -75,7 +73,6 @@ fn feed_row_to_out(row: repo::feeds::FeedRow) -> FeedOut {
         title: row.title,
         site_url: row.site_url,
         source_domain: row.source_domain,
-        language: row.language,
         enabled: row.enabled,
         fetch_interval_seconds: row.fetch_interval_seconds,
         last_fetch_at: row.last_fetch_at.map(|dt| dt.to_rfc3339()),

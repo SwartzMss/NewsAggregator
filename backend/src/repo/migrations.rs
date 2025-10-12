@@ -18,7 +18,6 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
           title                      TEXT,
           site_url                   TEXT,
           source_domain              TEXT NOT NULL,
-          language                   TEXT,
           enabled                    BOOLEAN NOT NULL DEFAULT TRUE,
           fetch_interval_seconds     INTEGER NOT NULL DEFAULT 600,
           last_etag                  TEXT,
@@ -37,7 +36,8 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
         r#"
         ALTER TABLE news.feeds
           DROP COLUMN IF EXISTS source_display_name,
-          DROP COLUMN IF EXISTS country;
+          DROP COLUMN IF EXISTS country,
+          DROP COLUMN IF EXISTS language;
         "#,
     )
     .await?;

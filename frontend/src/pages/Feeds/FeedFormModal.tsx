@@ -12,7 +12,6 @@ export type FeedFormModalProps = {
 const emptyForm: FeedUpsertPayload = {
   url: "",
   source_domain: "",
-  language: "",
   enabled: true,
   fetch_interval_seconds: 600,
   title: "",
@@ -31,7 +30,6 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
           id: initial.id,
           url: initial.url,
           source_domain: initial.source_domain,
-          language: initial.language ?? "",
           enabled: initial.enabled,
           fetch_interval_seconds: initial.fetch_interval_seconds,
           title: initial.title ?? "",
@@ -86,7 +84,6 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
     try {
       await onSubmit({
         ...form,
-        language: form.language?.trim() || undefined,
         title: form.title?.trim() || undefined,
         site_url: form.site_url?.trim() || undefined,
       });
@@ -143,16 +140,6 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
                 value={form.site_url ?? ""}
                 onChange={handleChange}
                 placeholder="https://example.com"
-                className="mt-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </label>
-            <label className="flex flex-col text-sm font-medium text-slate-600">
-              默认语言
-              <input
-                name="language"
-                value={form.language ?? ""}
-                onChange={handleChange}
-                placeholder="en"
                 className="mt-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </label>
