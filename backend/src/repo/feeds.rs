@@ -21,7 +21,6 @@ pub struct DueFeedRow {
     pub url: String,
     pub source_domain: String,
     pub last_etag: Option<String>,
-    pub last_modified: Option<DateTime<Utc>>,
 }
 
 pub struct FeedUpsertRecord {
@@ -60,8 +59,7 @@ pub async fn list_due_feeds(pool: &PgPool, limit: i64) -> Result<Vec<DueFeedRow>
         SELECT id,
                url,
                source_domain,
-               last_etag,
-               last_modified
+               last_etag
         FROM news.feeds
         WHERE enabled = TRUE
           AND (
@@ -121,7 +119,7 @@ pub async fn upsert_feed(pool: &PgPool, record: FeedUpsertRecord) -> Result<Feed
     .bind(record.site_url)
     .bind(record.source_domain)
         .bind(record.enabled)
-        .bind(record.fetch_interval_seconds)
+    .bind(record.fetch_interval_seconds)
     .fetch_one(pool)
     .await
 }

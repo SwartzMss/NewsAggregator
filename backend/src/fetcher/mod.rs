@@ -1,9 +1,8 @@
 use std::{sync::Arc, time::Duration};
 
 use anyhow::anyhow;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use feed_rs::{model::Entry, parser};
-use httpdate::{fmt_http_date, parse_http_date};
 use reqwest::{Client, StatusCode};
 use tokio::{
     task::JoinSet,
@@ -131,11 +130,6 @@ async fn process_feed(
     if let Some(etag) = &feed.last_etag {
         request = request.header(reqwest::header::IF_NONE_MATCH, etag);
     }
-    if let Some(modified) = &feed.last_modified {
-        let std_time: std::time::SystemTime = (*modified).into();
-        request = request.header(reqwest::header::IF_MODIFIED_SINCE, fmt_http_date(std_time));
-    }
-
     let response = match request.send().await {
         Ok(resp) => resp,
         Err(err) => {
@@ -182,12 +176,6 @@ async fn process_feed(
         .get(reqwest::header::ETAG)
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_string());
-
-    let _last_modified_header = headers
-        .get(reqwest::header::LAST_MODIFIED)
-        .and_then(|value| value.to_str().ok())
-        .and_then(|raw| parse_http_date(raw).ok())
-        .map(DateTime::<Utc>::from);
 
     let entries = std::mem::take(&mut parsed_feed.entries);
     let mut articles = Vec::new();
