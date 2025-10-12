@@ -63,7 +63,7 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
     event.preventDefault();
     setError(null);
     if (!form.url.trim() || !form.source_domain.trim()) {
-      setError("Feed URL and source domain are required.");
+      setError("请填写订阅源 URL 和来源域名");
       return;
     }
     try {
@@ -77,7 +77,7 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
       });
       onClose();
     } catch (err) {
-      setError((err as Error).message ?? "Failed to save feed.");
+      setError((err as Error).message ?? "保存订阅源失败");
     }
   };
 
@@ -86,13 +86,13 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
       <div className="w-full max-w-xl rounded-lg bg-white shadow-lg">
         <div className="border-b border-slate-200 px-5 py-4">
           <h2 className="text-lg font-semibold text-slate-900">
-            {initial ? "Edit Feed" : "New Feed"}
+            {initial ? "编辑订阅源" : "新增订阅源"}
           </h2>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4 px-5 py-4">
           <div className="grid gap-4 md:grid-cols-2">
             <label className="flex flex-col text-sm font-medium text-slate-600">
-              URL
+              RSS 地址
               <input
                 name="url"
                 value={form.url}
@@ -102,7 +102,7 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
               />
             </label>
             <label className="flex flex-col text-sm font-medium text-slate-600">
-              Source domain
+              来源域名
               <input
                 name="source_domain"
                 value={form.source_domain}
@@ -113,7 +113,7 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
               />
             </label>
             <label className="flex flex-col text-sm font-medium text-slate-600">
-              Display name
+              展示名称
               <input
                 name="source_display_name"
                 value={form.source_display_name ?? ""}
@@ -122,7 +122,7 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
               />
             </label>
             <label className="flex flex-col text-sm font-medium text-slate-600">
-              Title override
+              标题覆盖
               <input
                 name="title"
                 value={form.title ?? ""}
@@ -131,7 +131,7 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
               />
             </label>
             <label className="flex flex-col text-sm font-medium text-slate-600">
-              Site URL
+              站点主页
               <input
                 name="site_url"
                 value={form.site_url ?? ""}
@@ -141,7 +141,7 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
               />
             </label>
             <label className="flex flex-col text-sm font-medium text-slate-600">
-              Language
+              默认语言
               <input
                 name="language"
                 value={form.language ?? ""}
@@ -151,7 +151,7 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
               />
             </label>
             <label className="flex flex-col text-sm font-medium text-slate-600">
-              Country
+              默认国家/地区
               <input
                 name="country"
                 value={form.country ?? ""}
@@ -161,7 +161,7 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
               />
             </label>
             <label className="flex flex-col text-sm font-medium text-slate-600">
-              Fetch interval (seconds)
+              抓取间隔（秒）
               <input
                 name="fetch_interval_seconds"
                 type="number"
@@ -180,7 +180,7 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
                 onChange={handleChange}
                 className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
               />
-              Enabled
+              启用订阅
             </label>
           </div>
 
@@ -192,14 +192,14 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
               onClick={onClose}
               className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-100"
             >
-              Cancel
+              取消
             </button>
             <button
               type="submit"
               disabled={submitting}
               className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {submitting ? "Saving…" : "Save"}
+              {submitting ? "保存中…" : "保存"}
             </button>
           </div>
         </form>

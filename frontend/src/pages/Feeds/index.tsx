@@ -26,11 +26,11 @@ export function FeedsPage() {
       return response;
     },
     onSuccess: () => {
-      setFeedback("Feed saved");
+      setFeedback("订阅源已保存");
       invalidateFeeds();
     },
     onError: (err: Error) => {
-      setFeedback(err.message || "Failed to save feed");
+      setFeedback(err.message || "保存订阅源失败");
     },
   });
 
@@ -40,11 +40,11 @@ export function FeedsPage() {
       await deleteFeed(feed.id);
     },
     onSuccess: () => {
-      setFeedback("Feed deleted");
+      setFeedback("订阅源已删除");
       invalidateFeeds();
     },
     onError: (err: Error) => {
-      setFeedback(err.message || "Failed to delete feed");
+      setFeedback(err.message || "删除订阅源失败");
     },
     onSettled: (_data, _error, feed) => {
       if (feed) {
@@ -76,7 +76,7 @@ export function FeedsPage() {
   };
 
   const handleDelete = async (feed: FeedOut) => {
-    if (!confirm(`Delete feed ${feed.title ?? feed.source_domain}?`)) {
+    if (!confirm(`确认删除订阅源 ${feed.title ?? feed.source_domain} 吗？`)) {
       return;
     }
     await deleteMutation.mutateAsync(feed);
@@ -94,14 +94,14 @@ export function FeedsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900">Feeds</h2>
-          <p className="text-sm text-slate-500">Manage RSS sources and fetching intervals.</p>
+          <h2 className="text-xl font-semibold text-slate-900">订阅源列表</h2>
+          <p className="text-sm text-slate-500">管理 RSS 链接及抓取状态。</p>
         </div>
         <button
           onClick={() => handleOpenModal()}
           className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-dark"
         >
-          + New Feed
+          + 新增订阅源
         </button>
       </div>
 
@@ -112,10 +112,10 @@ export function FeedsPage() {
       )}
 
       {feedsQuery.isLoading ? (
-        <div className="text-sm text-slate-500">Loading feeds…</div>
+        <div className="text-sm text-slate-500">正在加载订阅源…</div>
       ) : feedsQuery.isError ? (
         <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {(feedsQuery.error as Error).message || "Failed to load feeds."}
+          {(feedsQuery.error as Error).message || "加载订阅源失败"}
         </div>
       ) : (
         <FeedTable

@@ -81,10 +81,10 @@ export function NewsListPage() {
       <Toolbar from={localFrom} to={localTo} pageSize={pageSize} onSubmit={handleSubmitFilters} onRefresh={handleRefresh} />
 
       {query.isLoading ? (
-        <div className="text-sm text-slate-500">Loading latest articles…</div>
+        <div className="text-sm text-slate-500">正在加载最新文章…</div>
       ) : query.isError ? (
         <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {(query.error as Error).message || "Failed to load articles."}
+          {(query.error as Error).message || "文章列表加载失败"}
         </div>
       ) : query.data && query.data.items.length > 0 ? (
         <div className="space-y-4">
@@ -94,13 +94,13 @@ export function NewsListPage() {
         </div>
       ) : (
         <div className="rounded-md border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
-          No articles yet. Add feeds to start fetching news.
+          暂无文章。请先添加订阅源等待抓取。
         </div>
       )}
 
       <div className="flex items-center justify-between border-t border-slate-200 pt-4">
         <div className="text-sm text-slate-500">
-          Page {page} of {totalPages}
+          第 {page} / {totalPages} 页
         </div>
         <div className="flex gap-2">
           <button
@@ -108,14 +108,14 @@ export function NewsListPage() {
             onClick={() => navigatePage(Math.max(1, page - 1))}
             disabled={page <= 1 || query.isFetching}
           >
-            Previous
+            上一页
           </button>
           <button
             className="rounded-md border border-slate-300 px-3 py-1 text-sm text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => navigatePage(page + 1)}
             disabled={query.isFetching || page >= totalPages}
           >
-            Next
+            下一页
           </button>
         </div>
       </div>

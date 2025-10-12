@@ -13,7 +13,7 @@ export function FeedTable({ feeds, onToggle, onEdit, onDelete, busyIds }: FeedTa
   if (feeds.length === 0) {
     return (
       <div className="rounded-md border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
-        No feeds yet. Add one to start fetching news.
+        暂无订阅源，请先新增一个 RSS 链接。
       </div>
     );
   }
@@ -23,15 +23,15 @@ export function FeedTable({ feeds, onToggle, onEdit, onDelete, busyIds }: FeedTa
       <table className="min-w-full divide-y divide-slate-200 text-sm">
         <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
           <tr>
-            <th className="px-4 py-3">Title</th>
-            <th className="px-4 py-3">URL</th>
-            <th className="px-4 py-3">Domain</th>
-            <th className="px-4 py-3">Lang</th>
-            <th className="px-4 py-3">Enabled</th>
-            <th className="px-4 py-3">Last Fetch</th>
-            <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3">Fails</th>
-            <th className="px-4 py-3">Actions</th>
+            <th className="px-4 py-3">标题</th>
+            <th className="px-4 py-3">RSS URL</th>
+            <th className="px-4 py-3">域名</th>
+            <th className="px-4 py-3">语言</th>
+            <th className="px-4 py-3">启用</th>
+            <th className="px-4 py-3">最近抓取</th>
+            <th className="px-4 py-3">状态码</th>
+            <th className="px-4 py-3">失败次数</th>
+            <th className="px-4 py-3">操作</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-200 bg-white">
@@ -58,7 +58,7 @@ export function FeedTable({ feeds, onToggle, onEdit, onDelete, busyIds }: FeedTa
                       disabled={busy}
                       className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
                     />
-                    {feed.enabled ? "On" : "Off"}
+                    {feed.enabled ? "开启" : "关闭"}
                   </label>
                 </td>
                 <td className="px-4 py-3 text-slate-600">{formatDateTime(feed.last_fetch_at ?? undefined)}</td>
@@ -70,14 +70,14 @@ export function FeedTable({ feeds, onToggle, onEdit, onDelete, busyIds }: FeedTa
                       onClick={() => onEdit(feed)}
                       className="rounded-md border border-slate-300 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
                     >
-                      Edit
+                      编辑
                     </button>
                     <button
                       onClick={() => onDelete(feed)}
                       disabled={busy}
                       className="rounded-md border border-red-300 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      Delete
+                      删除
                     </button>
                   </div>
                 </td>

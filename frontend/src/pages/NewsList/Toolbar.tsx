@@ -29,7 +29,7 @@ export function Toolbar({ from, to, pageSize, onSubmit, onRefresh }: ToolbarProp
     >
       <div className="flex flex-col">
         <label htmlFor="from" className="text-sm font-medium text-slate-600">
-          From
+          起始时间
         </label>
         <input
           defaultValue={from}
@@ -42,7 +42,7 @@ export function Toolbar({ from, to, pageSize, onSubmit, onRefresh }: ToolbarProp
 
       <div className="flex flex-col">
         <label htmlFor="to" className="text-sm font-medium text-slate-600">
-          To
+          结束时间
         </label>
         <input
           defaultValue={to}
@@ -55,7 +55,7 @@ export function Toolbar({ from, to, pageSize, onSubmit, onRefresh }: ToolbarProp
 
       <div className="flex flex-col">
         <label htmlFor="pageSize" className="text-sm font-medium text-slate-600">
-          Page size
+          每页条数
         </label>
         <select
           defaultValue={pageSize}
@@ -76,14 +76,14 @@ export function Toolbar({ from, to, pageSize, onSubmit, onRefresh }: ToolbarProp
           type="submit"
           className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
         >
-          Apply
+          应用筛选
         </button>
         <button
           type="button"
           onClick={onRefresh}
           className="inline-flex items-center rounded-md border border-primary px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10"
         >
-          Refresh
+          刷新
         </button>
       </div>
     </form>

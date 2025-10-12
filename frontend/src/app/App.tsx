@@ -12,13 +12,13 @@ export function AppLayout() {
     <div className="min-h-screen flex flex-col">
       <header className="bg-white border-b border-slate-200">
         <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-primary">News Aggregator</h1>
+          <h1 className="text-xl font-semibold text-primary">新闻聚合面板</h1>
           <nav className="flex gap-2">
             <NavLink to="/" className={navLinkClass} end>
-              News
+              新闻列表
             </NavLink>
             <NavLink to="/feeds" className={navLinkClass}>
-              Feeds
+              订阅源管理
             </NavLink>
           </nav>
         </div>
@@ -32,7 +32,7 @@ export function AppLayout() {
 
       <footer className="bg-white border-t border-slate-200">
         <div className="mx-auto max-w-6xl px-4 py-3 text-sm text-slate-500">
-          © {new Date().getFullYear()} News Aggregator. Built with Rust & React.
+          © {new Date().getFullYear()} 新闻聚合服务 · Rust + React
         </div>
       </footer>
     </div>
