@@ -12,7 +12,9 @@ use anyhow::Context;
 use std::{net::SocketAddr, path::Path, sync::OnceLock};
 use tokio::net::TcpListener;
 use tracing_appender::rolling;
-use tracing_subscriber::{fmt::layer as fmt_layer, prelude::*, EnvFilter, Registry};
+use tracing_subscriber::{
+    filter::filter_fn, fmt::layer as fmt_layer, prelude::*, EnvFilter, Registry,
+};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -64,19 +66,30 @@ fn setup_tracing(config: &config::AppConfig) -> anyhow::Result<()> {
     static FILE_GUARD: OnceLock<tracing_appender::non_blocking::WorkerGuard> = OnceLock::new();
     let _ = FILE_GUARD.set(guard);
 
-    let stdout_layer = fmt_layer()
+    let backend_filter = filter_fn(|meta| meta.target().starts_with("backend"));
+    let other_filter = filter_fn(|meta| !meta.target().starts_with("backend"));
+
+    let stdout_backend = fmt_layer()
         .with_writer(std::io::stdout)
         .with_file(true)
-        .with_line_number(true);
+        .with_line_number(true)
+        .with_filter(backend_filter.clone());
+
+    let stdout_general = fmt_layer()
+        .with_writer(std::io::stdout)
+        .with_filter(other_filter.clone());
+
     let file_layer = fmt_layer()
         .with_writer(non_blocking)
         .with_ansi(false)
         .with_file(true)
-        .with_line_number(true);
+        .with_line_number(true)
+        .with_filter(backend_filter);
 
     Registry::default()
         .with(env_filter)
-        .with(stdout_layer)
+        .with(stdout_backend)
+        .with(stdout_general)
         .with(file_layer)
         .try_init()
         .context("failed to init tracing subscriber")?;
