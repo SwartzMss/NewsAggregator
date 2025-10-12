@@ -24,3 +24,5 @@ target
 config/config.yaml
 
 backend/logs/
+
+frontend/node_modules/
