@@ -17,6 +17,9 @@ export function AppLayout() {
             <NavLink to="/" className={navLinkClass} end>
               新闻列表
             </NavLink>
+            <NavLink to="/featured" className={navLinkClass}>
+              精选
+            </NavLink>
             <NavLink to="/feeds" className={navLinkClass}>
               订阅源管理
             </NavLink>

@@ -9,6 +9,7 @@ pub struct ArticleOut {
     pub language: Option<String>,
     pub source_domain: String,
     pub published_at: String,
+    pub click_count: i64,
 }
 
 #[derive(Debug, Serialize)]

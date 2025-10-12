@@ -77,6 +77,14 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
 
     tx.execute(
         r#"
+        ALTER TABLE news.articles
+          ADD COLUMN IF NOT EXISTS click_count BIGINT NOT NULL DEFAULT 0;
+        "#,
+    )
+    .await?;
+
+    tx.execute(
+        r#"
         CREATE INDEX IF NOT EXISTS idx_articles_published_at    ON news.articles(published_at DESC);
         "#,
     )

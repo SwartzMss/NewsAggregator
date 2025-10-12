@@ -46,6 +46,7 @@ pub async fn list(pool: &PgPool, query: ArticleListQuery) -> AppResult<PageResp<
             language: row.language,
             source_domain: row.source_domain,
             published_at: row.published_at.to_rfc3339(),
+            click_count: row.click_count,
         })
         .collect();
 
@@ -66,4 +67,26 @@ fn parse_optional_datetime(value: Option<&str>, field: &str) -> AppResult<Option
         }
         None => Ok(None),
     }
+}
+
+pub async fn record_click(pool: &PgPool, id: i64) -> AppResult<()> {
+    repo::articles::increment_click(pool, id).await?;
+    Ok(())
+}
+
+pub async fn list_featured(pool: &PgPool, limit: i64) -> AppResult<Vec<ArticleOut>> {
+    let rows = repo::articles::list_top_articles(pool, limit).await?;
+    Ok(rows
+        .into_iter()
+        .map(|row| ArticleOut {
+            id: row.id,
+            title: row.title,
+            url: row.url,
+            description: row.description,
+            language: row.language,
+            source_domain: row.source_domain,
+            published_at: row.published_at.to_rfc3339(),
+            click_count: row.click_count,
+        })
+        .collect())
 }

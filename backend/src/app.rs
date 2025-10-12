@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use axum::{
-    routing::{delete, get},
+    routing::{delete, get, post},
     Router,
 };
 use sqlx::{postgres::PgPoolOptions, PgPool};
@@ -42,6 +42,8 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
         )
         .route("/feeds/:id", delete(api::feeds::delete_feed))
         .route("/articles", get(api::articles::list_articles))
+        .route("/articles/featured", get(api::articles::list_featured))
+        .route("/articles/:id/click", post(api::articles::record_click))
         .layer(middleware)
         .with_state(state);
 

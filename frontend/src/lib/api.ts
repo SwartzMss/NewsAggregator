@@ -42,6 +42,22 @@ export async function listFeeds(): Promise<FeedOut[]> {
   return parseJSON<FeedOut[]>(res);
 }
 
+export async function getFeaturedArticles(limit = 6): Promise<ArticleOut[]> {
+  const res = await fetch(
+    `${API_BASE}/articles/featured${toQueryString({ limit })}`,
+    {
+      headers: { Accept: "application/json" },
+    }
+  );
+  return parseJSON<ArticleOut[]>(res);
+}
+
+export async function recordArticleClick(id: number): Promise<void> {
+  await fetch(`${API_BASE}/articles/${id}/click`, {
+    method: "POST",
+  });
+}
+
 export async function upsertFeed(payload: FeedUpsertPayload): Promise<FeedOut> {
   const res = await fetch(`${API_BASE}/feeds`, {
     method: "POST",

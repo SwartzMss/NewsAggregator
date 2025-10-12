@@ -6,6 +6,7 @@ export type ArticleOut = {
   language?: string | null;
   source_domain: string;
   published_at: string; // ISO8601 UTC
+  click_count: number;
 };
 
 export type FeedOut = {

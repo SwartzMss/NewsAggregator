@@ -10,6 +10,7 @@ pub struct ArticleRow {
     pub language: Option<String>,
     pub source_domain: String,
     pub published_at: DateTime<Utc>,
+    pub click_count: i64,
 }
 
 pub struct ArticleListArgs {
@@ -42,7 +43,8 @@ pub async fn list_articles(
                description,
                language,
                source_domain,
-               published_at
+               published_at,
+               click_count
         FROM news.articles
         WHERE ($1::timestamptz IS NULL OR published_at >= $1)
           AND ($2::timestamptz IS NULL OR published_at <= $2)
@@ -91,10 +93,11 @@ pub async fn insert_articles(pool: &PgPool, articles: Vec<NewArticle>) -> Result
                 language,
                 source_domain,
                 published_at,
-                fetched_at
+                fetched_at,
+                click_count
             )
             VALUES (
-                $1, $2, $3, $4, $5, $6, $7, NOW()
+                $1, $2, $3, $4, $5, $6, $7, NOW(), 0
             )
             "#,
         )
@@ -111,4 +114,40 @@ pub async fn insert_articles(pool: &PgPool, articles: Vec<NewArticle>) -> Result
 
     tx.commit().await?;
     Ok(())
+}
+
+pub async fn increment_click(pool: &PgPool, id: i64) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+        UPDATE news.articles
+        SET click_count = click_count + 1
+        WHERE id = $1
+        "#,
+    )
+    .bind(id)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+pub async fn list_top_articles(pool: &PgPool, limit: i64) -> Result<Vec<ArticleRow>, sqlx::Error> {
+    sqlx::query_as::<_, ArticleRow>(
+        r#"
+        SELECT id,
+               title,
+               url,
+               description,
+               language,
+               source_domain,
+               published_at,
+               click_count
+        FROM news.articles
+        ORDER BY click_count DESC, published_at DESC
+        LIMIT $1
+        "#,
+    )
+    .bind(limit)
+    .fetch_all(pool)
+    .await
 }

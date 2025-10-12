@@ -1,5 +1,6 @@
-import { useInfiniteQuery, type InfiniteData } from "@tanstack/react-query";
-import { getArticles } from "../../lib/api";
+import { useInfiniteQuery, type InfiniteData, useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
+import { getArticles, getFeaturedArticles } from "../../lib/api";
 import { ArticleCard } from "./ArticleCard";
 import { ArticleOut, PageResp } from "../../types/api";
 
@@ -28,8 +29,31 @@ export function NewsListPage() {
   const articles: ArticleOut[] =
     query.data?.pages.flatMap((page) => page.items) ?? [];
 
+  const featuredQuery = useQuery({
+    queryKey: ["articles", "featured", { limit: 6 }],
+    queryFn: () => getFeaturedArticles(6),
+    staleTime: 30_000,
+  });
+  const featured = featuredQuery.data ?? [];
+
   return (
     <div className="space-y-6">
+      {featured.length > 0 && (
+        <section className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900">精选新闻</h2>
+            <Link to="/featured" className="text-sm text-primary hover:underline">
+              查看全部
+            </Link>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {featured.map((article) => (
+              <ArticleCard key={`featured-${article.id}`} article={article} />
+            ))}
+          </div>
+        </section>
+      )}
+
       {query.isLoading && !articles.length ? (
         <div className="text-sm text-slate-500">正在加载最新文章…</div>
       ) : query.isError ? (
