@@ -52,10 +52,31 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
   const handleChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    const { name, value, type, checked } = event.target;
+    const target = event.target;
+
+    const { name } = target;
+    let nextValue: unknown;
+
+    if (target instanceof HTMLInputElement) {
+      if (target.type === "checkbox") {
+        nextValue = target.checked;
+      } else if (target.type === "number" || name === "fetch_interval_seconds") {
+        if (target.value === "") {
+          nextValue = undefined;
+        } else {
+          const parsed = Number(target.value);
+          nextValue = Number.isNaN(parsed) ? undefined : parsed;
+        }
+      } else {
+        nextValue = target.value;
+      }
+    } else {
+      nextValue = target.value;
+    }
+
     setForm((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: nextValue,
     }));
   };
 
