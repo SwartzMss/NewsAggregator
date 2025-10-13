@@ -50,7 +50,6 @@
 - **第一阶段**：先上线 URL 归一化 + `(feed_id, url)` 唯一约束 + 发布时间窗口，初步减少重复。
 - **第二阶段**：实现标题归一化 + Jaccard/SimHash 等轻量规则过滤，对高优先级重复直接拦截。
 - **第三阶段**：部署 Qdrant（或另一向量库），设定嵌入模型，完成向量写入/Top-K 检索，提供候选集合。
-  - 当前代码中已提供 `backend/src/util/qdrant.rs` 的 `QdrantManager` 封装，可复用配置 (`config.ai.qdrant`) 建立集合、写入向量并检索近邻。
 - **第四阶段**：接入 DeepSeek 客户端，对灰区候选进行判定（目前 `backend/src/util/deepseek.rs` 已具备调用能力，待集成）。
 - **第五阶段**：扩展数据库结构（新增 `news.article_sources`、`canonical_article_id` 等）并调整入库流程、API 返回值。
 - **展示层**：若启用引用表，在 API 返回时附带 `sources` 列表，展示“该新闻还来自哪些源站/时间”。  

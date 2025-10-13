@@ -93,38 +93,14 @@ impl Default for DeepseekConfig {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
-pub struct QdrantConfig {
-    pub enabled: bool,
-    pub uri: String,
-    pub api_key: Option<String>,
-    pub collection: String,
-    pub vector_size: u64,
-}
-
-impl Default for QdrantConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            uri: "http://localhost:6334".to_string(),
-            api_key: None,
-            collection: "news_articles".to_string(),
-            vector_size: 384,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(default)]
 pub struct AiConfig {
     pub deepseek: DeepseekConfig,
-    pub qdrant: QdrantConfig,
 }
 
 impl Default for AiConfig {
     fn default() -> Self {
         Self {
             deepseek: DeepseekConfig::default(),
-            qdrant: QdrantConfig::default(),
         }
     }
 }
@@ -231,26 +207,6 @@ impl AppConfig {
 
         if let Some(timeout) = parse_optional_env("DEEPSEEK_TIMEOUT_SECS")? {
             config.ai.deepseek.timeout_secs = timeout;
-        }
-
-        if let Some(enabled) = parse_optional_env("QDRANT_ENABLED")? {
-            config.ai.qdrant.enabled = enabled;
-        }
-
-        if let Ok(uri) = std::env::var("QDRANT_URI") {
-            config.ai.qdrant.uri = uri;
-        }
-
-        if let Ok(api_key) = std::env::var("QDRANT_API_KEY") {
-            config.ai.qdrant.api_key = Some(api_key);
-        }
-
-        if let Ok(collection) = std::env::var("QDRANT_COLLECTION") {
-            config.ai.qdrant.collection = collection;
-        }
-
-        if let Some(vector_size) = parse_optional_env("QDRANT_VECTOR_SIZE")? {
-            config.ai.qdrant.vector_size = vector_size;
         }
 
         if config.db.url.trim().is_empty() {

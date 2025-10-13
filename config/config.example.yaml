@@ -24,9 +24,3 @@ ai:
     base_url: "https://api.deepseek.com"
     model: "deepseek-chat"
     timeout_secs: 30
-  qdrant:
-    enabled: false
-    uri: "http://localhost:6334"
-    api_key: ""
-    collection: "news_articles"
-    vector_size: 384
