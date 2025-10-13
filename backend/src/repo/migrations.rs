@@ -68,6 +68,7 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
     )
     .await?;
 
+
     tx.execute(
         r#"
         ALTER TABLE news.articles
