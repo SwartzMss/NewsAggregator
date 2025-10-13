@@ -16,6 +16,7 @@ use crate::{
         articles::{self, NewArticle},
         feeds::{self, DueFeedRow},
     },
+    util::url_norm::normalize_article_url,
 };
 
 pub fn spawn(pool: sqlx::PgPool, config: FetcherConfig) -> anyhow::Result<()> {
@@ -231,7 +232,14 @@ fn convert_entry(feed: &DueFeedRow, entry: &Entry) -> Option<NewArticle> {
         .iter()
         .find(|link| link.rel.as_deref() == Some("alternate"))
         .or_else(|| entry.links.first())?;
-    let url = link.href.clone();
+    let raw_url = link.href.clone();
+    let url = match normalize_article_url(&raw_url) {
+        Ok(normalized) => normalized,
+        Err(err) => {
+            warn!(error = ?err, url = %raw_url, "failed to normalize article url");
+            raw_url
+        }
+    };
 
     let description = entry
         .summary
