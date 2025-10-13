@@ -19,13 +19,14 @@
    - 标题完全一致且发布时间很接近 → 视为重复。
 
 3. **轻量相似度计算**  
-   - 只在候选集中对标题/摘要做 TF-IDF、SimHash、Trigram 等快速相似度，或使用本地嵌入模型计算余弦相似。  
+   - **规则/哈希**：对标题做归一化后计算 Jaccard、SimHash 等，快速拦截明显重复。  
+   - **向量近邻**：使用嵌入模型生成向量并在 Qdrant 等向量库里检索 Top-K 候选。Qdrant 可本地部署（Docker/二进制均可），Rust 端通过官方 SDK 写入/查询，并可附加时间窗口过滤。  
    - 设定双阈值：高于上限 → 判重复；低于下限 → 判不同；介于两者 → 进入下一层。
-   - 候选集可通过时间窗口（如最近 24h）或向量索引取 Top-K，避免全库扫描。
 
 4. **大模型判定（DeepSeek 等）**  
    - 对“灰区”候选，将标题、来源、发布时间、摘要等信息组装成 prompt，明确让模型回答“是否同一新闻”和理由。  
    - 模型只返回“是/否 + 简短说明”，便于机器解析。
+   - 已在 `backend/src/util/deepseek.rs` 实现了调用 DeepSeek Chat Completion 的客户端（`DeepseekClient::judge_similarity`），尚未集成到业务流；接入时需配置 `DEEPSEEK_API_KEY` 或在 `config.yaml` 的 `ai.deepseek` 节点。
    - 对结果做缓存：同一组合下次直接复用。
 
 5. **数据落库策略**
