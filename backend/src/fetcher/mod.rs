@@ -140,7 +140,6 @@ async fn process_feed(
 
     let status = response.status();
     let headers = response.headers().clone();
-
     if status == StatusCode::NOT_MODIFIED {
         feeds::mark_not_modified(&pool, feed.id, status.as_u16() as i16).await?;
         debug!(

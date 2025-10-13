@@ -1,4 +1,5 @@
 use sqlx::{Executor, PgPool};
+use tracing::info;
 
 pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
     let mut tx = pool.begin().await?;
@@ -100,6 +101,39 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
     tx.execute(
         r#"
         CREATE INDEX IF NOT EXISTS idx_articles_source_domain   ON news.articles(source_domain);
+        "#,
+    )
+    .await?;
+
+    let deleted = sqlx::query_scalar::<_, i64>(
+        r#"
+        WITH duplicates AS (
+            SELECT a.id
+            FROM news.articles a
+            JOIN news.articles b
+              ON a.feed_id IS NOT DISTINCT FROM b.feed_id
+             AND a.url = b.url
+             AND a.id > b.id
+        )
+        DELETE FROM news.articles
+        WHERE id IN (SELECT id FROM duplicates)
+        RETURNING 1;
+        "#,
+    )
+    .fetch_all(&mut *tx)
+    .await?
+    .len();
+
+    if deleted > 0 {
+        info!(
+            count = deleted,
+            "removed duplicate articles before creating unique index"
+        );
+    }
+
+    tx.execute(
+        r#"
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_articles_feed_id_url ON news.articles(feed_id, url);
         "#,
     )
     .await?;

@@ -99,6 +99,7 @@ pub async fn insert_articles(pool: &PgPool, articles: Vec<NewArticle>) -> Result
             VALUES (
                 $1, $2, $3, $4, $5, $6, $7, NOW(), 0
             )
+            ON CONFLICT (feed_id, url) DO NOTHING
             "#,
         )
         .bind(article.feed_id)
