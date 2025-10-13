@@ -2,26 +2,184 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_FILE_PATH="${SCRIPT_DIR}/config.sh"
+DEFAULT_DEPLOY_CONFIG="$(cd "${SCRIPT_DIR}/.." && pwd)/config/config.yaml"
+DEPLOY_CONFIG_FILE="${DEPLOY_CONFIG_FILE:-${DEFAULT_DEPLOY_CONFIG}}"
 
-if [[ ! -f "${CONFIG_FILE_PATH}" ]]; then
-  echo "Configuration file ${CONFIG_FILE_PATH} not found." >&2
+if [[ ! -f "${DEPLOY_CONFIG_FILE}" ]]; then
+  echo "Deployment config ${DEPLOY_CONFIG_FILE} not found. Set DEPLOY_CONFIG_FILE or create config/config.yaml." >&2
   exit 1
 fi
 
-# shellcheck source=./config.sh
-source "${CONFIG_FILE_PATH}"
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "python3 is required to parse ${DEPLOY_CONFIG_FILE}. Please install it before running deploy.sh." >&2
+  exit 1
+fi
+
+python_eval=$(python3 - "$DEPLOY_CONFIG_FILE" "$SCRIPT_DIR" <<'PY'
+import os
+import pathlib
+import shlex
+import sys
+
+CONFIG_PATH = pathlib.Path(sys.argv[1]).resolve()
+SCRIPT_DIR = pathlib.Path(sys.argv[2]).resolve()
+
+try:
+    import yaml  # type: ignore
+except ModuleNotFoundError:
+    sys.stderr.write(
+        f"PyYAML is required to parse {CONFIG_PATH}. Install it with 'pip install PyYAML'.\n"
+    )
+    sys.exit(1)
+
+with CONFIG_PATH.open("r", encoding="utf-8") as fh:
+    data = yaml.safe_load(fh) or {}
+
+deployment = data.get("deployment") or {}
+
+
+def dig(obj, path, default=None):
+    cur = obj
+    for part in path.split("."):
+        if not isinstance(cur, dict) or part not in cur:
+            return default
+        cur = cur[part]
+    return cur
+
+
+repo_root = dig(deployment, "paths.repo_root")
+if not repo_root:
+    repo_root = str(SCRIPT_DIR.parent.resolve())
+
+backend_dir = dig(deployment, "paths.backend_dir")
+if not backend_dir:
+    backend_dir = str(pathlib.Path(repo_root) / "backend")
+
+frontend_dir = dig(deployment, "paths.frontend_dir")
+if not frontend_dir:
+    frontend_dir = str(pathlib.Path(repo_root) / "frontend")
+
+config_file_path = dig(deployment, "paths.config_file")
+if not config_file_path:
+    config_file_path = str(pathlib.Path(repo_root) / "config" / "config.yaml")
+
+backend_binary = dig(deployment, "backend.binary")
+if not backend_binary:
+    backend_binary = str(pathlib.Path(backend_dir) / "target" / "release" / "backend")
+
+backend_bind_addr = dig(deployment, "backend.bind_addr") or dig(data, "server.bind") or "127.0.0.1:8081"
+
+domain = dig(deployment, "domain")
+domain_aliases = dig(deployment, "domain_aliases") or []
+if isinstance(domain_aliases, (list, tuple)):
+    extra_server_names = [
+        str(alias).strip()
+        for alias in domain_aliases
+        if isinstance(alias, (str, bytes)) and str(alias).strip()
+    ]
+else:
+    extra_server_names = []
+
+server_names = []
+if domain:
+    server_names.append(str(domain).strip())
+server_names.extend(extra_server_names)
+if not server_names:
+    server_names.append("_")
+
+site_name = dig(deployment, "nginx.site_name") or "news-aggregator"
+nginx_conf_path = dig(deployment, "nginx.conf_path") or f"/etc/nginx/sites-available/{site_name}.conf"
+nginx_enabled_path = dig(deployment, "nginx.enabled_path") or f"/etc/nginx/sites-enabled/{site_name}.conf"
+
+static_root = dig(deployment, "static.root") or "/var/www/news-aggregator/dist"
+static_owner = dig(deployment, "static.owner") or "www-data"
+static_group = dig(deployment, "static.group") or "www-data"
+
+runtime_env = deployment.get("runtime_env") or {}
+
+db_url = runtime_env.get("database_url") or dig(data, "db.url") or ""
+log_file_path = runtime_env.get("log_file_path") or dig(data, "logging.file") or "logs/backend.log"
+fetch_interval = runtime_env.get("fetch_interval_secs") or dig(data, "fetcher.interval_secs") or 300
+fetch_batch = runtime_env.get("fetch_batch_size") or dig(data, "fetcher.batch_size") or 8
+fetch_concurrency = runtime_env.get("fetch_concurrency") or dig(data, "fetcher.concurrency") or 4
+fetch_timeout = runtime_env.get("fetch_timeout_secs") or dig(data, "fetcher.request_timeout_secs") or 15
+log_level = runtime_env.get("log_level")
+if log_level is None:
+    log_level = dig(data, "logging.level") or "info"
+if isinstance(log_level, dict):
+    log_level = log_level.get("value", "info")
+
+service_name = dig(deployment, "systemd.service_name") or "news-backend.service"
+unit_path = dig(deployment, "systemd.unit_path") or f"/etc/systemd/system/{service_name}"
+
+assignments = {
+    "APP_USER": dig(deployment, "app_user") or os.getenv("USER", "root"),
+    "DOMAIN": domain,
+    "SSL_CERT_PATH": dig(deployment, "ssl.cert_path"),
+    "SSL_KEY_PATH": dig(deployment, "ssl.key_path"),
+    "REPO_ROOT": repo_root,
+    "BACKEND_DIR": backend_dir,
+    "FRONTEND_DIR": frontend_dir,
+    "CONFIG_FILE": config_file_path,
+    "BACKEND_BINARY": backend_binary,
+    "BACKEND_BIND_ADDR": backend_bind_addr,
+    "STATIC_ROOT": static_root,
+    "STATIC_OWNER": static_owner,
+    "STATIC_GROUP": static_group,
+    "NGINX_SITE_NAME": site_name,
+    "NGINX_SERVER_NAMES": " ".join(server_names),
+    "NGINX_CONF_PATH": nginx_conf_path,
+    "NGINX_ENABLED_PATH": nginx_enabled_path,
+    "SYSTEMD_SERVICE_NAME": service_name,
+    "SYSTEMD_UNIT_PATH": unit_path,
+    "DATABASE_URL": db_url,
+    "LOG_FILE_PATH": log_file_path,
+    "FETCH_INTERVAL_SECS": int(fetch_interval),
+    "FETCH_BATCH_SIZE": int(fetch_batch),
+    "FETCH_CONCURRENCY": int(fetch_concurrency),
+    "FETCH_TIMEOUT_SECS": int(fetch_timeout),
+    "LOG_LEVEL": log_level,
+}
+
+missing = []
+for required_key in ["APP_USER", "DOMAIN", "SSL_CERT_PATH", "SSL_KEY_PATH", "DATABASE_URL"]:
+    if not assignments.get(required_key):
+        missing.append(required_key)
+
+if missing:
+    sys.stderr.write(
+        "Missing required deployment configuration keys in {0}: {1}\n".format(
+            CONFIG_PATH, ", ".join(sorted(missing))
+        )
+    )
+    sys.exit(1)
+
+lines = []
+for key, value in assignments.items():
+    if value is None:
+        continue
+    if isinstance(value, bool):
+        value = "true" if value else "false"
+    elif isinstance(value, (int, float)):
+        value = str(value)
+    lines.append(f'{key}={shlex.quote(str(value))}')
+
+print("\n".join(lines))
+PY
+)
+
+if [[ -z "${python_eval}" ]]; then
+  echo "Failed to derive deployment configuration from ${DEPLOY_CONFIG_FILE}." >&2
+  exit 1
+fi
+
+eval "${python_eval}"
 
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "Command '$1' not found. Please install it before running deploy.sh." >&2
     exit 1
   fi
-}
-
-run_as_app() {
-  local cmd="$1"
-  runuser -u "${APP_USER}" -- bash -lc "${cmd}"
 }
 
 ensure_root() {
@@ -78,20 +236,27 @@ adjust_static_permissions() {
   fi
 }
 
-build_backend() {
-  echo "[1/6] Building backend (release)..."
-  require_cmd cargo
-  run_as_app "cd '${BACKEND_DIR}' && cargo build --release"
+ensure_backend_artifact() {
+  echo "[1/6] Checking backend artifact..."
   if [[ ! -x "${BACKEND_BINARY}" ]]; then
-    echo "Backend binary not found at ${BACKEND_BINARY} after build." >&2
+    cat >&2 <<EOF
+Backend binary not found at ${BACKEND_BINARY}.
+Please run 'cargo build --release' as ${APP_USER} before executing deploy.sh.
+EOF
     exit 1
   fi
 }
 
-build_frontend() {
-  echo "[2/6] Building frontend..."
-  require_cmd npm
-  run_as_app "cd '${FRONTEND_DIR}' && npm install && npm run build"
+ensure_frontend_build() {
+  echo "[2/6] Checking frontend build output..."
+  local dist_dir="${FRONTEND_DIR}/dist"
+  if [[ ! -d "${dist_dir}" ]]; then
+    cat >&2 <<EOF
+Frontend dist directory not found at ${dist_dir}.
+Please run 'npm install' and 'npm run build' inside ${FRONTEND_DIR} before executing deploy.sh.
+EOF
+    exit 1
+  fi
 }
 
 sync_static_assets() {
@@ -118,16 +283,9 @@ write_nginx_config() {
 
   cat > "${NGINX_CONF_PATH}" <<EOF
 server {
-    listen 80;
-    listen [::]:80;
-    server_name ${DOMAIN};
-    return 301 https://\$host\$request_uri;
-}
-
-server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
-    server_name ${DOMAIN};
+    server_name ${NGINX_SERVER_NAMES};
 
     ssl_certificate     ${SSL_CERT_PATH};
     ssl_certificate_key ${SSL_KEY_PATH};
@@ -235,11 +393,10 @@ uninstall() {
 }
 
 deploy() {
-  require_cmd runuser
   validate_config
+  ensure_backend_artifact
+  ensure_frontend_build
   ensure_paths
-  build_backend
-  build_frontend
   sync_static_assets
   write_nginx_config
   write_systemd_unit
@@ -252,7 +409,7 @@ usage() {
 Usage: sudo bash deploy.sh <command>
 
 Commands:
-  deploy     Build and deploy backend/frontend, update nginx and systemd (default)
+  deploy     Deploy prebuilt backend/frontend artifacts, update nginx and systemd (default)
   start      Start the backend systemd service
   stop       Stop the backend systemd service
   status     Show backend systemd service status

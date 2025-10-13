@@ -182,7 +182,7 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
         )
         DELETE FROM news.articles
         WHERE id IN (SELECT id FROM duplicates)
-        RETURNING 1;
+        RETURNING 1::bigint;
         "#,
     )
     .fetch_all(&mut *tx)

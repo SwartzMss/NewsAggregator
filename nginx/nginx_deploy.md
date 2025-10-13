@@ -22,38 +22,46 @@ Certbot 会：
 ## 一键部署脚本（推荐）
 仓库新增了 `nginx/` 目录，提供一键部署脚本：
 
-1. 按需调整 `nginx/config.sh` 中的域名、证书路径、部署用户等参数。
-2. 使用 root 权限执行脚本：
+1. 按需调整 `config/config.yaml`（或 `config/config.example.yaml` 复制后）里的 `deployment` 部分，填好域名、证书路径、部署用户等参数。若需要使用其他配置文件，可设置环境变量 `DEPLOY_CONFIG_FILE=/path/to/config.yaml`。
+   - 如需在本地通过 `http://localhost` 调试，可将 `deployment.domain_aliases` 中加入 `localhost`，脚本会自动把它写入 `server_name`。
+2. 在项目目录中以部署用户手动构建产物（脚本不会再执行编译）：
+   ```bash
+   # 后端
+   cd backend
+   cargo build --release
+
+   # 前端
+   cd ../frontend
+   npm install
+   npm run build
+   ```
+   构建完成后，`backend/target/release/backend` 与 `frontend/dist` 应当存在。
+3. 使用 root 权限执行脚本完成部署：
    ```bash
    sudo bash nginx/deploy.sh
    ```
    脚本会完成：
-   - 编译 Rust 后端（release）
-   - 构建前端并同步到 `/var/www/news-aggregator/dist`
-   - 生成 `/etc/nginx/sites-available/news-aggregator.conf` 并启用
+   - 校验已构建的后端二进制与前端产物
+   - 同步前端 dist 到 `/var/www/news-aggregator/dist`
+   - 生成仅监听 443 端口的 `/etc/nginx/sites-available/news-aggregator.conf` 并启用
    - 写入 `/etc/systemd/system/news-backend.service`
    - 重新加载 systemd 与 nginx
-3. 根据输出确认各步骤成功，可以通过 `systemctl status news-backend.service`、`nginx -t` 等命令复查。
+4. 根据输出确认各步骤成功，可以通过 `systemctl status news-backend.service`、`nginx -t` 等命令复查。
 
-部署完成后，还可以使用脚本管理生命周期：
+首次部署：需先按步骤 2 完成后端与前端的手动构建，再执行 `sudo bash nginx/deploy.sh deploy` 以同步资源、写入 nginx 配置与 systemd 单元。只有成功执行过 `deploy` 之后，下面的运维命令才能生效。
+
+部署完成后，可使用脚本管理生命周期：
 
 ```bash
-sudo bash nginx/deploy.sh status    # 查看 systemd 状态
-sudo bash nginx/deploy.sh start     # 启动后端服务
+sudo bash nginx/deploy.sh status    # 查看 systemd 状态（不会重新部署）
+sudo bash nginx/deploy.sh start     # 启动已安装的后端服务（仅执行 systemctl start）
 sudo bash nginx/deploy.sh stop      # 停止后端服务
 sudo bash nginx/deploy.sh uninstall # 移除 systemd 和 nginx 配置
 ```
 
 ## 2. Nginx 配置
-在 `/etc/nginx/sites-available/news-aggregator.conf` 写入：
+在 `/etc/nginx/sites-available/news-aggregator.conf` 写入（脚本输出仅含 HTTPS，若需 HTTP→HTTPS 跳转可自行追加 80 端口 server 块）：
 ```nginx
-server {
-    listen 80;
-    listen [::]:80;
-    server_name your-domain.com www.your-domain.com;
-    return 301 https://$host$request_uri;
-}
-
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;

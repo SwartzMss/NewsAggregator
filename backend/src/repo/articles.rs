@@ -37,14 +37,14 @@ pub async fn list_articles(
 ) -> Result<(Vec<ArticleRow>, i64), sqlx::Error> {
     let rows = sqlx::query_as::<_, ArticleRow>(
         r#"
-        SELECT id,
+        SELECT id::bigint AS id,
                title,
                url,
                description,
                language,
                source_domain,
                published_at,
-               click_count
+               click_count::bigint AS click_count
         FROM news.articles
         WHERE ($1::timestamptz IS NULL OR published_at >= $1)
           AND ($2::timestamptz IS NULL OR published_at <= $2)
@@ -62,7 +62,7 @@ pub async fn list_articles(
 
     let total = sqlx::query_scalar::<_, i64>(
         r#"
-        SELECT COUNT(*)
+        SELECT COUNT(*)::bigint
         FROM news.articles
         WHERE ($1::timestamptz IS NULL OR published_at >= $1)
           AND ($2::timestamptz IS NULL OR published_at <= $2)
@@ -105,7 +105,7 @@ pub async fn insert_articles(
                 $1, $2, $3, $4, $5, $6, $7, NOW(), 0
             )
             ON CONFLICT (feed_id, url) DO NOTHING
-            RETURNING id
+            RETURNING id::bigint AS id
             "#,
         )
         .bind(article.feed_id)
@@ -157,14 +157,14 @@ pub async fn increment_click(pool: &PgPool, id: i64) -> Result<(), sqlx::Error> 
 pub async fn list_top_articles(pool: &PgPool, limit: i64) -> Result<Vec<ArticleRow>, sqlx::Error> {
     sqlx::query_as::<_, ArticleRow>(
         r#"
-        SELECT id,
+        SELECT id::bigint AS id,
                title,
                url,
                description,
                language,
                source_domain,
                published_at,
-               click_count
+               click_count::bigint AS click_count
         FROM news.articles
         WHERE published_at >= NOW() - INTERVAL '24 HOURS'
         ORDER BY click_count DESC, published_at DESC
@@ -182,14 +182,14 @@ pub async fn list_recent_articles(
 ) -> Result<Vec<ArticleRow>, sqlx::Error> {
     sqlx::query_as::<_, ArticleRow>(
         r#"
-        SELECT id,
+        SELECT id::bigint AS id,
                title,
                url,
                description,
                language,
                source_domain,
                published_at,
-               click_count
+               click_count::bigint AS click_count
         FROM news.articles
         ORDER BY published_at DESC
         LIMIT $1

@@ -35,7 +35,7 @@ pub struct FeedUpsertRecord {
 pub async fn list_feeds(pool: &PgPool) -> Result<Vec<FeedRow>, sqlx::Error> {
     sqlx::query_as::<_, FeedRow>(
         r#"
-        SELECT id,
+        SELECT id::bigint AS id,
                url,
                title,
                site_url,
@@ -56,7 +56,7 @@ pub async fn list_feeds(pool: &PgPool) -> Result<Vec<FeedRow>, sqlx::Error> {
 pub async fn list_due_feeds(pool: &PgPool, limit: i64) -> Result<Vec<DueFeedRow>, sqlx::Error> {
     sqlx::query_as::<_, DueFeedRow>(
         r#"
-        SELECT id,
+        SELECT id::bigint AS id,
                url,
                source_domain,
                last_etag
@@ -101,7 +101,7 @@ pub async fn upsert_feed(pool: &PgPool, record: FeedUpsertRecord) -> Result<Feed
             enabled = COALESCE(EXCLUDED.enabled, news.feeds.enabled),
             fetch_interval_seconds = COALESCE(EXCLUDED.fetch_interval_seconds, news.feeds.fetch_interval_seconds),
             updated_at = NOW()
-        RETURNING id,
+        RETURNING id::bigint AS id,
                   url,
                   title,
                   site_url,

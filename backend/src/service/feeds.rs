@@ -108,7 +108,7 @@ pub async fn test(payload: FeedTestPayload) -> AppResult<FeedTestResult> {
     let title = parsed
         .title
         .as_ref()
-        .and_then(|text| text.content.clone())
+        .map(|text| text.content.clone())
         .filter(|s| !s.trim().is_empty());
 
     let site_url = parsed.links.first().map(|link| link.href.to_string());

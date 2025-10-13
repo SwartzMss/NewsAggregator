@@ -11,7 +11,7 @@
 1. **数据库**：执行 `docs/database.md` 中的 DDL，准备 `DATABASE_URL`。
 2. **后端**：参考 `docs/backend.md` 配置并运行 `cargo run` 或 `cargo build --release`。
 3. **前端**：按照 `docs/frontend.md` 设置 `VITE_API_BASE_URL`，执行 `npm run dev` 或 `npm run build`。
-4. **一键部署**：更新 `nginx/config.sh` 后运行 `sudo bash nginx/deploy.sh deploy`。
+4. **一键部署**：先以项目用户手动执行 `cargo build --release` 与 `npm install && npm run build`，确认产物生成，再更新 `config/config.yaml` 中的 `deployment` 配置后运行 `sudo bash nginx/deploy.sh deploy`（或通过 `DEPLOY_CONFIG_FILE=/path/to/config.yaml` 指定其他配置）。
 
 ## 文档索引
 - `docs/backend.md` 后端配置、运行与排错指南

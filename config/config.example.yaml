@@ -1,12 +1,16 @@
-# Example configuration for the NewsAggregator backend.
-# Copy to config/config.yaml and adjust values or load via environment vars.
+# NewsAggregator 示例配置
+# 复制到 config/config.yaml 后修改。在线上部署前请确认所有字段已填写。
+
+# 后端服务监听地址（建议绑定到内网地址）。
 server:
   bind: "127.0.0.1:8081"
 
+# 数据库连接（必填，包含账号、密码、库名等）。
 db:
   url: "postgres://user:pass@localhost:5432/news"
   max_connections: 10
 
+# 抓取任务相关参数，按需调优。
 fetcher:
   interval_secs: 300
   batch_size: 8
@@ -17,10 +21,65 @@ logging:
   file: "logs/backend.log"
   level: "info"
 
+# AI 集成配置（可选，如未使用可保持为空）。
 ai:
   deepseek:
-    # API key can be provided via env DEEPSEEK_API_KEY instead.
+    # API Key（可通过环境变量 DEEPSEEK_API_KEY 提供）。
     api_key: ""
     base_url: "https://api.deepseek.com"
     model: "deepseek-chat"
     timeout_secs: 30
+
+# 部署相关配置，供 nginx/deploy.sh 读取。部署前请根据实际环境填写。
+deployment:
+  # 编译和运行所使用的系统账号。
+  app_user: "swartz"
+
+  # 域名与证书路径（必填）。
+  domain: "swartzlubel.online"
+  # 可选：额外的 server_name（例如 www 域名、本地调试用的 localhost）。
+  domain_aliases:
+    - "www.swartzlubel.online"
+    - "localhost"
+  ssl:
+    cert_path: "/home/swartz/.acme.sh/swartzlubel.online_ecc/fullchain.cer"
+    key_path: "/home/swartz/.acme.sh/swartzlubel.online_ecc/swartzlubel.online.key"
+
+  # 项目路径（通常无需修改，除非克隆到新的目录）。
+  paths:
+    repo_root: "/home/swartz/WorkSpace/NewsAggregator"
+    backend_dir: "/home/swartz/WorkSpace/NewsAggregator/backend"
+    frontend_dir: "/home/swartz/WorkSpace/NewsAggregator/frontend"
+    config_file: "/home/swartz/WorkSpace/NewsAggregator/config/config.yaml"
+
+  # 后端二进制位置与绑定地址。
+  backend:
+    binary: "/home/swartz/WorkSpace/NewsAggregator/backend/target/release/backend"
+    bind_addr: "127.0.0.1:8081"
+
+  # 前端静态资源部署目录及权限。
+  static:
+    root: "/var/www/news-aggregator/dist"
+    owner: "www-data"
+    group: "www-data"
+
+  # nginx 站点名称与配置文件路径。
+  nginx:
+    site_name: "news-aggregator"
+    conf_path: "/etc/nginx/sites-available/news-aggregator.conf"
+    enabled_path: "/etc/nginx/sites-enabled/news-aggregator.conf"
+
+  # systemd 服务名称及单元文件存放位置。
+  systemd:
+    service_name: "news-backend.service"
+    unit_path: "/etc/systemd/system/news-backend.service"
+
+  # 运行时环境变量（用于 systemd 单元，按需修改）。
+  runtime_env:
+    database_url: "postgres://superset:superset@127.0.0.1:55432/superset"
+    log_file_path: "/var/log/news-backend.log"
+    fetch_interval_secs: 300
+    fetch_batch_size: 8
+    fetch_concurrency: 4
+    fetch_timeout_secs: 15
+    log_level: "info"
