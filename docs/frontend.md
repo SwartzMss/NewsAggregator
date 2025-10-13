@@ -1,61 +1,61 @@
-# Frontend Guide
+# 前端指南
 
-The frontend is a Vite + React single-page app that consumes the backend HTTP API.
+前端工程基于 Vite + React，提供单页应用界面，通过 HTTP API 与后端交互。
 
-## Stack Overview
-- Build tool: Vite (ESBuild + Rollup)
-- Language: TypeScript (strict mode)
-- State/query: TanStack Query
-- Styling: Tailwind CSS
+## 技术栈概览
+- 构建工具：Vite（ESBuild + Rollup）
+- 语言：TypeScript（严格模式）
+- 数据请求：TanStack Query
+- 样式系统：Tailwind CSS
 
-Source layout highlights:
+目录结构示例：
 ```
 frontend/
 ├── src/
-│   ├── api/        # Fetch client and API adapters
-│   ├── components/ # Shared UI components
-│   ├── pages/      # Route-level views (News list, Feeds)
+│   ├── api/        # 封装 API 请求
+│   ├── components/ # 复用组件
+│   ├── pages/      # 页面级组件（新闻列表、Feed 管理）
 │   └── main.tsx
 ├── index.html
 └── vite.config.ts
 ```
 
-## Environment Variables
-Set through `.env` files or the shell:
+## 环境变量
+通过 `.env` 或 shell 设置：
 ```
 VITE_API_BASE_URL=http://127.0.0.1:8081/api
 ```
-The deploy script serves the frontend behind nginx at `/`, and proxies `/api/` to the backend.
+部署脚本会让 nginx 反向代理 `/api/` 到后端，并在 `/` 提供静态资源。
 
-## Local Development
+## 本地开发
 ```bash
 cd frontend
-npm install         # or npm ci
-npm run dev         # starts Vite dev server on http://127.0.0.1:5173
+npm install         # 或 npm ci
+npm run dev         # 启动 Vite 开发服务，默认 http://127.0.0.1:5173
 ```
 
-Common tasks:
-- `npm run build` – production bundle in `dist/`
-- `npm run lint` – TypeScript type check
-- `npm run preview` – serve built assets locally
+常用命令：
+- `npm run build`：生成生产环境包，输出到 `dist/`
+- `npm run lint`：TypeScript 类型检查
+- `npm run preview`：在本地预览已构建产物
 
-## API Conventions
-Requests are defined in `src/api`. The app currently relies on:
-- `GET /articles` with pagination and optional time window
-- `GET /feeds`
-- `POST /feeds`
-- `PATCH /feeds/:id`
-- `DELETE /feeds/:id`
+## API 约定
+API 客户端定义在 `src/api`。当前主要接口：
+- `GET /articles`：文章列表（分页 + 可选时间范围）
+- `GET /feeds`：Feed 列表
+- `POST /feeds`：新增或更新 Feed
+- `PATCH /feeds/:id`：修改 Feed
+- `DELETE /feeds/:id`：删除 Feed
 
-Adjust `VITE_API_BASE_URL` if the backend path changes.
+如果后端接口前缀改变，请同步更新 `VITE_API_BASE_URL`。
 
-## Production Build & Deployment
-The deployment script (`nginx/deploy.sh deploy`) performs:
+## 生产构建与部署
+部署脚本 `nginx/deploy.sh deploy` 会自动执行：
 1. `npm install`
 2. `npm run build`
-3. Syncs `dist/` to `/var/www/news-aggregator/dist`
+3. 将 `dist/` 同步到 `/var/www/news-aggregator/dist`
 
-Manual steps (if needed):
+手动上线时可参考：
 ```bash
 cd frontend
 npm install
@@ -63,7 +63,7 @@ npm run build
 sudo rsync -a dist/ /var/www/news-aggregator/dist/
 ```
 
-## Troubleshooting
-- Blank page in production: check nginx root path and ensure `dist/` exists.
-- API 404/500: verify nginx proxy target or backend service status.
-- Style issues: run `npm run build -- --mode development` to include source maps for debugging.
+## 常见问题
+- 生产环境页面空白：检查 nginx `root` 指向的目录是否存在 `dist/`。
+- API 返回 404/500：确认 nginx 反向代理配置以及后端服务状态。
+- 样式异常：重新构建或执行 `npm run build -- --mode development` 便于调试。
