@@ -1,7 +1,7 @@
-use std::{sync::Arc, time::Duration};
+use std::{collections::BTreeSet, sync::Arc, time::Duration};
 
 use anyhow::anyhow;
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use feed_rs::{model::Entry, parser};
 use reqwest::{Client, StatusCode};
 use tokio::{
@@ -10,22 +10,43 @@ use tokio::{
 };
 use tracing::{debug, info, warn};
 
-use std::collections::BTreeSet;
-
 use crate::{
-    config::FetcherConfig,
+    config::{AiConfig, FetcherConfig},
     repo::{
-        articles::{self, NewArticle},
+        articles::{self, ArticleRow, NewArticle},
         feeds::{self, DueFeedRow},
     },
     util::{
+        deepseek::{ArticleSnippet, DeepseekClient},
         title::{jaccard_similarity, prepare_title_signature},
         url_norm::normalize_article_url,
     },
 };
 
-pub fn spawn(pool: sqlx::PgPool, config: FetcherConfig) -> anyhow::Result<()> {
-    let fetcher = Fetcher::new(pool, config)?;
+struct ArticleSummary {
+    title: String,
+    source_domain: String,
+    url: String,
+    description: Option<String>,
+    published_at: DateTime<Utc>,
+}
+
+struct CandidateArticle {
+    tokens: BTreeSet<String>,
+    summary: ArticleSummary,
+}
+
+const STRICT_DUP_THRESHOLD: f32 = 0.9;
+const DEEPSEEK_THRESHOLD: f32 = 0.6;
+const RECENT_ARTICLE_LIMIT: i64 = 200;
+const MAX_DEEPSEEK_CHECKS: usize = 3;
+
+pub fn spawn(
+    pool: sqlx::PgPool,
+    fetcher_config: FetcherConfig,
+    ai_config: AiConfig,
+) -> anyhow::Result<()> {
+    let fetcher = Fetcher::new(pool, fetcher_config, ai_config)?;
     tokio::spawn(async move {
         if let Err(err) = fetcher.run().await {
             tracing::error!(error = ?err, "fetcher stopped");
@@ -38,10 +59,15 @@ struct Fetcher {
     pool: sqlx::PgPool,
     client: Client,
     config: FetcherConfig,
+    deepseek: Option<Arc<DeepseekClient>>,
 }
 
 impl Fetcher {
-    fn new(pool: sqlx::PgPool, mut config: FetcherConfig) -> anyhow::Result<Self> {
+    fn new(
+        pool: sqlx::PgPool,
+        mut config: FetcherConfig,
+        ai_config: AiConfig,
+    ) -> anyhow::Result<Self> {
         if config.interval_secs == 0 {
             config.interval_secs = 60;
         }
@@ -60,10 +86,20 @@ impl Fetcher {
             .timeout(Duration::from_secs(config.request_timeout_secs))
             .build()?;
 
+        let deepseek = ai_config
+            .deepseek
+            .api_key
+            .as_ref()
+            .filter(|key| !key.trim().is_empty())
+            .map(|_| DeepseekClient::new(ai_config.deepseek.clone()))
+            .transpose()?;
+        let deepseek = deepseek.map(Arc::new);
+
         Ok(Self {
             pool,
             client,
             config,
+            deepseek,
         })
     }
 
@@ -72,16 +108,20 @@ impl Fetcher {
             pool,
             client,
             config,
+            deepseek,
         } = self;
 
         let client = Arc::new(client);
+        let deepseek = deepseek.map(Arc::from);
         let mut ticker = interval(Duration::from_secs(config.interval_secs));
         ticker.set_missed_tick_behavior(MissedTickBehavior::Delay);
         ticker.tick().await; // immediate first run
 
         loop {
             ticker.tick().await;
-            if let Err(err) = Self::run_once(pool.clone(), client.clone(), &config).await {
+            if let Err(err) =
+                Self::run_once(pool.clone(), client.clone(), deepseek.clone(), &config).await
+            {
                 warn!(error = ?err, "fetcher iteration failed");
             }
         }
@@ -90,6 +130,7 @@ impl Fetcher {
     async fn run_once(
         pool: sqlx::PgPool,
         client: Arc<Client>,
+        deepseek: Option<Arc<DeepseekClient>>,
         config: &FetcherConfig,
     ) -> anyhow::Result<()> {
         let feeds = feeds::list_due_feeds(&pool, config.batch_size as i64).await?;
@@ -106,10 +147,13 @@ impl Fetcher {
         for feed in feeds {
             let pool_cloned = pool.clone();
             let client_cloned = client.clone();
+            let deepseek_cloned = deepseek.clone();
 
             set.spawn(async move {
                 debug!(feed_id = feed.id, url = %feed.url, "fetching feed");
-                if let Err(err) = process_feed(pool_cloned, client_cloned, feed).await {
+                if let Err(err) =
+                    process_feed(pool_cloned, client_cloned, deepseek_cloned, feed).await
+                {
                     warn!(error = ?err, "failed to process feed");
                 }
             });
@@ -130,6 +174,7 @@ impl Fetcher {
 async fn process_feed(
     pool: sqlx::PgPool,
     client: Arc<Client>,
+    deepseek: Option<Arc<DeepseekClient>>,
     feed: DueFeedRow,
 ) -> anyhow::Result<()> {
     let mut request = client.get(&feed.url);
@@ -177,6 +222,35 @@ async fn process_feed(
         }
     };
 
+    let recent_articles = articles::list_recent_articles(&pool, RECENT_ARTICLE_LIMIT).await?;
+    let mut historical_candidates = Vec::new();
+    for row in recent_articles {
+        let ArticleRow {
+            id: _,
+            title,
+            url,
+            description,
+            language: _,
+            source_domain,
+            published_at,
+            click_count: _,
+        } = row;
+        let (_, tokens) = prepare_title_signature(&title);
+        if tokens.is_empty() {
+            continue;
+        }
+        historical_candidates.push(CandidateArticle {
+            tokens,
+            summary: ArticleSummary {
+                title,
+                source_domain,
+                url,
+                description,
+                published_at,
+            },
+        });
+    }
+
     let etag = headers
         .get(reqwest::header::ETAG)
         .and_then(|v| v.to_str().ok())
@@ -190,20 +264,22 @@ async fn process_feed(
         if let Some(article) = convert_entry(&feed, &entry) {
             let (normalized_title, tokens) = prepare_title_signature(&article.title);
 
+            if tokens.is_empty() {
+                continue;
+            }
+
             let mut is_duplicate = false;
             for (existing_tokens, existing_title) in &seen_signatures {
-                if !tokens.is_empty() && !existing_tokens.is_empty() {
-                    let similarity = jaccard_similarity(&tokens, existing_tokens);
-                    if similarity >= 0.9 {
-                        is_duplicate = true;
-                        debug!(
-                            feed_id = feed.id,
-                            similarity = similarity,
-                            title = %article.title,
-                            "skip article due to high title similarity"
-                        );
-                        break;
-                    }
+                let similarity = jaccard_similarity(&tokens, existing_tokens);
+                if similarity >= STRICT_DUP_THRESHOLD {
+                    is_duplicate = true;
+                    debug!(
+                        feed_id = feed.id,
+                        similarity,
+                        title = %article.title,
+                        "skip article due to high intra-feed title similarity"
+                    );
+                    break;
                 }
 
                 if normalized_title == *existing_title {
@@ -221,7 +297,84 @@ async fn process_feed(
                 continue;
             }
 
-            seen_signatures.push((tokens, normalized_title));
+            if !historical_candidates.is_empty() {
+                let mut deepseek_checks = 0usize;
+                for candidate in &historical_candidates {
+                    let similarity = jaccard_similarity(&tokens, &candidate.tokens);
+                    if similarity >= STRICT_DUP_THRESHOLD {
+                        is_duplicate = true;
+                        debug!(
+                            feed_id = feed.id,
+                            similarity,
+                            title = %article.title,
+                            other_source = %candidate.summary.source_domain,
+                            "skip article due to matching recent article"
+                        );
+                        break;
+                    }
+
+                    if similarity >= DEEPSEEK_THRESHOLD {
+                        if let Some(client) = deepseek.as_ref() {
+                            if deepseek_checks >= MAX_DEEPSEEK_CHECKS {
+                                break;
+                            }
+                            deepseek_checks += 1;
+
+                            let published_new = article.published_at.to_rfc3339();
+                            let published_existing = candidate.summary.published_at.to_rfc3339();
+
+                            let new_snippet = ArticleSnippet {
+                                title: &article.title,
+                                source: Some(&article.source_domain),
+                                url: Some(&article.url),
+                                published_at: Some(&published_new),
+                                summary: article.description.as_deref(),
+                            };
+
+                            let existing_summary_ref = candidate.summary.description.as_deref();
+                            let existing_snippet = ArticleSnippet {
+                                title: &candidate.summary.title,
+                                source: Some(&candidate.summary.source_domain),
+                                url: Some(&candidate.summary.url),
+                                published_at: Some(&published_existing),
+                                summary: existing_summary_ref,
+                            };
+
+                            match client
+                                .judge_similarity(&new_snippet, &existing_snippet)
+                                .await
+                            {
+                                Ok(decision) => {
+                                    if decision.is_duplicate {
+                                        is_duplicate = true;
+                                        info!(
+                                            feed_id = feed.id,
+                                            title = %article.title,
+                                            other_source = %candidate.summary.source_domain,
+                                            reason = decision.reason.as_deref().unwrap_or(""),
+                                            "skip article due to deepseek duplicate judgment"
+                                        );
+                                        break;
+                                    }
+                                }
+                                Err(err) => {
+                                    warn!(
+                                        error = ?err,
+                                        feed_id = feed.id,
+                                        "deepseek similarity check failed"
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if is_duplicate {
+                    continue;
+                }
+            }
+
+            seen_signatures.push((tokens.clone(), normalized_title.clone()));
             articles.push(article);
         }
     }

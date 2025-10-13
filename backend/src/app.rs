@@ -24,7 +24,7 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
 
     repo::migrations::ensure_schema(&pool).await?;
 
-    fetcher::spawn(pool.clone(), config.fetcher.clone())?;
+    fetcher::spawn(pool.clone(), config.fetcher.clone(), config.ai.clone())?;
 
     let state = AppState { pool };
 

@@ -153,3 +153,27 @@ pub async fn list_top_articles(pool: &PgPool, limit: i64) -> Result<Vec<ArticleR
     .fetch_all(pool)
     .await
 }
+
+pub async fn list_recent_articles(
+    pool: &PgPool,
+    limit: i64,
+) -> Result<Vec<ArticleRow>, sqlx::Error> {
+    sqlx::query_as::<_, ArticleRow>(
+        r#"
+        SELECT id,
+               title,
+               url,
+               description,
+               language,
+               source_domain,
+               published_at,
+               click_count
+        FROM news.articles
+        ORDER BY published_at DESC
+        LIMIT $1
+        "#,
+    )
+    .bind(limit)
+    .fetch_all(pool)
+    .await
+}

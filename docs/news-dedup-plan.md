@@ -18,16 +18,10 @@
    - 发布时间差距超出阈值（如 >48 小时） → 视为不同。  
    - 标题完全一致且发布时间很接近 → 视为重复。
 
-3. **轻量相似度计算**  
-   - **规则/哈希**：对标题做归一化后计算 Jaccard、SimHash 等，快速拦截明显重复。  
-   - **向量近邻**：使用嵌入模型生成向量并在 Qdrant 等向量库里检索 Top-K 候选。Qdrant 可本地部署（Docker/二进制均可），Rust 端通过官方 SDK 写入/查询，并可附加时间窗口过滤。  
-   - 设定双阈值：高于上限 → 判重复；低于下限 → 判不同；介于两者 → 进入下一层。
-
-4. **大模型判定（DeepSeek 等）**  
-   - 对“灰区”候选，将标题、来源、发布时间、摘要等信息组装成 prompt，明确让模型回答“是否同一新闻”和理由。  
-   - 模型只返回“是/否 + 简短说明”，便于机器解析。
-   - 已在 `backend/src/util/deepseek.rs` 实现了调用 DeepSeek Chat Completion 的客户端（`DeepseekClient::judge_similarity`），尚未集成到业务流；接入时需配置 `DEEPSEEK_API_KEY` 或在 `config.yaml` 的 `ai.deepseek` 节点。
-   - 对结果做缓存：同一组合下次直接复用。
+3. **轻量相似度 + DeepSeek 判定**  
+   - 对标题做归一化后计算 Jaccard，阈值 ≥0.9 时直接判定重复（已在 fetcher 中实现）。  
+   - 若与最近文章的相似度位于中间区间（例如 0.6–0.9），则调用 DeepSeek（`backend/src/fetcher/mod.rs`）对标题/摘要/发布时间进行语义比对；模型判定为重复时丢弃新文章。  
+   - DeepSeek API 通过配置 `DEEPSEEK_API_KEY` 启用，结果包含原因/置信度，可在日志中追踪。
 
 5. **数据落库策略**
    - 新建 `news.article_sources` 表记录文章与来源的映射，可包含 `article_id`、`feed_id`、`source_name`、`source_url`、`published_at`、`inserted_at`，并对 `(article_id, source_url)` 建唯一约束，允许同一篇主新闻关联多个源。
@@ -49,9 +43,8 @@
 ### 实施建议
 - **第一阶段**：先上线 URL 归一化 + `(feed_id, url)` 唯一约束 + 发布时间窗口，初步减少重复。
 - **第二阶段**：实现标题归一化 + Jaccard/SimHash 等轻量规则过滤，对高优先级重复直接拦截。
-- **第三阶段（可选增强）**：若轻量规则不足，再评估引入向量检索/语义模型（如 Qdrant、FAISS 等）辅助生成候选；当前暂不启用。
-- **第四阶段**：接入 DeepSeek 客户端，对灰区候选进行判定（目前 `backend/src/util/deepseek.rs` 已具备调用能力，待集成）。
-- **第五阶段**：扩展数据库结构（新增 `news.article_sources`、`canonical_article_id` 等）并调整入库流程、API 返回值。
+- **第三阶段**：集成 DeepSeek 语义判定（已完成，需配置 `DEEPSEEK_API_KEY`）。
+- **第四阶段（后续规划）**：扩展数据库结构（新增 `news.article_sources`、`canonical_article_id` 等）并调整入库流程、API 返回值。
 - **展示层**：若启用引用表，在 API 返回时附带 `sources` 列表，展示“该新闻还来自哪些源站/时间”。  
 - **后续优化**：记录模型答案，结合反馈不断调整 prompt 和阈值，必要时训练自定义分类器替换部分模型调用。
 
