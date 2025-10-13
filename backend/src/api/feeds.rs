@@ -6,7 +6,7 @@ use axum::{
 use crate::{
     app::AppState,
     error::AppResult,
-    model::{FeedOut, FeedUpsertPayload},
+    model::{FeedOut, FeedTestPayload, FeedTestResult, FeedUpsertPayload},
     service,
 };
 
@@ -29,4 +29,9 @@ pub async fn delete_feed(
 ) -> AppResult<Json<serde_json::Value>> {
     service::feeds::delete(&state.pool, id).await?;
     Ok(Json(serde_json::json!({ "ok": true })))
+}
+
+pub async fn test_feed(Json(payload): Json<FeedTestPayload>) -> AppResult<Json<FeedTestResult>> {
+    let result = service::feeds::test(payload).await?;
+    Ok(Json(result))
 }

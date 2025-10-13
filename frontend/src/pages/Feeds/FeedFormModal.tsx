@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { FeedOut, FeedUpsertPayload } from "../../types/api";
+import { testFeed } from "../../lib/api";
+import { FeedOut, FeedTestResult, FeedUpsertPayload } from "../../types/api";
 
 export type FeedFormModalProps = {
   open: boolean;
@@ -21,10 +22,15 @@ const emptyForm: FeedUpsertPayload = {
 export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: FeedFormModalProps) {
   const [form, setForm] = useState<FeedUpsertPayload>(emptyForm);
   const [error, setError] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<FeedTestResult | null>(null);
+  const [testError, setTestError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
       setError(null);
+      setTestResult(null);
+      setTestError(null);
       if (initial) {
         setForm({
           id: initial.id,
@@ -72,6 +78,11 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
       ...prev,
       [name]: nextValue,
     }));
+
+    if (name === "url") {
+      setTestResult(null);
+      setTestError(null);
+    }
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -93,6 +104,40 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
     }
   };
 
+  const handleTest = async () => {
+    const url = form.url.trim();
+    if (!url) {
+      setTestResult(null);
+      setTestError("请先填写 RSS 地址");
+      return;
+    }
+
+    setTesting(true);
+    setTestResult(null);
+    setTestError(null);
+
+    try {
+      const result = await testFeed(url);
+      setTestResult(result);
+
+      setForm((prev) => ({
+        ...prev,
+        title:
+          prev.title && prev.title.trim().length > 0
+            ? prev.title
+            : result.title ?? "",
+        site_url:
+          prev.site_url && prev.site_url.trim().length > 0
+            ? prev.site_url
+            : result.site_url ?? "",
+      }));
+    } catch (err) {
+      setTestError((err as Error).message || "测试失败");
+    } finally {
+      setTesting(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <div className="w-full max-w-xl rounded-lg bg-white shadow-lg">
@@ -104,7 +149,17 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
         <form onSubmit={handleSubmit} className="space-y-4 px-5 py-4">
           <div className="grid gap-4 md:grid-cols-2">
             <label className="flex flex-col text-sm font-medium text-slate-600">
-              RSS 地址
+              <div className="flex items-center justify-between gap-3">
+                <span>RSS 地址</span>
+                <button
+                  type="button"
+                  onClick={handleTest}
+                  disabled={testing || form.url.trim().length === 0}
+                  className="inline-flex items-center rounded-md border border-primary px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {testing ? "测试中…" : "测试链接"}
+                </button>
+              </div>
               <input
                 name="url"
                 value={form.url}
@@ -166,6 +221,24 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
               启用订阅
             </label>
           </div>
+
+          {testResult && (
+            <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+              测试成功：HTTP {testResult.status}，解析到 {testResult.entry_count} 条内容
+              {testResult.title && (
+                <span className="block md:inline">，标题：{testResult.title}</span>
+              )}
+              {testResult.site_url && (
+                <span className="block md:inline">，主页：{testResult.site_url}</span>
+              )}
+            </div>
+          )}
+
+          {testError && (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {testError}
+            </div>
+          )}
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 

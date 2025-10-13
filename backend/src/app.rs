@@ -40,6 +40,7 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
             "/feeds",
             get(api::feeds::list_feeds).post(api::feeds::upsert_feed),
         )
+        .route("/feeds/test", post(api::feeds::test_feed))
         .route("/feeds/:id", delete(api::feeds::delete_feed))
         .route("/articles", get(api::articles::list_articles))
         .route("/articles/featured", get(api::articles::list_featured))

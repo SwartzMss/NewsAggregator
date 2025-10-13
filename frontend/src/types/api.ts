@@ -40,3 +40,10 @@ export type FeedUpsertPayload = {
   title?: string | null;
   site_url?: string | null;
 };
+
+export type FeedTestResult = {
+  status: number;
+  title?: string | null;
+  site_url?: string | null;
+  entry_count: number;
+};

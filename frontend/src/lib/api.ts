@@ -1,4 +1,10 @@
-import { FeedUpsertPayload, PageResp, ArticleOut, FeedOut } from "../types/api";
+import {
+  FeedUpsertPayload,
+  PageResp,
+  ArticleOut,
+  FeedOut,
+  FeedTestResult,
+} from "../types/api";
 
 type QueryParams = Record<string, string | number | undefined | null>;
 
@@ -78,4 +84,31 @@ export async function deleteFeed(id: number): Promise<void> {
     const message = await res.text();
     throw new Error(message || `Failed to delete feed ${id}`);
   }
+}
+
+export async function testFeed(url: string): Promise<FeedTestResult> {
+  const res = await fetch(`${API_BASE}/feeds/test`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ url }),
+  });
+
+  if (!res.ok) {
+    const raw = await res.text();
+    let message = `Feed test failed with status ${res.status}`;
+    if (raw) {
+      try {
+        const body = JSON.parse(raw) as { error?: { message?: string } };
+        message = body.error?.message ?? message;
+      } catch {
+        message = raw;
+      }
+    }
+    throw new Error(message);
+  }
+
+  return (await res.json()) as FeedTestResult;
 }

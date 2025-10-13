@@ -54,6 +54,19 @@ pub struct FeedUpsertPayload {
     pub site_url: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct FeedTestPayload {
+    pub url: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct FeedTestResult {
+    pub status: u16,
+    pub title: Option<String>,
+    pub site_url: Option<String>,
+    pub entry_count: usize,
+}
+
 impl Default for ArticleListQuery {
     fn default() -> Self {
         Self {
