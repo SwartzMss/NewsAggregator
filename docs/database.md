@@ -1,9 +1,9 @@
 # 数据库指南
 
-项目使用 PostgreSQL，结构极简：`news` schema 下只有 `feeds` 与 `articles` 两张表。
+项目使用 PostgreSQL，主要存储在 `news` schema 下。当前表结构包括 `feeds`、`articles`、`article_sources` 三张核心表，用于记录订阅源、文章正文以及多来源引用信息。
 
 ## 初始化建表 SQL
-第一次部署时执行以下 SQL：
+第一次部署时执行以下 SQL（`canonical_id` 自指向，记录主文章；`article_sources` 保存多来源信息）：
 
 ```sql
 CREATE SCHEMA IF NOT EXISTS news;
@@ -38,20 +38,43 @@ CREATE TABLE IF NOT EXISTS news.articles (
   description          TEXT,
   language             TEXT,
   source_domain        TEXT NOT NULL,
-  source_display_name  TEXT,
   published_at         TIMESTAMPTZ NOT NULL,
-  fetched_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  fetched_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  canonical_id         BIGINT
 );
 
 CREATE INDEX IF NOT EXISTS idx_articles_published_at  ON news.articles(published_at DESC);
 CREATE INDEX IF NOT EXISTS idx_articles_language      ON news.articles(language);
 CREATE INDEX IF NOT EXISTS idx_articles_source_domain ON news.articles(source_domain);
+
+ALTER TABLE news.articles
+  ADD CONSTRAINT IF NOT EXISTS articles_canonical_id_fkey
+  FOREIGN KEY (canonical_id) REFERENCES news.articles(id) ON DELETE SET NULL;
+
+UPDATE news.articles SET canonical_id = id WHERE canonical_id IS NULL;
+
+CREATE TABLE IF NOT EXISTS news.article_sources (
+  id            BIGSERIAL PRIMARY KEY,
+  article_id    BIGINT NOT NULL REFERENCES news.articles(id) ON DELETE CASCADE,
+  feed_id       BIGINT REFERENCES news.feeds(id) ON DELETE SET NULL,
+  source_name   TEXT,
+  source_url    TEXT NOT NULL,
+  published_at  TIMESTAMPTZ,
+  inserted_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  decision      TEXT,
+  confidence    REAL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_article_sources_article_url
+  ON news.article_sources(article_id, source_url);
 ```
 
 ## 字段说明
-- `source_domain` / `source_display_name` 在 `feeds` 与 `articles` 中重复保存，方便筛选与展示，避免 JOIN。
+- `source_domain` 在 `feeds` 与 `articles` 中重复保存，方便筛选与展示，避免 JOIN。
 - `last_etag`、`last_modified` 支持抓取时发送条件请求，节省带宽。
 - `fail_count` 记录连续失败次数，可据此实现退避或熔断策略。
+- `canonical_id` 标识主文章（默认指向自身），后续如需归并可指向原始文章。
+- `news.article_sources` 记录每篇文章被哪些来源收录以及判定原因/置信度，可用于展示“多源引用”或调试去重逻辑。
 
 ## 常用 SQL 示例
 **插入或更新 Feed（按 URL upsert）**
@@ -74,12 +97,26 @@ ON CONFLICT (url) DO UPDATE SET
 RETURNING id;
 ```
 
-**写入文章（允许重复）**
+**写入文章（去重 + 返回 ID）**
 ```sql
-INSERT INTO news.articles
-  (feed_id, title, url, description, language, source_domain, source_display_name, published_at)
-VALUES
-  ($1, $2, $3, $4, $5, $6, $7, $8);
+WITH inserted AS (
+  INSERT INTO news.articles (
+      feed_id, title, url, description, language, source_domain, published_at
+  )
+  VALUES ($1, $2, $3, $4, $5, $6, $7)
+  ON CONFLICT (feed_id, url) DO NOTHING
+  RETURNING id
+)
+SELECT id FROM inserted;
+```
+
+**记录文章来源（可用于重复判定原因追踪）**
+```sql
+INSERT INTO news.article_sources (
+    article_id, feed_id, source_name, source_url, published_at, decision, confidence
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+ON CONFLICT (article_id, source_url) DO NOTHING;
 ```
 
 **按时间倒序查询文章（可选语言/来源过滤）**

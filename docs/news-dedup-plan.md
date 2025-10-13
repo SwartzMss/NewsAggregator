@@ -24,10 +24,7 @@
    - DeepSeek API 通过配置 `DEEPSEEK_API_KEY` 启用，结果包含原因/置信度，可在日志中追踪。
 
 5. **数据落库策略**
-   - `news.articles` 现已新增 `canonical_id` 字段（自指向，自有时可改指向其他记录），并在写入后补齐为空值。
-   - 新建 `news.article_sources` 表记录每篇文章的来源与判定信息（来源 feed、链接、发布时间、判定理由/置信度），`(article_id, source_url)` 唯一。
-   - 判定为全新新闻：写入 `news.articles`，同时将主来源写入 `news.article_sources`，标记为 `primary`。
-   - 判定为重复：不再写入 `news.articles`，但仍向 `news.article_sources` 追加一条引用，记录触发原因（Jaccard 或 DeepSeek）及置信度，方便追踪。
+   - 新文章成功写入后会记录主来源；被判定重复的条目仅写入来源表并附带触发原因。具体 schema 与 SQL 见 `docs/database.md`。
 
 6. **观察与回溯**
    - 监控判定结果（重复/非重复的比例、模型调用次数、平均延迟）。
