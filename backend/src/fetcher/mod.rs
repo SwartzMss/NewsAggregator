@@ -10,13 +10,18 @@ use tokio::{
 };
 use tracing::{debug, info, warn};
 
+use std::collections::BTreeSet;
+
 use crate::{
     config::FetcherConfig,
     repo::{
         articles::{self, NewArticle},
         feeds::{self, DueFeedRow},
     },
-    util::url_norm::normalize_article_url,
+    util::{
+        title::{jaccard_similarity, prepare_title_signature},
+        url_norm::normalize_article_url,
+    },
 };
 
 pub fn spawn(pool: sqlx::PgPool, config: FetcherConfig) -> anyhow::Result<()> {
@@ -179,8 +184,44 @@ async fn process_feed(
 
     let entries = std::mem::take(&mut parsed_feed.entries);
     let mut articles = Vec::new();
+    let mut seen_signatures: Vec<(BTreeSet<String>, String)> = Vec::new();
+
     for entry in &entries {
         if let Some(article) = convert_entry(&feed, &entry) {
+            let (normalized_title, tokens) = prepare_title_signature(&article.title);
+
+            let mut is_duplicate = false;
+            for (existing_tokens, existing_title) in &seen_signatures {
+                if !tokens.is_empty() && !existing_tokens.is_empty() {
+                    let similarity = jaccard_similarity(&tokens, existing_tokens);
+                    if similarity >= 0.9 {
+                        is_duplicate = true;
+                        debug!(
+                            feed_id = feed.id,
+                            similarity = similarity,
+                            title = %article.title,
+                            "skip article due to high title similarity"
+                        );
+                        break;
+                    }
+                }
+
+                if normalized_title == *existing_title {
+                    is_duplicate = true;
+                    debug!(
+                        feed_id = feed.id,
+                        title = %article.title,
+                        "skip article due to identical normalized title"
+                    );
+                    break;
+                }
+            }
+
+            if is_duplicate {
+                continue;
+            }
+
+            seen_signatures.push((tokens, normalized_title));
             articles.push(article);
         }
     }
