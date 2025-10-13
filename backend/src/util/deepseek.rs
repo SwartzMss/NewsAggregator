@@ -21,7 +21,7 @@ pub struct DeepseekDecision {
     pub is_duplicate: bool,
     pub reason: Option<String>,
     pub confidence: Option<f32>,
-    pub raw: String,
+    pub _raw: String,
 }
 
 pub struct DeepseekClient {
@@ -103,14 +103,12 @@ impl DeepseekClient {
             .and_then(|choice| choice.message.content)
             .ok_or_else(|| anyhow!("deepseek response missing message content"))?;
 
-        let decision = parse_decision(&content).with_context(|| {
+        let mut decision = parse_decision(&content).with_context(|| {
             format!("failed to parse deepseek decision from content: {content}")
         })?;
 
-        Ok(DeepseekDecision {
-            raw: content,
-            ..decision
-        })
+        decision._raw = content;
+        Ok(decision)
     }
 }
 
@@ -163,7 +161,7 @@ fn parse_decision(content: &str) -> Result<DeepseekDecision> {
         is_duplicate: payload.is_duplicate,
         reason: payload.reason,
         confidence: payload.confidence,
-        raw: String::new(),
+        _raw: String::new(),
     })
 }
 

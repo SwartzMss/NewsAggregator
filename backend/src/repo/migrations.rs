@@ -62,7 +62,8 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
           language             TEXT,
           source_domain        TEXT NOT NULL,
           published_at         TIMESTAMPTZ NOT NULL,
-          fetched_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          fetched_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          canonical_id         BIGINT
         );
         "#,
     )
@@ -86,6 +87,45 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
 
     tx.execute(
         r#"
+        ALTER TABLE news.articles
+          ADD COLUMN IF NOT EXISTS canonical_id BIGINT;
+        "#,
+    )
+    .await?;
+
+    tx.execute(
+        r#"
+        UPDATE news.articles
+        SET canonical_id = id
+        WHERE canonical_id IS NULL;
+        "#,
+    )
+    .await?;
+
+    tx.execute(
+        r#"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.table_constraints
+                WHERE table_schema = 'news'
+                  AND table_name = 'articles'
+                  AND constraint_name = 'articles_canonical_id_fkey'
+            ) THEN
+                ALTER TABLE news.articles
+                    ADD CONSTRAINT articles_canonical_id_fkey
+                    FOREIGN KEY (canonical_id)
+                    REFERENCES news.articles(id)
+                    ON DELETE SET NULL;
+            END IF;
+        END
+        $$;
+        "#,
+    )
+    .await?;
+
+    tx.execute(
+        r#"
         CREATE INDEX IF NOT EXISTS idx_articles_published_at    ON news.articles(published_at DESC);
         "#,
     )
@@ -101,6 +141,31 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
     tx.execute(
         r#"
         CREATE INDEX IF NOT EXISTS idx_articles_source_domain   ON news.articles(source_domain);
+        "#,
+    )
+    .await?;
+
+    tx.execute(
+        r#"
+        CREATE TABLE IF NOT EXISTS news.article_sources (
+          id            BIGSERIAL PRIMARY KEY,
+          article_id    BIGINT NOT NULL REFERENCES news.articles(id) ON DELETE CASCADE,
+          feed_id       BIGINT REFERENCES news.feeds(id) ON DELETE SET NULL,
+          source_name   TEXT,
+          source_url    TEXT NOT NULL,
+          published_at  TIMESTAMPTZ,
+          inserted_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          decision      TEXT,
+          confidence    REAL
+        );
+        "#,
+    )
+    .await?;
+
+    tx.execute(
+        r#"
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_article_sources_article_url
+          ON news.article_sources(article_id, source_url);
         "#,
     )
     .await?;

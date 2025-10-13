@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 
 #[derive(Debug, sqlx::FromRow)]
 pub struct ArticleRow {
@@ -76,14 +76,19 @@ pub async fn list_articles(
     Ok((rows, total))
 }
 
-pub async fn insert_articles(pool: &PgPool, articles: Vec<NewArticle>) -> Result<(), sqlx::Error> {
+pub async fn insert_articles(
+    pool: &PgPool,
+    articles: Vec<NewArticle>,
+) -> Result<Vec<(i64, NewArticle)>, sqlx::Error> {
     if articles.is_empty() {
-        return Ok(());
+        return Ok(Vec::new());
     }
+
+    let mut inserted = Vec::new();
 
     let mut tx = pool.begin().await?;
     for article in articles {
-        sqlx::query(
+        let row = sqlx::query(
             r#"
             INSERT INTO news.articles (
                 feed_id,
@@ -100,21 +105,38 @@ pub async fn insert_articles(pool: &PgPool, articles: Vec<NewArticle>) -> Result
                 $1, $2, $3, $4, $5, $6, $7, NOW(), 0
             )
             ON CONFLICT (feed_id, url) DO NOTHING
+            RETURNING id
             "#,
         )
         .bind(article.feed_id)
-        .bind(article.title)
-        .bind(article.url)
-        .bind(article.description)
-        .bind(article.language)
-        .bind(article.source_domain)
+        .bind(&article.title)
+        .bind(&article.url)
+        .bind(&article.description)
+        .bind(&article.language)
+        .bind(&article.source_domain)
         .bind(article.published_at)
-        .execute(&mut *tx)
+        .fetch_optional(&mut *tx)
         .await?;
+
+        if let Some(row) = row {
+            let article_id: i64 = row.get("id");
+            sqlx::query(
+                r#"
+                UPDATE news.articles
+                SET canonical_id = COALESCE(canonical_id, id)
+                WHERE id = $1
+                "#,
+            )
+            .bind(article_id)
+            .execute(&mut *tx)
+            .await?;
+
+            inserted.push((article_id, article.clone()));
+        }
     }
 
     tx.commit().await?;
-    Ok(())
+    Ok(inserted)
 }
 
 pub async fn increment_click(pool: &PgPool, id: i64) -> Result<(), sqlx::Error> {

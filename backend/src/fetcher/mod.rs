@@ -13,6 +13,7 @@ use tracing::{debug, info, warn};
 use crate::{
     config::{AiConfig, FetcherConfig},
     repo::{
+        article_sources::{self, ArticleSourceRecord},
         articles::{self, ArticleRow, NewArticle},
         feeds::{self, DueFeedRow},
     },
@@ -24,6 +25,7 @@ use crate::{
 };
 
 struct ArticleSummary {
+    article_id: i64,
     title: String,
     source_domain: String,
     url: String,
@@ -226,7 +228,7 @@ async fn process_feed(
     let mut historical_candidates = Vec::new();
     for row in recent_articles {
         let ArticleRow {
-            id: _,
+            id,
             title,
             url,
             description,
@@ -242,6 +244,7 @@ async fn process_feed(
         historical_candidates.push(CandidateArticle {
             tokens,
             summary: ArticleSummary {
+                article_id: id,
                 title,
                 source_domain,
                 url,
@@ -302,6 +305,15 @@ async fn process_feed(
                 for candidate in &historical_candidates {
                     let similarity = jaccard_similarity(&tokens, &candidate.tokens);
                     if similarity >= STRICT_DUP_THRESHOLD {
+                        record_article_source(
+                            &pool,
+                            &feed,
+                            &article,
+                            candidate.summary.article_id,
+                            Some("recent_jaccard"),
+                            Some(similarity),
+                        )
+                        .await;
                         is_duplicate = true;
                         debug!(
                             feed_id = feed.id,
@@ -346,6 +358,19 @@ async fn process_feed(
                             {
                                 Ok(decision) => {
                                     if decision.is_duplicate {
+                                        let reason = decision
+                                            .reason
+                                            .as_deref()
+                                            .unwrap_or("deepseek_duplicate");
+                                        record_article_source(
+                                            &pool,
+                                            &feed,
+                                            &article,
+                                            candidate.summary.article_id,
+                                            Some(reason),
+                                            decision.confidence,
+                                        )
+                                        .await;
                                         is_duplicate = true;
                                         info!(
                                             feed_id = feed.id,
@@ -381,7 +406,10 @@ async fn process_feed(
 
     let article_count = articles.len();
     if article_count > 0 {
-        articles::insert_articles(&pool, articles).await?;
+        let inserted = articles::insert_articles(&pool, articles).await?;
+        for (article_id, article) in &inserted {
+            record_article_source(&pool, &feed, article, *article_id, Some("primary"), None).await;
+        }
         info!(
             feed_id = feed.id,
             count = article_count,
@@ -413,6 +441,34 @@ async fn process_feed(
     );
 
     Ok(())
+}
+
+async fn record_article_source(
+    pool: &sqlx::PgPool,
+    feed: &DueFeedRow,
+    article: &NewArticle,
+    article_id: i64,
+    decision: Option<&str>,
+    confidence: Option<f32>,
+) {
+    let record = ArticleSourceRecord {
+        article_id,
+        feed_id: Some(feed.id),
+        source_name: Some(feed.source_domain.clone()),
+        source_url: article.url.clone(),
+        published_at: article.published_at,
+        decision: decision.map(|s| s.to_string()),
+        confidence,
+    };
+
+    if let Err(err) = article_sources::insert_source(pool, record).await {
+        warn!(
+            error = ?err,
+            feed_id = feed.id,
+            article_id,
+            "failed to record article source"
+        );
+    }
 }
 
 fn convert_entry(feed: &DueFeedRow, entry: &Entry) -> Option<NewArticle> {

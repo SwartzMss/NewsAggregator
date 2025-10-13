@@ -24,11 +24,10 @@
    - DeepSeek API 通过配置 `DEEPSEEK_API_KEY` 启用，结果包含原因/置信度，可在日志中追踪。
 
 5. **数据落库策略**
-   - 新建 `news.article_sources` 表记录文章与来源的映射，可包含 `article_id`、`feed_id`、`source_name`、`source_url`、`published_at`、`inserted_at`，并对 `(article_id, source_url)` 建唯一约束，允许同一篇主新闻关联多个源。
-   - `news.articles` 保持主新闻记录，可考虑新增 `canonical_article_id`（默认等于自身），用于在需要保留重复记录时指向主记录。
-   - 判定为全新新闻：插入 `news.articles`，随后写入主来源到 `news.article_sources`。
-- 判定为重复：不再插入 `news.articles`，只向 `news.article_sources` 追加一条引用，让 `article_id` 指向主新闻，同时保存来源名称、链接、发布时间以及判定元数据。
-- 可选：在 `news.article_sources` 或独立表中记录大模型判定结果（决策、置信度、prompt hash 等），便于审计和调优。
+   - `news.articles` 现已新增 `canonical_id` 字段（自指向，自有时可改指向其他记录），并在写入后补齐为空值。
+   - 新建 `news.article_sources` 表记录每篇文章的来源与判定信息（来源 feed、链接、发布时间、判定理由/置信度），`(article_id, source_url)` 唯一。
+   - 判定为全新新闻：写入 `news.articles`，同时将主来源写入 `news.article_sources`，标记为 `primary`。
+   - 判定为重复：不再写入 `news.articles`，但仍向 `news.article_sources` 追加一条引用，记录触发原因（Jaccard 或 DeepSeek）及置信度，方便追踪。
 
 6. **观察与回溯**
    - 监控判定结果（重复/非重复的比例、模型调用次数、平均延迟）。

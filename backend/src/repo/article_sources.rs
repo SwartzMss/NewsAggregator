@@ -1,0 +1,45 @@
+use chrono::{DateTime, Utc};
+use sqlx::PgPool;
+
+#[derive(Debug, Clone)]
+pub struct ArticleSourceRecord {
+    pub article_id: i64,
+    pub feed_id: Option<i64>,
+    pub source_name: Option<String>,
+    pub source_url: String,
+    pub published_at: DateTime<Utc>,
+    pub decision: Option<String>,
+    pub confidence: Option<f32>,
+}
+
+pub async fn insert_source(pool: &PgPool, record: ArticleSourceRecord) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+        INSERT INTO news.article_sources (
+            article_id,
+            feed_id,
+            source_name,
+            source_url,
+            published_at,
+            inserted_at,
+            decision,
+            confidence
+        )
+        VALUES (
+            $1, $2, $3, $4, $5, NOW(), $6, $7
+        )
+        ON CONFLICT (article_id, source_url) DO NOTHING
+        "#,
+    )
+    .bind(record.article_id)
+    .bind(record.feed_id)
+    .bind(record.source_name)
+    .bind(record.source_url)
+    .bind(record.published_at)
+    .bind(record.decision)
+    .bind(record.confidence)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
