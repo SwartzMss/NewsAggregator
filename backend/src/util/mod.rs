@@ -1,1 +1,3 @@
-//! Shared helpers will be added here.
+//! Shared helpers.
+
+pub mod deepseek;

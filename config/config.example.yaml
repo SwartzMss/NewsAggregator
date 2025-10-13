@@ -16,3 +16,11 @@ fetcher:
 logging:
   file: "logs/backend.log"
   level: "info"
+
+ai:
+  deepseek:
+    # API key can be provided via env DEEPSEEK_API_KEY instead.
+    api_key: ""
+    base_url: "https://api.deepseek.com"
+    model: "deepseek-chat"
+    timeout_secs: 30

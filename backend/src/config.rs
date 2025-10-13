@@ -73,11 +73,46 @@ impl Default for LoggingConfig {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
+pub struct DeepseekConfig {
+    pub api_key: Option<String>,
+    pub base_url: String,
+    pub model: String,
+    pub timeout_secs: u64,
+}
+
+impl Default for DeepseekConfig {
+    fn default() -> Self {
+        Self {
+            api_key: None,
+            base_url: "https://api.deepseek.com".to_string(),
+            model: "deepseek-chat".to_string(),
+            timeout_secs: 30,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default)]
+pub struct AiConfig {
+    pub deepseek: DeepseekConfig,
+}
+
+impl Default for AiConfig {
+    fn default() -> Self {
+        Self {
+            deepseek: DeepseekConfig::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default)]
 pub struct AppConfig {
     pub server: ServerConfig,
     pub db: DbConfig,
     pub fetcher: FetcherConfig,
     pub logging: LoggingConfig,
+    pub ai: AiConfig,
 }
 
 impl Default for AppConfig {
@@ -87,6 +122,7 @@ impl Default for AppConfig {
             db: DbConfig::default(),
             fetcher: FetcherConfig::default(),
             logging: LoggingConfig::default(),
+            ai: AiConfig::default(),
         }
     }
 }
@@ -155,6 +191,22 @@ impl AppConfig {
 
         if let Ok(log_level) = std::env::var("LOG_LEVEL") {
             config.logging.level = Some(log_level);
+        }
+
+        if let Ok(api_key) = std::env::var("DEEPSEEK_API_KEY") {
+            config.ai.deepseek.api_key = Some(api_key);
+        }
+
+        if let Ok(base_url) = std::env::var("DEEPSEEK_BASE_URL") {
+            config.ai.deepseek.base_url = base_url;
+        }
+
+        if let Ok(model) = std::env::var("DEEPSEEK_MODEL") {
+            config.ai.deepseek.model = model;
+        }
+
+        if let Some(timeout) = parse_optional_env("DEEPSEEK_TIMEOUT_SECS")? {
+            config.ai.deepseek.timeout_secs = timeout;
         }
 
         if config.db.url.trim().is_empty() {
