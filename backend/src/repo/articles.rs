@@ -144,6 +144,7 @@ pub async fn list_top_articles(pool: &PgPool, limit: i64) -> Result<Vec<ArticleR
                published_at,
                click_count
         FROM news.articles
+        WHERE published_at >= NOW() - INTERVAL '24 HOURS'
         ORDER BY click_count DESC, published_at DESC
         LIMIT $1
         "#,
