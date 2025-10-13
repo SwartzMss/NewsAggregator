@@ -19,6 +19,31 @@ Certbot 会：
 - 生成证书 (`/etc/letsencrypt/live/...`)
 - 配置自动续期
 
+## 一键部署脚本（推荐）
+仓库新增了 `nginx/` 目录，提供一键部署脚本：
+
+1. 按需调整 `nginx/config.sh` 中的域名、证书路径、部署用户等参数。
+2. 使用 root 权限执行脚本：
+   ```bash
+   sudo bash nginx/deploy.sh
+   ```
+   脚本会完成：
+   - 编译 Rust 后端（release）
+   - 构建前端并同步到 `/var/www/news-aggregator/dist`
+   - 生成 `/etc/nginx/sites-available/news-aggregator.conf` 并启用
+   - 写入 `/etc/systemd/system/news-backend.service`
+   - 重新加载 systemd 与 nginx
+3. 根据输出确认各步骤成功，可以通过 `systemctl status news-backend.service`、`nginx -t` 等命令复查。
+
+部署完成后，还可以使用脚本管理生命周期：
+
+```bash
+sudo bash nginx/deploy.sh status    # 查看 systemd 状态
+sudo bash nginx/deploy.sh start     # 启动后端服务
+sudo bash nginx/deploy.sh stop      # 停止后端服务
+sudo bash nginx/deploy.sh uninstall # 移除 systemd 和 nginx 配置
+```
+
 ## 2. Nginx 配置
 在 `/etc/nginx/sites-available/news-aggregator.conf` 写入：
 ```nginx
