@@ -25,19 +25,29 @@ pub async fn upsert(pool: &sqlx::PgPool, payload: FeedUpsertPayload) -> AppResul
         site_url,
     } = payload;
 
+    let url = url.trim().to_string();
     if url.is_empty() {
         return Err(AppError::BadRequest("url is required".into()));
     }
+
+    let source_domain_input = source_domain.trim();
+    let (source_domain, derived_source_domain) = if source_domain_input.is_empty() {
+        let inferred = crate::util::url_norm::infer_source_domain(&url)
+            .ok_or_else(|| AppError::BadRequest("无法从 URL 推断来源域名".into()))?;
+        (inferred, true)
+    } else {
+        (source_domain_input.to_ascii_lowercase(), false)
+    };
 
     if source_domain.is_empty() {
         return Err(AppError::BadRequest("source_domain is required".into()));
     }
 
     let record = repo::feeds::FeedUpsertRecord {
-        url,
+        url: url.clone(),
         title,
         site_url,
-        source_domain,
+        source_domain: source_domain.clone(),
         enabled,
         fetch_interval_seconds,
     };
@@ -48,6 +58,8 @@ pub async fn upsert(pool: &sqlx::PgPool, payload: FeedUpsertPayload) -> AppResul
         feed_id = row.id,
         url = row.url,
         enabled = row.enabled,
+        source_domain = %source_domain,
+        derived_source_domain,
         "feed saved"
     );
 

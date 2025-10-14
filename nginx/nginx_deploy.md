@@ -24,18 +24,11 @@ Certbot 会：
 
 1. 按需调整 `config/config.yaml`（或 `config/config.example.yaml` 复制后）里的 `deployment` 部分，填好域名、证书路径、部署用户等参数。若需要使用其他配置文件，可设置环境变量 `DEPLOY_CONFIG_FILE=/path/to/config.yaml`。
    - 如需在本地通过 `http://localhost` 调试，可将 `deployment.domain_aliases` 中加入 `localhost`，脚本会自动把它写入 `server_name`。
-2. 在项目目录中以部署用户手动构建产物（脚本不会再执行编译）：
-   ```bash
-   # 后端
-   cd backend
-   cargo build --release
-
-   # 前端
-   cd ../frontend
-   npm install
-   npm run build
-   ```
-   构建完成后，`backend/target/release/backend` 与 `frontend/dist` 应当存在。
+2. 在项目目录中以部署用户手动构建产物（脚本不会再执行编译）。可以分别进入目录执行命令，或直接运行 `nginx/build.sh`：
+  ```bash
+  bash nginx/build.sh
+  ```
+  构建完成后，`backend/target/release/backend` 与 `frontend/dist` 应当存在。
 3. 使用 root 权限执行脚本完成部署：
    ```bash
    sudo bash nginx/deploy.sh

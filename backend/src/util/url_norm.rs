@@ -48,6 +48,21 @@ pub fn normalize_article_url(raw: &str) -> Result<String> {
     Ok(url.to_string())
 }
 
+pub fn infer_source_domain(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let parsed = Url::parse(trimmed)
+        .or_else(|_| Url::parse(&format!("https://{trimmed}")))
+        .ok()?;
+
+    let host = parsed.host_str()?.to_ascii_lowercase();
+    let normalized = host.strip_prefix("www.").unwrap_or(&host).to_string();
+    Some(normalized)
+}
+
 fn trimmed_path(url: &Url) -> Option<String> {
     let path = url.path();
     if path == "/" {

@@ -19,12 +19,26 @@ const emptyForm: FeedUpsertPayload = {
   site_url: "",
 };
 
+const guessSourceDomain = (raw: string): string | null => {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  try {
+    const url = new URL(trimmed.includes("://") ? trimmed : `https://${trimmed}`);
+    const host = url.hostname.toLowerCase();
+    return host.startsWith("www.") ? host.slice(4) : host;
+  } catch {
+    return null;
+  }
+};
+
 export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: FeedFormModalProps) {
   const [form, setForm] = useState<FeedUpsertPayload>(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<FeedTestResult | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
+  const [sourceDomainEdited, setSourceDomainEdited] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -41,11 +55,24 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
           title: initial.title ?? "",
           site_url: initial.site_url ?? "",
         });
+        setSourceDomainEdited(Boolean(initial.source_domain?.trim()));
       } else {
         setForm(emptyForm);
+        setSourceDomainEdited(false);
       }
     }
   }, [open, initial]);
+
+  useEffect(() => {
+    if (sourceDomainEdited) return;
+    const guess = guessSourceDomain(form.url);
+    if (guess && form.source_domain !== guess) {
+      setForm((prev) => ({
+        ...prev,
+        source_domain: guess,
+      }));
+    }
+  }, [form.url, form.source_domain, sourceDomainEdited]);
 
   if (!open) return null;
 
@@ -82,6 +109,11 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
     if (name === "url") {
       setTestResult(null);
       setTestError(null);
+    }
+
+    if (name === "source_domain" && typeof nextValue === "string") {
+      const trimmed = nextValue.trim();
+      setSourceDomainEdited(trimmed.length > 0);
     }
   };
 
@@ -178,6 +210,9 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
                 placeholder="example.com"
                 className="mt-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
+              <span className="mt-1 text-xs font-normal text-slate-500">
+                系统会根据 RSS 地址自动补全，可手动调整。
+              </span>
             </label>
             <label className="flex flex-col text-sm font-medium text-slate-600">
               标题覆盖
