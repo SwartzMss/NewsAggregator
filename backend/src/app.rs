@@ -28,6 +28,7 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
         .await?;
 
     repo::migrations::ensure_schema(&pool).await?;
+    repo::maintenance::cleanup_orphan_content(&pool).await?;
 
     fetcher::spawn(pool.clone(), config.fetcher.clone(), config.ai.clone())?;
 

@@ -63,12 +63,46 @@ pub async fn upsert(pool: &sqlx::PgPool, payload: FeedUpsertPayload) -> AppResul
 }
 
 pub async fn delete(pool: &sqlx::PgPool, id: i64) -> AppResult<()> {
-    let affected = repo::feeds::delete_feed(pool, id).await?;
-    if affected == 0 {
-        return Err(AppError::BadRequest(format!("feed {id} not found")));
+    let mut lock_conn = pool.acquire().await?;
+    repo::feeds::acquire_processing_lock(&mut lock_conn, id).await?;
+
+    let result: AppResult<()> = async {
+        let mut tx = pool.begin().await?;
+
+        let disabled = repo::feeds::disable_feed(&mut tx, id).await?;
+        if disabled == 0 {
+            tx.rollback().await?;
+            return Err(AppError::BadRequest(format!("feed {id} not found")));
+        }
+
+        repo::article_sources::delete_by_feed(&mut tx, id).await?;
+        repo::articles::delete_by_feed(&mut tx, id).await?;
+        repo::feeds::delete_feed(&mut tx, id).await?;
+
+        tx.commit().await?;
+        Ok(())
     }
-    tracing::info!(feed_id = id, "feed deleted");
-    Ok(())
+    .await;
+
+    let release_result = repo::feeds::release_processing_lock(&mut lock_conn, id).await;
+    drop(lock_conn);
+
+    match (result, release_result) {
+        (Ok(()), Ok(())) => {
+            tracing::info!(feed_id = id, "feed and associated content deleted");
+            Ok(())
+        }
+        (Err(err), Ok(())) => Err(err),
+        (Ok(()), Err(release_err)) => Err(AppError::from(release_err)),
+        (Err(err), Err(release_err)) => {
+            tracing::error!(
+                error = ?release_err,
+                feed_id = id,
+                "failed to release feed lock after error"
+            );
+            Err(err)
+        }
+    }
 }
 
 pub async fn test(payload: FeedTestPayload) -> AppResult<FeedTestResult> {

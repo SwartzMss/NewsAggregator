@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use sqlx::PgPool;
+use sqlx::{postgres::PgQueryResult, PgConnection, PgPool, Postgres, Transaction};
 
 #[derive(Debug, sqlx::FromRow)]
 pub struct FeedRow {
@@ -123,7 +123,7 @@ pub async fn upsert_feed(pool: &PgPool, record: FeedUpsertRecord) -> Result<Feed
     .await
 }
 
-pub async fn delete_feed(pool: &PgPool, id: i64) -> Result<u64, sqlx::Error> {
+pub async fn delete_feed(tx: &mut Transaction<'_, Postgres>, id: i64) -> Result<u64, sqlx::Error> {
     let result = sqlx::query(
         r#"
         DELETE FROM news.feeds
@@ -131,7 +131,7 @@ pub async fn delete_feed(pool: &PgPool, id: i64) -> Result<u64, sqlx::Error> {
         "#,
     )
     .bind(id)
-    .execute(pool)
+    .execute(tx.as_mut())
     .await?;
 
     Ok(result.rows_affected())
@@ -208,5 +208,46 @@ pub async fn mark_success(
     .execute(pool)
     .await?;
 
+    Ok(())
+}
+
+pub async fn disable_feed(
+    tx: &mut Transaction<'_, Postgres>,
+    feed_id: i64,
+) -> Result<u64, sqlx::Error> {
+    let result: PgQueryResult = sqlx::query(
+        r#"
+        UPDATE news.feeds
+        SET enabled = FALSE,
+            updated_at = NOW()
+        WHERE id = $1
+        "#,
+    )
+    .bind(feed_id)
+    .execute(tx.as_mut())
+    .await?;
+
+    Ok(result.rows_affected())
+}
+
+pub async fn acquire_processing_lock(
+    conn: &mut PgConnection,
+    feed_id: i64,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("SELECT pg_advisory_lock($1)")
+        .bind(feed_id)
+        .execute(&mut *conn)
+        .await?;
+    Ok(())
+}
+
+pub async fn release_processing_lock(
+    conn: &mut PgConnection,
+    feed_id: i64,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("SELECT pg_advisory_unlock($1)")
+        .bind(feed_id)
+        .execute(&mut *conn)
+        .await?;
     Ok(())
 }

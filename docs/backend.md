@@ -63,6 +63,12 @@ cargo run
 - `cargo test`：运行测试
 - `RUST_LOG=debug cargo run`：输出更详细的日志，同时保留文件日志
 
+## Feed 删除策略
+- 删除订阅源时后端会先获取数据库级锁，等待当前抓取任务完成后再继续。
+- 删除流程会禁用该 Feed，并级联清理 `news.article_sources` 与 `news.articles` 中的相关记录。
+- 若请求到达时抓取正在进行，API 会阻塞到锁释放，确保不会出现竞态或残留数据。
+- 服务启动时会额外清理孤立内容（Feed 已删除但文章或来源残留），保证历史数据不会继续出现在列表中。
+
 ## Release 构建
 ```bash
 cd backend

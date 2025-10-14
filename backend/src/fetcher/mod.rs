@@ -179,6 +179,31 @@ async fn process_feed(
     deepseek: Option<Arc<DeepseekClient>>,
     feed: DueFeedRow,
 ) -> anyhow::Result<()> {
+    let mut lock_conn = pool.acquire().await?;
+    feeds::acquire_processing_lock(&mut lock_conn, feed.id).await?;
+
+    let feed_id = feed.id;
+    let result = process_feed_locked(pool.clone(), client, deepseek, &feed).await;
+
+    let release_result = feeds::release_processing_lock(&mut lock_conn, feed_id).await;
+    drop(lock_conn);
+
+    if let Err(err) = release_result {
+        warn!(error = ?err, feed_id = feed.id, "failed to release feed lock");
+        if result.is_ok() {
+            return Err(err.into());
+        }
+    }
+
+    result
+}
+
+async fn process_feed_locked(
+    pool: sqlx::PgPool,
+    client: Arc<Client>,
+    deepseek: Option<Arc<DeepseekClient>>,
+    feed: &DueFeedRow,
+) -> anyhow::Result<()> {
     let mut request = client.get(&feed.url);
     if let Some(etag) = &feed.last_etag {
         request = request.header(reqwest::header::IF_NONE_MATCH, etag);
@@ -264,7 +289,7 @@ async fn process_feed(
     let mut seen_signatures: Vec<(BTreeSet<String>, String)> = Vec::new();
 
     for entry in &entries {
-        if let Some(article) = convert_entry(&feed, &entry) {
+        if let Some(article) = convert_entry(feed, &entry) {
             let (normalized_title, tokens) = prepare_title_signature(&article.title);
 
             if tokens.is_empty() {
@@ -307,7 +332,7 @@ async fn process_feed(
                     if similarity >= STRICT_DUP_THRESHOLD {
                         record_article_source(
                             &pool,
-                            &feed,
+                            feed,
                             &article,
                             candidate.summary.article_id,
                             Some("recent_jaccard"),
@@ -364,7 +389,7 @@ async fn process_feed(
                                             .unwrap_or("deepseek_duplicate");
                                         record_article_source(
                                             &pool,
-                                            &feed,
+                                            feed,
                                             &article,
                                             candidate.summary.article_id,
                                             Some(reason),
@@ -408,7 +433,7 @@ async fn process_feed(
     if article_count > 0 {
         let inserted = articles::insert_articles(&pool, articles).await?;
         for (article_id, article) in &inserted {
-            record_article_source(&pool, &feed, article, *article_id, Some("primary"), None).await;
+            record_article_source(&pool, feed, article, *article_id, Some("primary"), None).await;
         }
         info!(
             feed_id = feed.id,

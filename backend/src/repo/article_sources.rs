@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use sqlx::PgPool;
+use sqlx::{postgres::PgQueryResult, PgPool, Postgres, Transaction};
 
 #[derive(Debug, Clone)]
 pub struct ArticleSourceRecord {
@@ -42,4 +42,21 @@ pub async fn insert_source(pool: &PgPool, record: ArticleSourceRecord) -> Result
     .await?;
 
     Ok(())
+}
+
+pub async fn delete_by_feed(
+    tx: &mut Transaction<'_, Postgres>,
+    feed_id: i64,
+) -> Result<u64, sqlx::Error> {
+    let result: PgQueryResult = sqlx::query(
+        r#"
+        DELETE FROM news.article_sources
+        WHERE feed_id = $1
+        "#,
+    )
+    .bind(feed_id)
+    .execute(tx.as_mut())
+    .await?;
+
+    Ok(result.rows_affected())
 }

@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use sqlx::{PgPool, Row};
+use sqlx::{postgres::PgQueryResult, PgPool, Postgres, Row, Transaction};
 
 #[derive(Debug, sqlx::FromRow)]
 pub struct ArticleRow {
@@ -137,6 +137,23 @@ pub async fn insert_articles(
 
     tx.commit().await?;
     Ok(inserted)
+}
+
+pub async fn delete_by_feed(
+    tx: &mut Transaction<'_, Postgres>,
+    feed_id: i64,
+) -> Result<u64, sqlx::Error> {
+    let result: PgQueryResult = sqlx::query(
+        r#"
+        DELETE FROM news.articles
+        WHERE feed_id = $1
+        "#,
+    )
+    .bind(feed_id)
+    .execute(tx.as_mut())
+    .await?;
+
+    Ok(result.rows_affected())
 }
 
 pub async fn increment_click(pool: &PgPool, id: i64) -> Result<(), sqlx::Error> {
