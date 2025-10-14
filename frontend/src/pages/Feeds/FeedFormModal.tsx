@@ -17,6 +17,7 @@ const emptyForm: FeedUpsertPayload = {
   fetch_interval_seconds: 600,
   title: "",
   site_url: "",
+  filter_condition: "",
 };
 
 const guessSourceDomain = (raw: string): string | null => {
@@ -54,6 +55,7 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
           fetch_interval_seconds: initial.fetch_interval_seconds,
           title: initial.title ?? "",
           site_url: initial.site_url ?? "",
+          filter_condition: initial.filter_condition ?? "",
         });
         setSourceDomainEdited(Boolean(initial.source_domain?.trim()));
       } else {
@@ -77,7 +79,9 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
   if (!open) return null;
 
   const handleChange = (
-    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    event: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
   ) => {
     const target = event.target;
 
@@ -129,6 +133,7 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
         ...form,
         title: form.title?.trim() || undefined,
         site_url: form.site_url?.trim() || undefined,
+        filter_condition: form.filter_condition?.trim() || undefined,
       });
       onClose();
     } catch (err) {
@@ -256,6 +261,20 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
               启用订阅
             </label>
           </div>
+
+          <label className="flex flex-col text-sm font-medium text-slate-600">
+            <span>过滤条件（SQL 布尔表达式，可选）</span>
+            <textarea
+              name="filter_condition"
+              value={form.filter_condition ?? ""}
+              onChange={handleChange}
+              className="mt-1 h-24 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              placeholder="例如：url LIKE '%newsflashes%'"
+            />
+            <span className="mt-1 text-xs font-normal text-slate-400">
+              条件为真时文章保留，反之将被自动清理。请勿填写分号、注释或其他数据修改语句。
+            </span>
+          </label>
 
           {testResult && (
             <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">

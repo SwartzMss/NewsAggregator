@@ -21,6 +21,7 @@ pub struct FeedOut {
     pub source_domain: String,
     pub enabled: bool,
     pub fetch_interval_seconds: i32,
+    pub filter_condition: Option<String>,
     pub last_fetch_at: Option<String>,
     pub last_fetch_status: Option<i32>,
     pub fail_count: i32,
@@ -52,6 +53,7 @@ pub struct FeedUpsertPayload {
     pub fetch_interval_seconds: Option<i32>,
     pub title: Option<String>,
     pub site_url: Option<String>,
+    pub filter_condition: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

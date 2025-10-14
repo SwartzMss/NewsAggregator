@@ -23,6 +23,7 @@ pub async fn upsert(pool: &sqlx::PgPool, payload: FeedUpsertPayload) -> AppResul
         fetch_interval_seconds,
         title,
         site_url,
+        filter_condition,
     } = payload;
 
     let url = url.trim().to_string();
@@ -43,6 +44,21 @@ pub async fn upsert(pool: &sqlx::PgPool, payload: FeedUpsertPayload) -> AppResul
         return Err(AppError::BadRequest("source_domain is required".into()));
     }
 
+    let filter_condition = filter_condition.and_then(|raw| {
+        let trimmed = raw.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    });
+
+    if let Some(ref condition) = filter_condition {
+        validate_filter_condition(condition)?;
+    }
+
+    let existing = repo::feeds::find_by_url(pool, &url).await?;
+
     let record = repo::feeds::FeedUpsertRecord {
         url: url.clone(),
         title,
@@ -50,6 +66,7 @@ pub async fn upsert(pool: &sqlx::PgPool, payload: FeedUpsertPayload) -> AppResul
         source_domain: source_domain.clone(),
         enabled,
         fetch_interval_seconds,
+        filter_condition: filter_condition.clone(),
     };
 
     let row = repo::feeds::upsert_feed(pool, record).await?;
@@ -71,7 +88,36 @@ pub async fn upsert(pool: &sqlx::PgPool, payload: FeedUpsertPayload) -> AppResul
         }
     }
 
-    Ok(feed_row_to_out(row))
+    let feed_id = row.id;
+    let response = feed_row_to_out(row);
+
+    if let Some(ref condition) = filter_condition {
+        let previous_condition = existing
+            .as_ref()
+            .and_then(|feed| feed.filter_condition.as_ref())
+            .map(|value| value.trim().to_string());
+
+        let condition_changed = previous_condition
+            .map(|prev| prev != *condition)
+            .unwrap_or(true);
+
+        if condition_changed {
+            match repo::articles::apply_filter_condition(pool, feed_id, condition).await {
+                Ok(deleted) => {
+                    tracing::info!(
+                        feed_id,
+                        deleted,
+                        "applied filter condition immediately after update"
+                    );
+                }
+                Err(err) => {
+                    return Err(AppError::from(err));
+                }
+            }
+        }
+    }
+
+    Ok(response)
 }
 
 pub async fn delete(pool: &sqlx::PgPool, id: i64) -> AppResult<()> {
@@ -176,8 +222,31 @@ fn feed_row_to_out(row: repo::feeds::FeedRow) -> FeedOut {
         source_domain: row.source_domain,
         enabled: row.enabled,
         fetch_interval_seconds: row.fetch_interval_seconds,
+        filter_condition: row.filter_condition,
         last_fetch_at: row.last_fetch_at.map(|dt| dt.to_rfc3339()),
         last_fetch_status: row.last_fetch_status.map(|s| s as i32),
         fail_count: row.fail_count,
     }
+}
+
+fn validate_filter_condition(condition: &str) -> AppResult<()> {
+    let lowered = condition.to_ascii_lowercase();
+    for forbidden in [";", "--", "/*", "*/"] {
+        if condition.contains(forbidden) {
+            return Err(AppError::BadRequest(
+                "过滤条件不能包含分号或注释符号".into(),
+            ));
+        }
+    }
+    for forbidden_keyword in ["drop ", "alter ", "insert ", "update ", "delete "] {
+        if lowered.contains(forbidden_keyword) {
+            return Err(AppError::BadRequest(
+                "过滤条件只能是布尔表达式，禁止包含数据修改语句".into(),
+            ));
+        }
+    }
+    if lowered.contains("$1") || lowered.contains("$2") || lowered.contains("$3") {
+        return Err(AppError::BadRequest("过滤条件不允许引用占位符".into()));
+    }
+    Ok(())
 }

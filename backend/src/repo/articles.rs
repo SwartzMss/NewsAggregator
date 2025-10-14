@@ -216,3 +216,16 @@ pub async fn list_recent_articles(
     .fetch_all(pool)
     .await
 }
+
+pub async fn apply_filter_condition(
+    pool: &PgPool,
+    feed_id: i64,
+    condition: &str,
+) -> Result<u64, sqlx::Error> {
+    let sql = format!(
+        "DELETE FROM news.articles WHERE feed_id = $1 AND NOT ({})",
+        condition
+    );
+    let result = sqlx::query(&sql).bind(feed_id).execute(pool).await?;
+    Ok(result.rows_affected())
+}

@@ -10,6 +10,7 @@ pub struct FeedRow {
     pub source_domain: String,
     pub enabled: bool,
     pub fetch_interval_seconds: i32,
+    pub filter_condition: Option<String>,
     pub last_fetch_at: Option<DateTime<Utc>>,
     pub last_fetch_status: Option<i16>,
     pub fail_count: i32,
@@ -21,6 +22,7 @@ pub struct DueFeedRow {
     pub url: String,
     pub source_domain: String,
     pub last_etag: Option<String>,
+    pub filter_condition: Option<String>,
 }
 
 pub struct FeedUpsertRecord {
@@ -30,6 +32,7 @@ pub struct FeedUpsertRecord {
     pub source_domain: String,
     pub enabled: Option<bool>,
     pub fetch_interval_seconds: Option<i32>,
+    pub filter_condition: Option<String>,
 }
 
 pub async fn list_feeds(pool: &PgPool) -> Result<Vec<FeedRow>, sqlx::Error> {
@@ -42,6 +45,7 @@ pub async fn list_feeds(pool: &PgPool) -> Result<Vec<FeedRow>, sqlx::Error> {
                source_domain,
                enabled,
                fetch_interval_seconds,
+               filter_condition,
                last_fetch_at,
                last_fetch_status,
                fail_count
@@ -59,7 +63,8 @@ pub async fn list_due_feeds(pool: &PgPool, limit: i64) -> Result<Vec<DueFeedRow>
         SELECT id::bigint AS id,
                url,
                source_domain,
-               last_etag
+               last_etag,
+               filter_condition
         FROM news.feeds
         WHERE enabled = TRUE
           AND (
@@ -75,6 +80,29 @@ pub async fn list_due_feeds(pool: &PgPool, limit: i64) -> Result<Vec<DueFeedRow>
     .await
 }
 
+pub async fn find_by_url(pool: &PgPool, url: &str) -> Result<Option<FeedRow>, sqlx::Error> {
+    sqlx::query_as::<_, FeedRow>(
+        r#"
+        SELECT id::bigint AS id,
+               url,
+               title,
+               site_url,
+               source_domain,
+               enabled,
+               fetch_interval_seconds,
+               filter_condition,
+               last_fetch_at,
+               last_fetch_status,
+               fail_count
+        FROM news.feeds
+        WHERE url = $1
+        "#,
+    )
+    .bind(url)
+    .fetch_optional(pool)
+    .await
+}
+
 pub async fn upsert_feed(pool: &PgPool, record: FeedUpsertRecord) -> Result<FeedRow, sqlx::Error> {
     sqlx::query_as::<_, FeedRow>(
         r#"
@@ -84,7 +112,8 @@ pub async fn upsert_feed(pool: &PgPool, record: FeedUpsertRecord) -> Result<Feed
             site_url,
             source_domain,
             enabled,
-            fetch_interval_seconds
+            fetch_interval_seconds,
+            filter_condition
         )
         VALUES (
             $1,
@@ -92,7 +121,8 @@ pub async fn upsert_feed(pool: &PgPool, record: FeedUpsertRecord) -> Result<Feed
             $3,
             $4,
             COALESCE($5, TRUE),
-            COALESCE($6, 600)
+            COALESCE($6, 600),
+            NULLIF(trim($7), '')
         )
         ON CONFLICT (url) DO UPDATE SET
             title = COALESCE(EXCLUDED.title, news.feeds.title),
@@ -100,6 +130,7 @@ pub async fn upsert_feed(pool: &PgPool, record: FeedUpsertRecord) -> Result<Feed
             source_domain = EXCLUDED.source_domain,
             enabled = COALESCE(EXCLUDED.enabled, news.feeds.enabled),
             fetch_interval_seconds = COALESCE(EXCLUDED.fetch_interval_seconds, news.feeds.fetch_interval_seconds),
+            filter_condition = EXCLUDED.filter_condition,
             updated_at = NOW()
         RETURNING id::bigint AS id,
                   url,
@@ -108,6 +139,7 @@ pub async fn upsert_feed(pool: &PgPool, record: FeedUpsertRecord) -> Result<Feed
                   source_domain,
                   enabled,
                   fetch_interval_seconds,
+                  filter_condition,
                   last_fetch_at,
                   last_fetch_status,
                   fail_count
@@ -117,8 +149,9 @@ pub async fn upsert_feed(pool: &PgPool, record: FeedUpsertRecord) -> Result<Feed
     .bind(record.title)
     .bind(record.site_url)
     .bind(record.source_domain)
-        .bind(record.enabled)
+    .bind(record.enabled)
     .bind(record.fetch_interval_seconds)
+    .bind(record.filter_condition)
     .fetch_one(pool)
     .await
 }

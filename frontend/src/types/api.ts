@@ -18,6 +18,7 @@ export type FeedOut = {
   language?: string | null;
   enabled: boolean;
   fetch_interval_seconds: number;
+  filter_condition?: string | null;
   last_fetch_at?: string | null;
   last_fetch_status?: number | null;
   fail_count: number;
@@ -39,6 +40,7 @@ export type FeedUpsertPayload = {
   fetch_interval_seconds?: number;
   title?: string | null;
   site_url?: string | null;
+  filter_condition?: string | null;
 };
 
 export type FeedTestResult = {
