@@ -8,7 +8,55 @@ import {
 
 type QueryParams = Record<string, string | number | undefined | null>;
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8081";
+const defaultApiBase =
+  typeof window !== "undefined" ? `${window.location.origin}/api` : "/api";
+
+let cachedApiBase: string | null = null;
+let apiBasePromise: Promise<string> | null = null;
+
+const normalizeBase = (value: string) => value.replace(/\/+$/, "");
+
+const resolveDefaultBase = () => normalizeBase(defaultApiBase);
+
+const loadBaseFromConfig = async (): Promise<string | null> => {
+  try {
+    const res = await fetch("/config/frontend", {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { api_base_url?: string | null };
+    if (data.api_base_url) {
+      return normalizeBase(data.api_base_url);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const getApiBase = async (): Promise<string> => {
+  if (cachedApiBase) return cachedApiBase;
+
+  const fromEnv = import.meta.env.VITE_API_BASE_URL;
+  if (fromEnv && typeof fromEnv === "string" && fromEnv.trim()) {
+    cachedApiBase = normalizeBase(fromEnv);
+    return cachedApiBase;
+  }
+
+  if (!apiBasePromise) {
+    apiBasePromise = loadBaseFromConfig().then(
+      (base) => base ?? resolveDefaultBase()
+    );
+  }
+
+  cachedApiBase = await apiBasePromise;
+  return cachedApiBase;
+};
+
+const request = async (path: string, init?: RequestInit) => {
+  const base = await getApiBase();
+  return fetch(`${base}${path}`, init);
+};
 
 const toQueryString = (params?: QueryParams) => {
   if (!params) return "";
@@ -35,22 +83,22 @@ export async function getArticles(params: {
   page?: number;
   page_size?: number;
 }): Promise<PageResp<ArticleOut>> {
-  const res = await fetch(`${API_BASE}/articles${toQueryString(params)}`, {
+  const res = await request(`/articles${toQueryString(params)}`, {
     headers: { Accept: "application/json" },
   });
   return parseJSON<PageResp<ArticleOut>>(res);
 }
 
 export async function listFeeds(): Promise<FeedOut[]> {
-  const res = await fetch(`${API_BASE}/feeds`, {
+  const res = await request("/feeds", {
     headers: { Accept: "application/json" },
   });
   return parseJSON<FeedOut[]>(res);
 }
 
 export async function getFeaturedArticles(limit = 6): Promise<ArticleOut[]> {
-  const res = await fetch(
-    `${API_BASE}/articles/featured${toQueryString({ limit })}`,
+  const res = await request(
+    `/articles/featured${toQueryString({ limit })}`,
     {
       headers: { Accept: "application/json" },
     }
@@ -59,13 +107,13 @@ export async function getFeaturedArticles(limit = 6): Promise<ArticleOut[]> {
 }
 
 export async function recordArticleClick(id: number): Promise<void> {
-  await fetch(`${API_BASE}/articles/${id}/click`, {
+  await request(`/articles/${id}/click`, {
     method: "POST",
   });
 }
 
 export async function upsertFeed(payload: FeedUpsertPayload): Promise<FeedOut> {
-  const res = await fetch(`${API_BASE}/feeds`, {
+  const res = await request("/feeds", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -77,7 +125,7 @@ export async function upsertFeed(payload: FeedUpsertPayload): Promise<FeedOut> {
 }
 
 export async function deleteFeed(id: number): Promise<void> {
-  const res = await fetch(`${API_BASE}/feeds/${id}`, {
+  const res = await request(`/feeds/${id}`, {
     method: "DELETE",
   });
   if (!res.ok) {
@@ -87,7 +135,7 @@ export async function deleteFeed(id: number): Promise<void> {
 }
 
 export async function testFeed(url: string): Promise<FeedTestResult> {
-  const res = await fetch(`${API_BASE}/feeds/test`, {
+  const res = await request("/feeds/test", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

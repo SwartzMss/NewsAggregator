@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Context};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -113,6 +113,7 @@ pub struct AppConfig {
     pub fetcher: FetcherConfig,
     pub logging: LoggingConfig,
     pub ai: AiConfig,
+    pub deployment: DeploymentConfig,
 }
 
 impl Default for AppConfig {
@@ -123,6 +124,7 @@ impl Default for AppConfig {
             fetcher: FetcherConfig::default(),
             logging: LoggingConfig::default(),
             ai: AiConfig::default(),
+            deployment: DeploymentConfig::default(),
         }
     }
 }
@@ -217,6 +219,69 @@ impl AppConfig {
 
         Ok(config)
     }
+
+    pub fn frontend_public_config(&self) -> FrontendPublicConfig {
+        let mut candidates: Vec<String> = Vec::new();
+
+        if let Ok(env_override) = std::env::var("PUBLIC_API_BASE_URL") {
+            if !env_override.trim().is_empty() {
+                candidates.push(env_override);
+            }
+        }
+
+        if let Some(explicit) = self
+            .deployment
+            .public_api_base_url
+            .as_ref()
+            .map(|v| v.trim())
+            .filter(|v| !v.is_empty())
+        {
+            candidates.push(explicit.to_string());
+        }
+
+        if let Some(domain) = self
+            .deployment
+            .domain
+            .as_ref()
+            .map(|v| v.trim())
+            .filter(|v| !v.is_empty())
+        {
+            let scheme = if self.deployment.ssl_enabled() {
+                "https://"
+            } else {
+                "http://"
+            };
+            let base = if domain.starts_with("http://") || domain.starts_with("https://") {
+                domain.to_string()
+            } else {
+                format!("{scheme}{domain}")
+            };
+            candidates.push(base);
+        }
+
+        if let Some(bind_addr) = self
+            .deployment
+            .backend
+            .bind_addr
+            .as_ref()
+            .map(|v| v.trim())
+            .filter(|v| !v.is_empty())
+        {
+            candidates.push(format_host_base(bind_addr));
+        } else if !self.server.bind.trim().is_empty() {
+            candidates.push(format_host_base(&self.server.bind));
+        }
+
+        let base = candidates
+            .into_iter()
+            .map(|candidate| candidate.trim_end_matches('/').to_string())
+            .find(|candidate| !candidate.is_empty())
+            .unwrap_or_else(|| "http://127.0.0.1:8081".to_string());
+
+        FrontendPublicConfig {
+            api_base_url: ensure_api_suffix(&base),
+        }
+    }
 }
 
 fn parse_optional_env<T>(key: &str) -> anyhow::Result<Option<T>>
@@ -247,4 +312,58 @@ fn locate_default_config() -> Option<PathBuf> {
     }
 
     None
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(default)]
+pub struct DeploymentConfig {
+    pub domain: Option<String>,
+    pub public_api_base_url: Option<String>,
+    pub backend: DeploymentBackendConfig,
+    pub ssl: Option<SslConfig>,
+}
+
+impl DeploymentConfig {
+    fn ssl_enabled(&self) -> bool {
+        self.ssl
+            .as_ref()
+            .map(|ssl| !ssl.cert_path.trim().is_empty() && !ssl.key_path.trim().is_empty())
+            .unwrap_or(false)
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(default)]
+pub struct DeploymentBackendConfig {
+    pub bind_addr: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(default)]
+pub struct SslConfig {
+    pub cert_path: String,
+    pub key_path: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct FrontendPublicConfig {
+    pub api_base_url: String,
+}
+
+fn format_host_base(host: &str) -> String {
+    let trimmed = host.trim();
+    if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
+        trimmed.to_string()
+    } else {
+        format!("http://{trimmed}")
+    }
+}
+
+fn ensure_api_suffix(base: &str) -> String {
+    let normalized = base.trim_end_matches('/');
+    if normalized.ends_with("/api") {
+        normalized.to_string()
+    } else {
+        format!("{normalized}/api")
+    }
 }

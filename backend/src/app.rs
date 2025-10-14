@@ -8,11 +8,16 @@ use sqlx::{postgres::PgPoolOptions, PgPool};
 use tower::ServiceBuilder;
 use tower_http::cors::{Any, CorsLayer};
 
-use crate::{api, config::AppConfig, fetcher, repo};
+use crate::{
+    api,
+    config::{AppConfig, FrontendPublicConfig},
+    fetcher, repo,
+};
 
 #[derive(Clone)]
 pub struct AppState {
     pub pool: PgPool,
+    pub config: FrontendPublicConfig,
 }
 
 pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
@@ -26,7 +31,11 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
 
     fetcher::spawn(pool.clone(), config.fetcher.clone(), config.ai.clone())?;
 
-    let state = AppState { pool };
+    let public_config = config.frontend_public_config();
+    let state = AppState {
+        pool,
+        config: public_config,
+    };
 
     let cors = CorsLayer::new()
         .allow_origin(Any)
@@ -45,6 +54,7 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
         .route("/articles", get(api::articles::list_articles))
         .route("/articles/featured", get(api::articles::list_featured))
         .route("/articles/:id/click", post(api::articles::record_click))
+        .route("/config/frontend", get(api::config::frontend_config))
         .layer(middleware)
         .with_state(state);
 
