@@ -79,7 +79,7 @@ deployment:
   # 运行时环境变量（用于 systemd 单元，按需修改）。
   runtime_env:
     database_url: "postgres://user:pass@127.0.0.1:5432/news"
-    log_file_path: "/var/log/news-backend.log"
+    log_file_path: "/home/user/WorkSpace/NewsAggregator/logs/backend.log"
     fetch_interval_secs: 300
     fetch_batch_size: 8
     fetch_concurrency: 4

@@ -340,11 +340,14 @@ async fn process_feed_locked(
                         )
                         .await;
                         is_duplicate = true;
-                        debug!(
+                        info!(
                             feed_id = feed.id,
                             similarity,
                             title = %article.title,
-                            other_source = %candidate.summary.source_domain,
+                            existing_article_id = candidate.summary.article_id,
+                            existing_title = %candidate.summary.title,
+                            existing_url = %candidate.summary.url,
+                            existing_source = %candidate.summary.source_domain,
                             "skip article due to matching recent article"
                         );
                         break;
@@ -400,7 +403,10 @@ async fn process_feed_locked(
                                         info!(
                                             feed_id = feed.id,
                                             title = %article.title,
-                                            other_source = %candidate.summary.source_domain,
+                                            existing_article_id = candidate.summary.article_id,
+                                            existing_title = %candidate.summary.title,
+                                            existing_url = %candidate.summary.url,
+                                            existing_source = %candidate.summary.source_domain,
                                             reason = decision.reason.as_deref().unwrap_or(""),
                                             "skip article due to deepseek duplicate judgment"
                                         );
@@ -434,6 +440,30 @@ async fn process_feed_locked(
         let inserted = articles::insert_articles(&pool, articles).await?;
         for (article_id, article) in &inserted {
             record_article_source(&pool, feed, article, *article_id, Some("primary"), None).await;
+        }
+        if let Some(condition) = feed
+            .filter_condition
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        {
+            match articles::apply_filter_condition(&pool, feed.id, condition).await {
+                Ok(deleted) => {
+                    if deleted > 0 {
+                        info!(
+                            feed_id = feed.id,
+                            deleted, "filtered articles using feed condition"
+                        );
+                    }
+                }
+                Err(err) => {
+                    warn!(
+                        error = ?err,
+                        feed_id = feed.id,
+                        "failed to apply feed filter condition"
+                    );
+                }
+            }
         }
         info!(
             feed_id = feed.id,

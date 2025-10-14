@@ -75,6 +75,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_article_sources_article_url
 - `fail_count` 记录连续失败次数，可据此实现退避或熔断策略。
 - `canonical_id` 标识主文章（默认指向自身），后续如需归并可指向原始文章。
 - `news.article_sources` 记录每篇文章被哪些来源收录以及判定原因/置信度，可用于展示“多源引用”或调试去重逻辑。
+  - `decision` 说明这条记录的判定来源：`primary` 表示这是文章首次入库的来源；`recent_jaccard` 表示最近文章的标题相似度超过严格阈值而被判定为重复；其他字符串通常来自 DeepSeek 的判定结果（例如 `deepseek_duplicate` 或模型返回的自定义理由）。
+  - `confidence` 搭配 `decision` 使用，在 DeepSeek 判定时保存模型输出的置信度，便于后续追踪阈值与误判。
 
 ## 常用 SQL 示例
 **插入或更新 Feed（按 URL upsert）**

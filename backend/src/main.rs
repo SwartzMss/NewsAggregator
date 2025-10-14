@@ -13,7 +13,8 @@ use std::{net::SocketAddr, path::Path, sync::OnceLock};
 use tokio::net::TcpListener;
 use tracing_appender::rolling;
 use tracing_subscriber::{
-    filter::filter_fn, fmt::layer as fmt_layer, prelude::*, EnvFilter, Registry,
+    filter::filter_fn, fmt::layer as fmt_layer, fmt::time::ChronoLocal, prelude::*, EnvFilter,
+    Registry,
 };
 
 #[tokio::main]
@@ -68,18 +69,22 @@ fn setup_tracing(config: &config::AppConfig) -> anyhow::Result<()> {
 
     let backend_filter = filter_fn(|meta| meta.target().starts_with("backend"));
     let other_filter = filter_fn(|meta| !meta.target().starts_with("backend"));
+    let timer = ChronoLocal::rfc_3339();
 
     let stdout_backend = fmt_layer()
+        .with_timer(timer.clone())
         .with_writer(std::io::stdout)
         .with_file(true)
         .with_line_number(true)
         .with_filter(backend_filter.clone());
 
     let stdout_general = fmt_layer()
+        .with_timer(timer.clone())
         .with_writer(std::io::stdout)
         .with_filter(other_filter.clone());
 
     let file_layer = fmt_layer()
+        .with_timer(timer)
         .with_writer(non_blocking)
         .with_ansi(false)
         .with_file(true)
