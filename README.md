@@ -1,33 +1,25 @@
-# RSS 新闻聚合（MVP）
+# News Aggregator
 
-极简新闻聚合服务：抓取公开 RSS/Atom，写入 PostgreSQL，通过 HTTP API 提供给前端展示与管理。
+一体化的 RSS 新闻聚合服务，自动抓取多源内容、去重入库，并通过 Web 界面 + HTTP API 对外提供阅读与管理能力。
 
-## 快速认识
-- **核心能力**：RSS 订阅管理、定时抓取、文章列表分页、前端平铺展示
-- **技术栈**：Rust (Axum + SQLx) + PostgreSQL / React + Vite + Tailwind
-- **部署方式**：nginx 反向代理 + systemd 后端守护（见 `nginx/deploy.sh`）
+## 当前能力
+- **Feed 管理**：后端提供增删改查接口，维护订阅源状态、抓取频率与启用开关，前端支持可视化管理。
+- **定时抓取**：后台定时任务使用 Reqwest 抓取 RSS/Atom，结合 ETag 与 Last-Modified 控制带宽，并记录抓取日志。
+- **智能去重**：从 URL/发布时间规则到标题相似度，再到 DeepSeek 语义判定的多层策略，阻止重复新闻进入主表，同时保留来源追溯。
+- **数据存储**：PostgreSQL `news` schema 维护 feeds、articles、article_sources 三张核心表，支持分页与多条件查询。
+- **前端展示**：React + Vite 构建的 SPA，通过 TanStack Query 调用 API，提供文章列表与订阅源面板。
+- **运维部署**：nginx 反向代理静态资源与 `/api`，systemd 接管 Rust 服务，部署脚本 `nginx/deploy.sh` 支持一键上线。
 
-## 快速开始
-1. **数据库**：执行 `docs/database.md` 中的 DDL，准备 `DATABASE_URL`。
-2. **后端**：参考 `docs/backend.md` 配置并运行 `cargo run` 或 `cargo build --release`。
-3. **前端**：按照 `docs/frontend.md` 设置 `VITE_API_BASE_URL`，执行 `npm run dev` 或 `npm run build`。
-4. **一键部署**：先以项目用户手动执行 `cargo build --release` 与 `npm install && npm run build`，确认产物生成，再更新 `config/config.yaml` 中的 `deployment` 配置后运行 `sudo bash nginx/deploy.sh deploy`（或通过 `DEPLOY_CONFIG_FILE=/path/to/config.yaml` 指定其他配置）。
+## 代码结构
+- `backend/`：Axum 服务、抓取器、SQLx 数据访问层与配置管理。
+- `frontend/`：Vite + React 前端源码，包含组件、页面与 API 封装。
+- `docs/`：后端、前端、数据库与去重方案的详细说明。
+- `nginx/`：部署脚本与示例配置。
 
-## 文档索引
-- `docs/backend.md` 后端配置、运行与排错指南
-- `docs/frontend.md` 前端开发与构建说明
-- `docs/database.md` 数据库结构与常用 SQL
-- `nginx/nginx_deploy.md` 生产部署步骤与维护命令
+## 更多信息
+- 后端运行方式、配置项与排错技巧：`docs/backend.md`
+- 前端开发与构建说明：`docs/frontend.md`
+- 数据库 schema 与常用 SQL：`docs/database.md`
+- 新闻去重策略：`docs/news-dedup-plan.md`
 
-## API 速览
-- `GET /healthz` – 存活检查
-- `GET /articles` – 文章列表（分页 + 时间过滤）
-- `GET /feeds` – Feed 列表
-- `POST /feeds`, `PATCH /feeds/:id`, `DELETE /feeds/:id` – Feed 管理
-
-## 设计取舍
-- 不做去重与全文索引，优先保证抓取可靠性
-- 文章仅保存摘要与链接，全文交由来源站点
-- 抓取器已支持 `ETag` 与 `Last-Modified`，为后续优化留钩子
-
-欢迎继续扩展：聚合去重、全文检索、推送通知、抓取监控面板等。
+如需本地开发或生产部署，请参照对应文档逐步执行。
