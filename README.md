@@ -21,5 +21,6 @@
 - 前端开发与构建说明：`docs/frontend.md`
 - 数据库 schema 与常用 SQL：`docs/database.md`
 - 新闻去重策略：`docs/news-dedup-plan.md`
+- WSL 端口转发提示：Windows 的 `netsh interface portproxy` 在默认 WSL 配置下需要使用 `v4tov6`，例如 `netsh interface portproxy add v4tov6 listenaddress=0.0.0.0 listenport=443 connectaddress=::1 connectport=443`，否则 127.0.0.1 的访问不会映射到 WSL 内的服务。
 
 如需本地开发或生产部署，请参照对应文档逐步执行。
