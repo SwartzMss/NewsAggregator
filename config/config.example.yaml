@@ -25,15 +25,6 @@ http_client:
   http_proxy: "http://172.20.160.1:7890"
   https_proxy: "http://172.20.160.1:7890"
 
-# AI 集成配置（可选，如未使用可保持为空）。
-ai:
-  deepseek:
-    # API Key（可通过环境变量 DEEPSEEK_API_KEY 提供）。
-    api_key: ""
-    base_url: "https://api.deepseek.com"
-    model: "deepseek-chat"
-    timeout_secs: 30
-
 translator:
   provider: "deepseek" # 可选值：deepseek、baidu；推荐通过后台设置百度凭据
 
