@@ -2,8 +2,10 @@ use std::time::Duration;
 
 use feed_rs::parser;
 use reqwest::Client;
+use tracing::warn;
 
 use crate::{
+    config::HttpClientConfig,
     error::{AppError, AppResult},
     model::{FeedOut, FeedTestPayload, FeedTestResult, FeedUpsertPayload},
     repo,
@@ -163,23 +165,33 @@ pub async fn delete(pool: &sqlx::PgPool, id: i64) -> AppResult<()> {
     }
 }
 
-pub async fn test(payload: FeedTestPayload) -> AppResult<FeedTestResult> {
+pub async fn test(
+    http_client: &HttpClientConfig,
+    payload: FeedTestPayload,
+) -> AppResult<FeedTestResult> {
     let url = payload.url.trim();
     if url.is_empty() {
         return Err(AppError::BadRequest("url is required".into()));
     }
 
-    let client = Client::builder()
-        .user_agent("NewsAggregatorTester/0.1")
+    let builder = http_client
+        .apply(Client::builder().user_agent("NewsAggregatorTester/0.1"))
+        .map_err(|err| AppError::Internal(err.into()))?;
+
+    let client = builder
         .timeout(Duration::from_secs(10))
         .build()
         .map_err(|err| AppError::Internal(err.into()))?;
 
-    let response = client
-        .get(url)
-        .send()
-        .await
-        .map_err(|err| AppError::BadRequest(format!("请求订阅源失败: {err}")))?;
+    let response = client.get(url).send().await.map_err(|err| {
+        warn!(
+            error = %err,
+            url = url,
+            chain = %format_error_chain(&err),
+            "feed test request failed"
+        );
+        AppError::BadRequest(format!("请求订阅源失败: {err}"))
+    })?;
 
     let status = response.status();
     if !status.is_success() {
@@ -211,6 +223,18 @@ pub async fn test(payload: FeedTestPayload) -> AppResult<FeedTestResult> {
         site_url,
         entry_count: parsed.entries.len(),
     })
+}
+
+fn format_error_chain(err: &(dyn std::error::Error + 'static)) -> String {
+    let mut parts = vec![err.to_string()];
+    let mut current = err.source();
+
+    while let Some(source) = current {
+        parts.push(source.to_string());
+        current = source.source();
+    }
+
+    parts.join(" -> ")
 }
 
 fn feed_row_to_out(row: repo::feeds::FeedRow) -> FeedOut {

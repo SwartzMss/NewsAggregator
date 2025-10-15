@@ -73,6 +73,45 @@ impl Default for LoggingConfig {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
+pub struct HttpClientConfig {
+    pub http_proxy: Option<String>,
+    pub https_proxy: Option<String>,
+}
+
+impl Default for HttpClientConfig {
+    fn default() -> Self {
+        let default_proxy = Some("http://172.20.160.1:7890".to_string());
+        Self {
+            http_proxy: default_proxy.clone(),
+            https_proxy: default_proxy,
+        }
+    }
+}
+
+impl HttpClientConfig {
+    pub fn apply(&self, builder: reqwest::ClientBuilder) -> anyhow::Result<reqwest::ClientBuilder> {
+        let mut builder = builder;
+
+        if let Some(ref proxy) = self.http_proxy {
+            builder = builder.proxy(
+                reqwest::Proxy::http(proxy)
+                    .with_context(|| format!("failed to parse http proxy url: {proxy}"))?,
+            );
+        }
+
+        if let Some(ref proxy) = self.https_proxy {
+            builder = builder.proxy(
+                reqwest::Proxy::https(proxy)
+                    .with_context(|| format!("failed to parse https proxy url: {proxy}"))?,
+            );
+        }
+
+        Ok(builder)
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default)]
 pub struct DeepseekConfig {
     pub api_key: Option<String>,
     pub base_url: String,
@@ -130,6 +169,7 @@ pub struct AppConfig {
     pub db: DbConfig,
     pub fetcher: FetcherConfig,
     pub logging: LoggingConfig,
+    pub http_client: HttpClientConfig,
     pub ai: AiConfig,
     pub deployment: DeploymentConfig,
     pub admin: AdminConfig,
@@ -142,6 +182,7 @@ impl Default for AppConfig {
             db: DbConfig::default(),
             fetcher: FetcherConfig::default(),
             logging: LoggingConfig::default(),
+            http_client: HttpClientConfig::default(),
             ai: AiConfig::default(),
             deployment: DeploymentConfig::default(),
             admin: AdminConfig::default(),
@@ -207,6 +248,14 @@ impl AppConfig {
             config.fetcher.request_timeout_secs = timeout;
         }
 
+        if let Ok(proxy) = std::env::var("HTTP_PROXY") {
+            config.http_client.http_proxy = Some(proxy);
+        }
+
+        if let Ok(proxy) = std::env::var("HTTPS_PROXY") {
+            config.http_client.https_proxy = Some(proxy);
+        }
+
         if let Ok(log_file) = std::env::var("LOG_FILE_PATH") {
             config.logging.file = log_file;
         }
@@ -252,6 +301,9 @@ impl AppConfig {
                 "database url missing; set DATABASE_URL env var or db.url in config file"
             ));
         }
+
+        config.http_client.http_proxy = normalize_proxy(config.http_client.http_proxy.take());
+        config.http_client.https_proxy = normalize_proxy(config.http_client.https_proxy.take());
 
         Ok(config)
     }
@@ -318,6 +370,17 @@ impl AppConfig {
             api_base_url: ensure_api_suffix(&base),
         }
     }
+}
+
+fn normalize_proxy(value: Option<String>) -> Option<String> {
+    value.and_then(|v| {
+        let trimmed = v.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    })
 }
 
 fn parse_optional_env<T>(key: &str) -> anyhow::Result<Option<T>>

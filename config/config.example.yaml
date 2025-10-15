@@ -21,6 +21,10 @@ logging:
   file: "logs/backend.log"
   level: "info"
 
+http_client:
+  http_proxy: "http://172.20.160.1:7890"
+  https_proxy: "http://172.20.160.1:7890"
+
 # AI 集成配置（可选，如未使用可保持为空）。
 ai:
   deepseek:

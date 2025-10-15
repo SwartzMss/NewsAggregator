@@ -1,6 +1,6 @@
 use std::{collections::BTreeSet, sync::Arc, time::Duration};
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use chrono::{DateTime, Utc};
 use feed_rs::{model::Entry, parser};
 use reqwest::{Client, StatusCode};
@@ -11,7 +11,7 @@ use tokio::{
 use tracing::{debug, info, warn};
 
 use crate::{
-    config::{AiConfig, FetcherConfig},
+    config::{AiConfig, FetcherConfig, HttpClientConfig},
     repo::{
         article_sources::{self, ArticleSourceRecord},
         articles::{self, ArticleRow, NewArticle},
@@ -46,9 +46,10 @@ const MAX_DEEPSEEK_CHECKS: usize = 3;
 pub fn spawn(
     pool: sqlx::PgPool,
     fetcher_config: FetcherConfig,
+    http_client_config: HttpClientConfig,
     ai_config: AiConfig,
 ) -> anyhow::Result<()> {
-    let fetcher = Fetcher::new(pool, fetcher_config, ai_config)?;
+    let fetcher = Fetcher::new(pool, fetcher_config, http_client_config, ai_config)?;
     tokio::spawn(async move {
         if let Err(err) = fetcher.run().await {
             tracing::error!(error = ?err, "fetcher stopped");
@@ -68,6 +69,7 @@ impl Fetcher {
     fn new(
         pool: sqlx::PgPool,
         mut config: FetcherConfig,
+        http_client_config: HttpClientConfig,
         ai_config: AiConfig,
     ) -> anyhow::Result<Self> {
         if config.interval_secs == 0 {
@@ -83,17 +85,19 @@ impl Fetcher {
             config.request_timeout_secs = 10;
         }
 
-        let client = Client::builder()
-            .user_agent("NewsAggregatorFetcher/0.1")
-            .timeout(Duration::from_secs(config.request_timeout_secs))
-            .build()?;
+        let client_builder = http_client_config
+            .apply(Client::builder().user_agent("NewsAggregatorFetcher/0.1"))
+            .context("failed to apply proxy settings for fetcher client")?
+            .timeout(Duration::from_secs(config.request_timeout_secs));
+
+        let client = client_builder.build()?;
 
         let deepseek = ai_config
             .deepseek
             .api_key
             .as_ref()
             .filter(|key| !key.trim().is_empty())
-            .map(|_| DeepseekClient::new(ai_config.deepseek.clone()))
+            .map(|_| DeepseekClient::new(ai_config.deepseek.clone(), &http_client_config))
             .transpose()?;
         let deepseek = deepseek.map(Arc::new);
 
@@ -154,9 +158,14 @@ impl Fetcher {
             set.spawn(async move {
                 debug!(feed_id = feed.id, url = %feed.url, "fetching feed");
                 if let Err(err) =
-                    process_feed(pool_cloned, client_cloned, deepseek_cloned, feed).await
+                    process_feed(pool_cloned, client_cloned, deepseek_cloned, feed.clone()).await
                 {
-                    warn!(error = ?err, "failed to process feed");
+                    warn!(
+                        error = ?err,
+                        feed_id = feed.id,
+                        url = %feed.url,
+                        "failed to process feed"
+                    );
                 }
             });
 
@@ -211,6 +220,13 @@ async fn process_feed_locked(
     let response = match request.send().await {
         Ok(resp) => resp,
         Err(err) => {
+            warn!(
+                feed_id = feed.id,
+                url = %feed.url,
+                error = %err,
+                chain = %format_error_chain(&err),
+                "failed to fetch feed"
+            );
             record_failure(&pool, feed.id, err.status()).await?;
             return Err(err.into());
         }
@@ -496,6 +512,18 @@ async fn process_feed_locked(
     );
 
     Ok(())
+}
+
+fn format_error_chain(err: &(dyn std::error::Error + 'static)) -> String {
+    let mut parts = vec![err.to_string()];
+    let mut current = err.source();
+
+    while let Some(source) = current {
+        parts.push(source.to_string());
+        current = source.source();
+    }
+
+    parts.join(" -> ")
 }
 
 async fn record_article_source(

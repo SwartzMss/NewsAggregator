@@ -11,7 +11,7 @@ use tower_http::cors::{Any, CorsLayer};
 
 use crate::{
     api, auth,
-    config::{AppConfig, FrontendPublicConfig},
+    config::{AppConfig, FrontendPublicConfig, HttpClientConfig},
     fetcher, repo,
 };
 
@@ -20,6 +20,7 @@ pub struct AppState {
     pub pool: PgPool,
     pub config: FrontendPublicConfig,
     pub admin: auth::AdminManager,
+    pub http_client: HttpClientConfig,
 }
 
 pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
@@ -32,7 +33,12 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
     repo::migrations::ensure_schema(&pool).await?;
     repo::maintenance::cleanup_orphan_content(&pool).await?;
 
-    fetcher::spawn(pool.clone(), config.fetcher.clone(), config.ai.clone())?;
+    fetcher::spawn(
+        pool.clone(),
+        config.fetcher.clone(),
+        config.http_client.clone(),
+        config.ai.clone(),
+    )?;
 
     let public_config = config.frontend_public_config();
     let admin_manager = auth::AdminManager::new(
@@ -45,6 +51,7 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
         pool,
         config: public_config,
         admin: admin_manager,
+        http_client: config.http_client.clone(),
     };
 
     let cors = CorsLayer::new()

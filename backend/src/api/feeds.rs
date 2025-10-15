@@ -31,7 +31,10 @@ pub async fn delete_feed(
     Ok(Json(serde_json::json!({ "ok": true })))
 }
 
-pub async fn test_feed(Json(payload): Json<FeedTestPayload>) -> AppResult<Json<FeedTestResult>> {
-    let result = service::feeds::test(payload).await?;
+pub async fn test_feed(
+    State(state): State<AppState>,
+    Json(payload): Json<FeedTestPayload>,
+) -> AppResult<Json<FeedTestResult>> {
+    let result = service::feeds::test(&state.http_client, payload).await?;
     Ok(Json(result))
 }

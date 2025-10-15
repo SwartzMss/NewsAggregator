@@ -4,7 +4,7 @@ use anyhow::{anyhow, Context, Result};
 use reqwest::{header, Client};
 use serde::{Deserialize, Serialize};
 
-use crate::config::DeepseekConfig;
+use crate::config::{DeepseekConfig, HttpClientConfig};
 
 /// Summary of a candidate article used for de-duplication prompts.
 #[derive(Debug, Clone)]
@@ -30,9 +30,12 @@ pub struct DeepseekClient {
 }
 
 impl DeepseekClient {
-    pub fn new(config: DeepseekConfig) -> Result<Self> {
+    pub fn new(config: DeepseekConfig, http_client: &HttpClientConfig) -> Result<Self> {
         let timeout = Duration::from_secs(config.timeout_secs.max(1));
-        let http = Client::builder()
+        let builder = http_client
+            .apply(Client::builder())
+            .context("failed to apply proxy settings for deepseek client")?;
+        let http = builder
             .timeout(timeout)
             .build()
             .context("failed to build deepseek http client")?;
