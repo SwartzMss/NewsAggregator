@@ -35,10 +35,7 @@ ai:
     timeout_secs: 30
 
 translator:
-  provider: "deepseek" # 可选值：deepseek、baidu
-  baidu:
-    app_id: ""
-    secret_key: ""
+  provider: "deepseek" # 可选值：deepseek、baidu；推荐通过后台设置百度凭据
 
 admin:
   username: "admin"
