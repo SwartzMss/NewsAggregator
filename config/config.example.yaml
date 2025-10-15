@@ -34,6 +34,12 @@ ai:
     model: "deepseek-chat"
     timeout_secs: 30
 
+translator:
+  provider: "deepseek" # 可选值：deepseek、baidu
+  baidu:
+    app_id: ""
+    secret_key: ""
+
 admin:
   username: "admin"
   password: "123456"

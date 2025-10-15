@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use axum::{
     middleware,
@@ -11,8 +11,9 @@ use tower_http::cors::{Any, CorsLayer};
 
 use crate::{
     api, auth,
-    config::{AiConfig, AppConfig, FetcherConfig, FrontendPublicConfig, HttpClientConfig},
+    config::{AppConfig, FetcherConfig, FrontendPublicConfig, HttpClientConfig},
     fetcher, repo,
+    util::translator::{TranslatorCredentialsUpdate, TranslationEngine, TranslatorProvider},
 };
 
 #[derive(Clone)]
@@ -22,7 +23,7 @@ pub struct AppState {
     pub admin: auth::AdminManager,
     pub http_client: HttpClientConfig,
     pub fetcher_config: FetcherConfig,
-    pub ai_config: AiConfig,
+    pub translator: Arc<TranslationEngine>,
 }
 
 pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
@@ -35,11 +36,53 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
     repo::migrations::ensure_schema(&pool).await?;
     repo::maintenance::cleanup_orphan_content(&pool).await?;
 
+    let translator = Arc::new(TranslationEngine::new(
+        &config.http_client,
+        &config.translator,
+        &config.ai,
+    )?);
+
+    let stored_baidu_app_id =
+        repo::settings::get_setting(&pool, "translation.baidu_app_id").await?;
+    let stored_baidu_secret =
+        repo::settings::get_setting(&pool, "translation.baidu_secret_key").await?;
+    let stored_deepseek_key =
+        repo::settings::get_setting(&pool, "translation.deepseek_api_key").await?;
+
+    translator.update_credentials(TranslatorCredentialsUpdate {
+        baidu_app_id: stored_baidu_app_id,
+        baidu_secret_key: stored_baidu_secret,
+        deepseek_api_key: stored_deepseek_key,
+        ..Default::default()
+    })?;
+
+    if let Some(saved_provider) = repo::settings::get_setting(&pool, "translation.provider").await?
+    {
+        match saved_provider.parse::<TranslatorProvider>() {
+            Ok(provider) => {
+                if let Err(err) = translator.set_provider(provider) {
+                    tracing::warn!(
+                        provider = provider.as_str(),
+                        error = %err,
+                        "translator provider from settings not available, using default"
+                    );
+                }
+            }
+            Err(err) => {
+                tracing::warn!(
+                    saved = saved_provider,
+                    error = %err,
+                    "invalid translator provider stored in settings"
+                );
+            }
+        }
+    }
+
     fetcher::spawn(
         pool.clone(),
         config.fetcher.clone(),
         config.http_client.clone(),
-        config.ai.clone(),
+        Arc::clone(&translator),
     )?;
 
     let public_config = config.frontend_public_config();
@@ -55,7 +98,7 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
         admin: admin_manager,
         http_client: config.http_client.clone(),
         fetcher_config: config.fetcher.clone(),
-        ai_config: config.ai.clone(),
+        translator,
     };
 
     let cors = CorsLayer::new()
@@ -71,6 +114,11 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
         )
         .route("/feeds/test", post(api::feeds::test_feed))
         .route("/feeds/:id", delete(api::feeds::delete_feed))
+        .route(
+            "/settings/translation",
+            get(api::settings::get_translation_settings)
+                .post(api::settings::update_translation_settings),
+        )
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
             auth::require_admin,

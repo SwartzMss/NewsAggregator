@@ -1,6 +1,11 @@
 # 数据库指南
 
-项目使用 PostgreSQL，主要存储在 `news` schema 下。当前表结构包括 `feeds`、`articles`、`article_sources` 三张核心表，用于记录订阅源、文章正文以及多来源引用信息。
+项目使用 PostgreSQL，主要存储在 `news` schema 下。当前表结构包括：
+
+- `feeds`：订阅源配置；
+- `articles`：入库文章；
+- `article_sources`：文章与来源的关联记录（用于展示和去重追踪）；
+- `settings`：系统级键值配置（例如翻译服务提供商、Deepseek/Baidu 的凭据）。
 
 ## 初始化建表 SQL
 第一次部署时执行以下 SQL（`canonical_id` 自指向，记录主文章；`article_sources` 保存多来源信息）：
@@ -67,6 +72,12 @@ CREATE TABLE IF NOT EXISTS news.article_sources (
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_article_sources_article_url
   ON news.article_sources(article_id, source_url);
+
+CREATE TABLE IF NOT EXISTS news.settings (
+  key        TEXT PRIMARY KEY,
+  value      TEXT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 ```
 
 ## 字段说明
@@ -77,6 +88,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_article_sources_article_url
 - `news.article_sources` 记录每篇文章被哪些来源收录以及判定原因/置信度，可用于展示“多源引用”或调试去重逻辑。
   - `decision` 说明这条记录的判定来源：`primary` 表示这是文章首次入库的来源；`recent_jaccard` 表示最近文章的标题相似度超过严格阈值而被判定为重复；其他字符串通常来自 DeepSeek 的判定结果（例如 `deepseek_duplicate` 或模型返回的自定义理由）。
   - `confidence` 搭配 `decision` 使用，在 DeepSeek 判定时保存模型输出的置信度，便于后续追踪阈值与误判。
+- `news.settings` 为简单的键值对表（`key` 唯一），目前用于存放翻译相关配置：
+  - `translation.provider`：当前默认翻译服务（`deepseek` 或 `baidu`）。
+  - `translation.deepseek_api_key`：Deepseek API Key。
+  - `translation.baidu_app_id` / `translation.baidu_secret_key`：百度翻译凭据。
+  这些值可在后台控制台实时更新，服务启动时会读取并注册到翻译引擎。
 
 ## 常用 SQL 示例
 **插入或更新 Feed（按 URL upsert）**

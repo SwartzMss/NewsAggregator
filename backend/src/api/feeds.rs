@@ -23,7 +23,7 @@ pub async fn upsert_feed(
         &state.pool,
         &state.http_client,
         &state.fetcher_config,
-        &state.ai_config,
+        &state.translator,
         payload,
     )
     .await?;

@@ -87,6 +87,29 @@ pub struct FeedTestResult {
     pub entry_count: usize,
 }
 
+#[derive(Debug, Serialize)]
+pub struct TranslationSettingsOut {
+    pub provider: String,
+    pub available_providers: Vec<String>,
+    pub baidu_configured: bool,
+    pub deepseek_configured: bool,
+    pub baidu_app_id_masked: Option<String>,
+    pub baidu_secret_key_masked: Option<String>,
+    pub deepseek_api_key_masked: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TranslationSettingsUpdate {
+    #[serde(default)]
+    pub provider: Option<String>,
+    #[serde(default)]
+    pub baidu_app_id: Option<String>,
+    #[serde(default)]
+    pub baidu_secret_key: Option<String>,
+    #[serde(default)]
+    pub deepseek_api_key: Option<String>,
+}
+
 impl Default for ArticleListQuery {
     fn default() -> Self {
         Self {

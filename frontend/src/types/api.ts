@@ -50,6 +50,23 @@ export type FeedTestResult = {
   entry_count: number;
 };
 
+export type TranslationSettings = {
+  provider: string;
+  available_providers: string[];
+  baidu_configured: boolean;
+  deepseek_configured: boolean;
+  baidu_app_id_masked?: string | null;
+  baidu_secret_key_masked?: string | null;
+  deepseek_api_key_masked?: string | null;
+};
+
+export type TranslationSettingsUpdate = {
+  provider?: string;
+  baidu_app_id?: string;
+  baidu_secret_key?: string;
+  deepseek_api_key?: string;
+};
+
 export type AdminLoginResponse = {
   token: string;
   expires_in: number;

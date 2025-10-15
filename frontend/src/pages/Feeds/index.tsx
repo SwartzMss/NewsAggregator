@@ -14,9 +14,14 @@ import { FeedFormModal } from "./FeedFormModal";
 type FeedsPageProps = {
   token: string;
   onUnauthorized: () => void;
+  showHeader?: boolean;
 };
 
-export function FeedsPage({ token, onUnauthorized }: FeedsPageProps) {
+export function FeedsPage({
+  token,
+  onUnauthorized,
+  showHeader = true,
+}: FeedsPageProps) {
   const queryClient = useQueryClient();
   const feedsQuery = useQuery<FeedOut[], Error>({
     queryKey: ["feeds", token],
@@ -30,6 +35,7 @@ export function FeedsPage({ token, onUnauthorized }: FeedsPageProps) {
       onUnauthorized();
     }
   }, [feedsQuery.error, onUnauthorized]);
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editingFeed, setEditingFeed] = useState<FeedOut | null>(null);
   const [busyIds, setBusyIds] = useState<Set<number>>(new Set());
@@ -120,21 +126,36 @@ export function FeedsPage({ token, onUnauthorized }: FeedsPageProps) {
 
   const feeds = feedsQuery.data ?? [];
   const busySet = useMemo(() => busyIds, [busyIds]);
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-900">订阅源列表</h2>
-          <p className="text-sm text-slate-500">管理 RSS 链接及抓取状态。</p>
+      {showHeader && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-900">订阅源列表</h2>
+            <p className="text-sm text-slate-500">管理 RSS 链接及抓取状态。</p>
+          </div>
+          <button
+            onClick={() => handleOpenModal()}
+            className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-dark"
+          >
+            + 新增订阅源
+          </button>
         </div>
-        <button
-          onClick={() => handleOpenModal()}
-          className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-dark"
-        >
-          + 新增订阅源
-        </button>
-      </div>
+      )}
+      {!showHeader && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          <div>
+            <h3 className="text-sm font-medium text-slate-700">订阅源列表</h3>
+            <p className="text-xs text-slate-500">管理 RSS 链接及抓取状态。</p>
+          </div>
+          <button
+            onClick={() => handleOpenModal()}
+            className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-primary-dark"
+          >
+            + 新增订阅源
+          </button>
+        </div>
+      )}
 
       {feedback && (
         <div className="rounded-md border border-slate-200 bg-white p-3 text-sm text-slate-600">

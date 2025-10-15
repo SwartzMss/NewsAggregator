@@ -132,6 +132,22 @@ impl Default for DeepseekConfig {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
+pub struct BaiduTranslatorConfig {
+    pub app_id: Option<String>,
+    pub secret_key: Option<String>,
+}
+
+impl Default for BaiduTranslatorConfig {
+    fn default() -> Self {
+        Self {
+            app_id: None,
+            secret_key: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default)]
 pub struct AiConfig {
     pub deepseek: DeepseekConfig,
 }
@@ -140,6 +156,22 @@ impl Default for AiConfig {
     fn default() -> Self {
         Self {
             deepseek: DeepseekConfig::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default)]
+pub struct TranslatorConfig {
+    pub provider: String,
+    pub baidu: BaiduTranslatorConfig,
+}
+
+impl Default for TranslatorConfig {
+    fn default() -> Self {
+        Self {
+            provider: "deepseek".to_string(),
+            baidu: BaiduTranslatorConfig::default(),
         }
     }
 }
@@ -171,6 +203,7 @@ pub struct AppConfig {
     pub logging: LoggingConfig,
     pub http_client: HttpClientConfig,
     pub ai: AiConfig,
+    pub translator: TranslatorConfig,
     pub deployment: DeploymentConfig,
     pub admin: AdminConfig,
 }
@@ -184,6 +217,7 @@ impl Default for AppConfig {
             logging: LoggingConfig::default(),
             http_client: HttpClientConfig::default(),
             ai: AiConfig::default(),
+            translator: TranslatorConfig::default(),
             deployment: DeploymentConfig::default(),
             admin: AdminConfig::default(),
         }
@@ -256,6 +290,24 @@ impl AppConfig {
             config.http_client.https_proxy = Some(proxy);
         }
 
+        if let Ok(provider) = std::env::var("TRANSLATOR_PROVIDER") {
+            if !provider.trim().is_empty() {
+                config.translator.provider = provider;
+            }
+        }
+
+        if let Ok(app_id) = std::env::var("BAIDU_APP_ID") {
+            if !app_id.trim().is_empty() {
+                config.translator.baidu.app_id = Some(app_id);
+            }
+        }
+
+        if let Ok(secret) = std::env::var("BAIDU_SECRET_KEY") {
+            if !secret.trim().is_empty() {
+                config.translator.baidu.secret_key = Some(secret);
+            }
+        }
+
         if let Ok(log_file) = std::env::var("LOG_FILE_PATH") {
             config.logging.file = log_file;
         }
@@ -304,6 +356,19 @@ impl AppConfig {
 
         config.http_client.http_proxy = normalize_proxy(config.http_client.http_proxy.take());
         config.http_client.https_proxy = normalize_proxy(config.http_client.https_proxy.take());
+        config.translator.provider = normalize_provider(&config.translator.provider);
+        config.translator.baidu.app_id = config
+            .translator
+            .baidu
+            .app_id
+            .take()
+            .and_then(|v| normalize_optional_string(v));
+        config.translator.baidu.secret_key = config
+            .translator
+            .baidu
+            .secret_key
+            .take()
+            .and_then(|v| normalize_optional_string(v));
 
         Ok(config)
     }
@@ -381,6 +446,24 @@ fn normalize_proxy(value: Option<String>) -> Option<String> {
             Some(trimmed.to_string())
         }
     })
+}
+
+fn normalize_provider(value: &str) -> String {
+    let normalized = value.trim().to_ascii_lowercase();
+    if normalized.is_empty() {
+        "deepseek".to_string()
+    } else {
+        normalized
+    }
+}
+
+fn normalize_optional_string(value: String) -> Option<String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
 }
 
 fn parse_optional_env<T>(key: &str) -> anyhow::Result<Option<T>>

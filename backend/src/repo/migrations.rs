@@ -179,6 +179,17 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
     )
     .await?;
 
+    tx.execute(
+        r#"
+        CREATE TABLE IF NOT EXISTS news.settings (
+          key        TEXT PRIMARY KEY,
+          value      TEXT NOT NULL,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        "#,
+    )
+    .await?;
+
     let deleted = sqlx::query_scalar::<_, i64>(
         r#"
         WITH duplicates AS (

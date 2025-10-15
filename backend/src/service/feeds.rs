@@ -1,15 +1,16 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use feed_rs::parser;
 use reqwest::Client;
 use tracing::warn;
 
 use crate::{
-    config::{AiConfig, FetcherConfig, HttpClientConfig},
+    config::{FetcherConfig, HttpClientConfig},
     error::{AppError, AppResult},
     fetcher,
     model::{FeedOut, FeedTestPayload, FeedTestResult, FeedUpsertPayload},
     repo,
+    util::translator::TranslationEngine,
 };
 
 pub async fn list(pool: &sqlx::PgPool) -> AppResult<Vec<FeedOut>> {
@@ -21,7 +22,7 @@ pub async fn upsert(
     pool: &sqlx::PgPool,
     http_client: &HttpClientConfig,
     fetcher_config: &FetcherConfig,
-    ai_config: &AiConfig,
+    translator: &Arc<TranslationEngine>,
     payload: FeedUpsertPayload,
 ) -> AppResult<FeedOut> {
     let FeedUpsertPayload {
@@ -131,10 +132,10 @@ pub async fn upsert(
         let pool = pool.clone();
         let http_client = http_client.clone();
         let fetcher_config = fetcher_config.clone();
-        let ai_config = ai_config.clone();
+        let translator = Arc::clone(translator);
         tokio::spawn(async move {
             if let Err(err) =
-                fetcher::fetch_feed_once(pool, fetcher_config, http_client, ai_config, feed_id)
+                fetcher::fetch_feed_once(pool, fetcher_config, http_client, translator, feed_id)
                     .await
             {
                 tracing::warn!(

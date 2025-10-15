@@ -5,6 +5,8 @@ import {
   FeedOut,
   FeedTestResult,
   AdminLoginResponse,
+  TranslationSettings,
+  TranslationSettingsUpdate,
 } from "../types/api";
 
 type QueryParams = Record<string, string | number | undefined | null>;
@@ -218,6 +220,38 @@ export async function deleteFeed(token: string, id: number): Promise<void> {
     const message = await res.text();
     throw new Error(message || `Failed to delete feed ${id}`);
   }
+}
+
+export async function getTranslationSettings(
+  token: string
+): Promise<TranslationSettings> {
+  const res = await adminRequest(
+    "/admin/api/settings/translation",
+    token,
+    {
+      headers: { Accept: "application/json" },
+    }
+  );
+  return parseJSON<TranslationSettings>(res);
+}
+
+export async function updateTranslationSettings(
+  token: string,
+  payload: TranslationSettingsUpdate
+): Promise<TranslationSettings> {
+  const res = await adminRequest(
+    "/admin/api/settings/translation",
+    token,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+  return parseJSON<TranslationSettings>(res);
 }
 
 export async function testFeed(

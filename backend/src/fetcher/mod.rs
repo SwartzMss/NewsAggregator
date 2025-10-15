@@ -11,15 +11,16 @@ use tokio::{
 use tracing::{debug, info, warn};
 
 use crate::{
-    config::{AiConfig, FetcherConfig, HttpClientConfig},
+    config::{FetcherConfig, HttpClientConfig},
     repo::{
         article_sources::{self, ArticleSourceRecord},
         articles::{self, ArticleRow, NewArticle},
         feeds::{self, DueFeedRow},
     },
     util::{
-        deepseek::{ArticleSnippet, DeepseekClient},
+        deepseek::ArticleSnippet,
         title::{jaccard_similarity, prepare_title_signature},
+        translator::TranslationEngine,
         url_norm::normalize_article_url,
     },
 };
@@ -53,9 +54,9 @@ pub fn spawn(
     pool: sqlx::PgPool,
     fetcher_config: FetcherConfig,
     http_client_config: HttpClientConfig,
-    ai_config: AiConfig,
+    translator: Arc<TranslationEngine>,
 ) -> anyhow::Result<()> {
-    let fetcher = Fetcher::new(pool, fetcher_config, http_client_config, ai_config)?;
+    let fetcher = Fetcher::new(pool, fetcher_config, http_client_config, translator)?;
     tokio::spawn(async move {
         if let Err(err) = fetcher.run().await {
             tracing::error!(error = ?err, "fetcher stopped");
@@ -68,7 +69,7 @@ pub async fn fetch_feed_once(
     pool: sqlx::PgPool,
     fetcher_config: FetcherConfig,
     http_client_config: HttpClientConfig,
-    ai_config: AiConfig,
+    translator: Arc<TranslationEngine>,
     feed_id: i64,
 ) -> anyhow::Result<()> {
     let config = normalize_fetcher_config(fetcher_config);
@@ -80,20 +81,11 @@ pub async fn fetch_feed_once(
 
     let client = Arc::new(client_builder.build()?);
 
-    let deepseek = ai_config
-        .deepseek
-        .api_key
-        .as_ref()
-        .filter(|key| !key.trim().is_empty())
-        .map(|_| DeepseekClient::new(ai_config.deepseek.clone(), &http_client_config))
-        .transpose()?;
-    let deepseek = deepseek.map(Arc::new);
-
     let feed = feeds::find_due_feed(&pool, feed_id)
         .await?
         .ok_or_else(|| anyhow!("feed {feed_id} not found"))?;
 
-    process_feed(pool, client, deepseek, feed).await
+    process_feed(pool, client, translator, feed).await
 }
 
 fn normalize_fetcher_config(mut config: FetcherConfig) -> FetcherConfig {
@@ -116,7 +108,7 @@ struct Fetcher {
     pool: sqlx::PgPool,
     client: Client,
     config: FetcherConfig,
-    deepseek: Option<Arc<DeepseekClient>>,
+    translation: Arc<TranslationEngine>,
 }
 
 impl Fetcher {
@@ -124,7 +116,7 @@ impl Fetcher {
         pool: sqlx::PgPool,
         config: FetcherConfig,
         http_client_config: HttpClientConfig,
-        ai_config: AiConfig,
+        translator: Arc<TranslationEngine>,
     ) -> anyhow::Result<Self> {
         let config = normalize_fetcher_config(config);
 
@@ -135,20 +127,11 @@ impl Fetcher {
 
         let client = client_builder.build()?;
 
-        let deepseek = ai_config
-            .deepseek
-            .api_key
-            .as_ref()
-            .filter(|key| !key.trim().is_empty())
-            .map(|_| DeepseekClient::new(ai_config.deepseek.clone(), &http_client_config))
-            .transpose()?;
-        let deepseek = deepseek.map(Arc::new);
-
         Ok(Self {
             pool,
             client,
             config,
-            deepseek,
+            translation: translator,
         })
     }
 
@@ -157,19 +140,24 @@ impl Fetcher {
             pool,
             client,
             config,
-            deepseek,
+            translation,
         } = self;
 
         let client = Arc::new(client);
-        let deepseek = deepseek.map(Arc::from);
+        let translation = Arc::clone(&translation);
         let mut ticker = interval(Duration::from_secs(config.interval_secs));
         ticker.set_missed_tick_behavior(MissedTickBehavior::Delay);
         ticker.tick().await; // immediate first run
 
         loop {
             ticker.tick().await;
-            if let Err(err) =
-                Self::run_once(pool.clone(), client.clone(), deepseek.clone(), &config).await
+            if let Err(err) = Self::run_once(
+                pool.clone(),
+                client.clone(),
+                Arc::clone(&translation),
+                &config,
+            )
+            .await
             {
                 warn!(error = ?err, "fetcher iteration failed");
             }
@@ -179,7 +167,7 @@ impl Fetcher {
     async fn run_once(
         pool: sqlx::PgPool,
         client: Arc<Client>,
-        deepseek: Option<Arc<DeepseekClient>>,
+        translation: Arc<TranslationEngine>,
         config: &FetcherConfig,
     ) -> anyhow::Result<()> {
         let feeds = feeds::list_due_feeds(&pool, config.batch_size as i64).await?;
@@ -196,12 +184,12 @@ impl Fetcher {
         for feed in feeds {
             let pool_cloned = pool.clone();
             let client_cloned = client.clone();
-            let deepseek_cloned = deepseek.clone();
+            let translation_cloned = Arc::clone(&translation);
 
             set.spawn(async move {
                 debug!(feed_id = feed.id, url = %feed.url, "fetching feed");
                 if let Err(err) =
-                    process_feed(pool_cloned, client_cloned, deepseek_cloned, feed.clone()).await
+                    process_feed(pool_cloned, client_cloned, translation_cloned, feed.clone()).await
                 {
                     warn!(
                         error = ?err,
@@ -228,14 +216,14 @@ impl Fetcher {
 async fn process_feed(
     pool: sqlx::PgPool,
     client: Arc<Client>,
-    deepseek: Option<Arc<DeepseekClient>>,
+    translation: Arc<TranslationEngine>,
     feed: DueFeedRow,
 ) -> anyhow::Result<()> {
     let mut lock_conn = pool.acquire().await?;
     feeds::acquire_processing_lock(&mut lock_conn, feed.id).await?;
 
     let feed_id = feed.id;
-    let result = process_feed_locked(pool.clone(), client, deepseek, &feed).await;
+    let result = process_feed_locked(pool.clone(), client, translation, &feed).await;
 
     let release_result = feeds::release_processing_lock(&mut lock_conn, feed_id).await;
     drop(lock_conn);
@@ -253,7 +241,7 @@ async fn process_feed(
 async fn process_feed_locked(
     pool: sqlx::PgPool,
     client: Arc<Client>,
-    deepseek: Option<Arc<DeepseekClient>>,
+    translation: Arc<TranslationEngine>,
     feed: &DueFeedRow,
 ) -> anyhow::Result<()> {
     let mut request = client.get(&feed.url);
@@ -348,30 +336,37 @@ async fn process_feed_locked(
     let mut articles = Vec::new();
     let mut seen_signatures: Vec<(BTreeSet<String>, String)> = Vec::new();
 
+    let deepseek = translation.deepseek_client();
+
     for entry in &entries {
         if let Some(mut article) = convert_entry(feed, &entry) {
             let original_title = article.title.clone();
             let original_description = article.description.clone();
 
             if should_translate_feed(&feed.source_domain) {
-                if let Some(client) = deepseek.as_ref() {
-                    match client
-                        .translate_news(&original_title, original_description.as_deref())
-                        .await
-                    {
-                        Ok(translated) => {
-                            article.title = translated.title;
-                            article.description = translated.description;
-                            article.language = Some(TRANSLATION_LANG.to_string());
-                        }
-                        Err(err) => {
-                            warn!(
-                                error = ?err,
-                                feed_id = feed.id,
-                                url = %article.url,
-                                "failed to translate article"
-                            );
-                        }
+                match translation
+                    .translate(&original_title, original_description.as_deref())
+                    .await
+                {
+                    Ok(Some(translated)) => {
+                        article.title = translated.title;
+                        article.description = translated.description;
+                        article.language = Some(TRANSLATION_LANG.to_string());
+                    }
+                    Ok(None) => {
+                        debug!(
+                            feed_id = feed.id,
+                            url = %article.url,
+                            "translation skipped (no provider configured)"
+                        );
+                    }
+                    Err(err) => {
+                        warn!(
+                            error = %err,
+                            feed_id = feed.id,
+                            url = %article.url,
+                            "failed to translate article"
+                        );
                     }
                 }
             }
