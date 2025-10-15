@@ -4,6 +4,7 @@ import {
   ArticleOut,
   FeedOut,
   FeedTestResult,
+  AdminLoginResponse,
 } from "../types/api";
 
 type QueryParams = Record<string, string | number | undefined | null>;
@@ -72,9 +73,44 @@ const toQueryString = (params?: QueryParams) => {
 const parseJSON = async <T>(response: Response): Promise<T> => {
   if (!response.ok) {
     const message = await response.text();
-    throw new Error(message || `Request failed with status ${response.status}`);
+    let resolved = message;
+    if (message) {
+      try {
+        const parsed = JSON.parse(message) as {
+          error?: { message?: string };
+          message?: string;
+        };
+        resolved =
+          parsed.error?.message ?? parsed.message ??
+          (typeof parsed === "string" ? parsed : message);
+      } catch {
+        resolved = message;
+      }
+    }
+    throw new Error(resolved || `Request failed with status ${response.status}`);
   }
   return (await response.json()) as T;
+};
+
+export class UnauthorizedError extends Error {
+  constructor(message = "Unauthorized") {
+    super(message);
+    this.name = "UnauthorizedError";
+  }
+}
+
+const adminRequest = async (path: string, token: string, init?: RequestInit) => {
+  const headers = new Headers(init?.headers ?? {});
+  if (!token) {
+    throw new UnauthorizedError();
+  }
+  headers.set("Authorization", `Bearer ${token}`);
+
+  const res = await request(path, { ...init, headers });
+  if (res.status === 401) {
+    throw new UnauthorizedError();
+  }
+  return res;
 };
 
 export async function getArticles(params: {
@@ -90,8 +126,54 @@ export async function getArticles(params: {
   return parseJSON<PageResp<ArticleOut>>(res);
 }
 
-export async function listFeeds(): Promise<FeedOut[]> {
-  const res = await request("/feeds", {
+export async function adminLogin(
+  username: string,
+  password: string
+): Promise<AdminLoginResponse> {
+  const res = await request("/admin/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ username, password }),
+  });
+  if (res.status === 401) {
+    const message = await res.text();
+    let resolved = "用户名或密码错误";
+    if (message) {
+      try {
+        const parsed = JSON.parse(message) as {
+          error?: { message?: string };
+          message?: string;
+        };
+        resolved = parsed.error?.message ?? parsed.message ?? resolved;
+      } catch {
+        resolved = message;
+      }
+    }
+    throw new Error(resolved);
+  }
+  return parseJSON<AdminLoginResponse>(res);
+}
+
+export async function adminLogout(token: string): Promise<void> {
+  const res = await adminRequest("/admin/logout", token, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ token }),
+  });
+  if (!res.ok) {
+    const message = await res.text();
+    throw new Error(message || "Failed to logout");
+  }
+}
+
+export async function listFeeds(token: string): Promise<FeedOut[]> {
+  const res = await adminRequest("/admin/api/feeds", token, {
     headers: { Accept: "application/json" },
   });
   return parseJSON<FeedOut[]>(res);
@@ -113,8 +195,11 @@ export async function recordArticleClick(id: number): Promise<void> {
   });
 }
 
-export async function upsertFeed(payload: FeedUpsertPayload): Promise<FeedOut> {
-  const res = await request("/feeds", {
+export async function upsertFeed(
+  token: string,
+  payload: FeedUpsertPayload
+): Promise<FeedOut> {
+  const res = await adminRequest("/admin/api/feeds", token, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -125,8 +210,8 @@ export async function upsertFeed(payload: FeedUpsertPayload): Promise<FeedOut> {
   return parseJSON<FeedOut>(res);
 }
 
-export async function deleteFeed(id: number): Promise<void> {
-  const res = await request(`/feeds/${id}`, {
+export async function deleteFeed(token: string, id: number): Promise<void> {
+  const res = await adminRequest(`/admin/api/feeds/${id}`, token, {
     method: "DELETE",
   });
   if (!res.ok) {
@@ -135,8 +220,11 @@ export async function deleteFeed(id: number): Promise<void> {
   }
 }
 
-export async function testFeed(url: string): Promise<FeedTestResult> {
-  const res = await request("/feeds/test", {
+export async function testFeed(
+  token: string,
+  url: string
+): Promise<FeedTestResult> {
+  const res = await adminRequest("/admin/api/feeds/test", token, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

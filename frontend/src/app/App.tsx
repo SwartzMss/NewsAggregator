@@ -31,9 +31,6 @@ export function AppLayout() {
             <NavLink to="/search" className={navLinkClass}>
               搜索
             </NavLink>
-            <NavLink to="/feeds" className={navLinkClass}>
-              订阅源管理
-            </NavLink>
           </nav>
         </div>
       </header>

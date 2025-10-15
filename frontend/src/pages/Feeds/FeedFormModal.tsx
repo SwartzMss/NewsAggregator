@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { testFeed } from "../../lib/api";
 import { FeedOut, FeedTestResult, FeedUpsertPayload } from "../../types/api";
 
 export type FeedFormModalProps = {
@@ -8,6 +7,7 @@ export type FeedFormModalProps = {
   onClose: () => void;
   onSubmit: (payload: FeedUpsertPayload) => Promise<void> | void;
   submitting?: boolean;
+  onTest: (url: string) => Promise<FeedTestResult>;
 };
 
 const emptyForm: FeedUpsertPayload = {
@@ -33,7 +33,14 @@ const guessSourceDomain = (raw: string): string | null => {
   }
 };
 
-export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: FeedFormModalProps) {
+export function FeedFormModal({
+  open,
+  initial,
+  onClose,
+  onSubmit,
+  submitting,
+  onTest,
+}: FeedFormModalProps) {
   const [form, setForm] = useState<FeedUpsertPayload>(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
@@ -154,7 +161,7 @@ export function FeedFormModal({ open, initial, onClose, onSubmit, submitting }: 
     setTestError(null);
 
     try {
-      const result = await testFeed(url);
+      const result = await onTest(url);
       setTestResult(result);
 
       setForm((prev) => ({

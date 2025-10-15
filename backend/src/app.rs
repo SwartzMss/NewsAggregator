@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use axum::{
+    middleware,
     routing::{delete, get, post},
     Router,
 };
@@ -9,7 +10,7 @@ use tower::ServiceBuilder;
 use tower_http::cors::{Any, CorsLayer};
 
 use crate::{
-    api,
+    api, auth,
     config::{AppConfig, FrontendPublicConfig},
     fetcher, repo,
 };
@@ -18,6 +19,7 @@ use crate::{
 pub struct AppState {
     pub pool: PgPool,
     pub config: FrontendPublicConfig,
+    pub admin: auth::AdminManager,
 }
 
 pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
@@ -33,9 +35,16 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
     fetcher::spawn(pool.clone(), config.fetcher.clone(), config.ai.clone())?;
 
     let public_config = config.frontend_public_config();
+    let admin_manager = auth::AdminManager::new(
+        config.admin.username.clone(),
+        config.admin.password.clone(),
+        Duration::from_secs(std::cmp::max(60_u64, config.admin.session_ttl_secs)),
+    );
+
     let state = AppState {
         pool,
         config: public_config,
+        admin: admin_manager,
     };
 
     let cors = CorsLayer::new()
@@ -44,18 +53,28 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
         .allow_headers(Any);
     let middleware = ServiceBuilder::new().layer(cors);
 
-    let router = Router::new()
-        .route("/healthz", get(api::health::health_check))
+    let admin_api = Router::new()
         .route(
             "/feeds",
             get(api::feeds::list_feeds).post(api::feeds::upsert_feed),
         )
         .route("/feeds/test", post(api::feeds::test_feed))
         .route("/feeds/:id", delete(api::feeds::delete_feed))
+        .route_layer(middleware::from_fn_with_state(
+            state.clone(),
+            auth::require_admin,
+        ))
+        .with_state(state.clone());
+
+    let router = Router::new()
+        .route("/healthz", get(api::health::health_check))
         .route("/articles", get(api::articles::list_articles))
         .route("/articles/featured", get(api::articles::list_featured))
         .route("/articles/:id/click", post(api::articles::record_click))
         .route("/config/frontend", get(api::config::frontend_config))
+        .route("/admin/login", post(api::admin::login))
+        .route("/admin/logout", post(api::admin::logout))
+        .nest("/admin/api", admin_api)
         .layer(middleware)
         .with_state(state);
 

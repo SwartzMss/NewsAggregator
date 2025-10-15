@@ -30,6 +30,11 @@ ai:
     model: "deepseek-chat"
     timeout_secs: 30
 
+admin:
+  username: "admin"
+  password: "123456"
+  session_ttl_secs: 300
+
 # 部署相关配置，供 nginx/deploy.sh 读取。部署前请根据实际环境填写。
 deployment:
   # 编译和运行所使用的系统账号。

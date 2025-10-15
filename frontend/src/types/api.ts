@@ -49,3 +49,8 @@ export type FeedTestResult = {
   site_url?: string | null;
   entry_count: number;
 };
+
+export type AdminLoginResponse = {
+  token: string;
+  expires_in: number;
+};

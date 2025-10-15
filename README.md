@@ -9,6 +9,7 @@
 - **数据存储**：PostgreSQL `news` schema 维护 feeds、articles、article_sources 三张核心表，支持分页与多条件查询。
 - **前端展示**：React + Vite 构建的 SPA，通过 TanStack Query 调用 API，提供文章列表与订阅源面板。
 - **标题搜索**：专用搜索页面支持标题关键字模糊匹配，结合分页快速定位历史内容。
+- **管理员后台**：通过 `/admin` 登录（默认账号/密码 `admin` / `123456`），可维护订阅源并为后续统计功能预留入口。
 - **运维部署**：nginx 反向代理静态资源与 `/api`，systemd 接管 Rust 服务，部署脚本 `nginx/deploy.sh` 支持一键上线。
 
 ## 代码结构

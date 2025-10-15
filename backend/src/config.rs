@@ -107,6 +107,24 @@ impl Default for AiConfig {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
+pub struct AdminConfig {
+    pub username: String,
+    pub password: String,
+    pub session_ttl_secs: u64,
+}
+
+impl Default for AdminConfig {
+    fn default() -> Self {
+        Self {
+            username: "admin".to_string(),
+            password: "123456".to_string(),
+            session_ttl_secs: 300,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default)]
 pub struct AppConfig {
     pub server: ServerConfig,
     pub db: DbConfig,
@@ -114,6 +132,7 @@ pub struct AppConfig {
     pub logging: LoggingConfig,
     pub ai: AiConfig,
     pub deployment: DeploymentConfig,
+    pub admin: AdminConfig,
 }
 
 impl Default for AppConfig {
@@ -125,6 +144,7 @@ impl Default for AppConfig {
             logging: LoggingConfig::default(),
             ai: AiConfig::default(),
             deployment: DeploymentConfig::default(),
+            admin: AdminConfig::default(),
         }
     }
 }
@@ -209,6 +229,22 @@ impl AppConfig {
 
         if let Some(timeout) = parse_optional_env("DEEPSEEK_TIMEOUT_SECS")? {
             config.ai.deepseek.timeout_secs = timeout;
+        }
+
+        if let Ok(admin_username) = std::env::var("ADMIN_USERNAME") {
+            if !admin_username.trim().is_empty() {
+                config.admin.username = admin_username;
+            }
+        }
+
+        if let Ok(admin_password) = std::env::var("ADMIN_PASSWORD") {
+            if !admin_password.trim().is_empty() {
+                config.admin.password = admin_password;
+            }
+        }
+
+        if let Some(ttl) = parse_optional_env::<u64>("ADMIN_SESSION_TTL_SECS")? {
+            config.admin.session_ttl_secs = ttl.max(60);
         }
 
         if config.db.url.trim().is_empty() {

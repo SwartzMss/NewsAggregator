@@ -1,4 +1,8 @@
-use axum::{http::StatusCode, response::IntoResponse, Json};
+use axum::{
+    http::{header, StatusCode},
+    response::IntoResponse,
+    Json,
+};
 use serde::Serialize;
 use thiserror::Error;
 
@@ -6,6 +10,8 @@ use thiserror::Error;
 pub enum AppError {
     #[error("bad request: {0}")]
     BadRequest(String),
+    #[error("unauthorized: {0}")]
+    Unauthorized(String),
     #[error("internal server error")]
     Internal(#[from] anyhow::Error),
 }
@@ -25,6 +31,9 @@ impl IntoResponse for AppError {
     fn into_response(self) -> axum::response::Response {
         let (status, code, message) = match self {
             AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, "BadRequest".to_string(), msg),
+            AppError::Unauthorized(msg) => {
+                (StatusCode::UNAUTHORIZED, "Unauthorized".to_string(), msg)
+            }
             AppError::Internal(err) => {
                 tracing::error!(error = ?err, "internal server error");
                 (
@@ -39,7 +48,14 @@ impl IntoResponse for AppError {
             error: ErrorDetail { code, message },
         });
 
-        (status, body).into_response()
+        let mut response = (status, body).into_response();
+        if matches!(status, StatusCode::UNAUTHORIZED) {
+            response.headers_mut().insert(
+                header::WWW_AUTHENTICATE,
+                header::HeaderValue::from_static("Bearer"),
+            );
+        }
+        response
     }
 }
 

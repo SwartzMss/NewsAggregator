@@ -46,6 +46,23 @@ pub struct ArticleListQuery {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct AdminLoginPayload {
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AdminLogoutPayload {
+    pub token: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AdminLoginResponse {
+    pub token: String,
+    pub expires_in: u64,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct FeedUpsertPayload {
     pub id: Option<i64>,
     pub url: String,

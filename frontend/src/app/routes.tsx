@@ -1,9 +1,9 @@
 import { createBrowserRouter } from "react-router-dom";
 import { AppLayout } from "./App";
 import { NewsListPage } from "../pages/NewsList";
-import { FeedsPage } from "../pages/Feeds";
 import { FeaturedPage } from "../pages/Featured";
 import { SearchPage } from "../pages/Search";
+import { AdminPage } from "../pages/Admin";
 
 export const router = createBrowserRouter([
   {
@@ -13,7 +13,10 @@ export const router = createBrowserRouter([
       { index: true, element: <NewsListPage /> },
       { path: "featured", element: <FeaturedPage /> },
       { path: "search", element: <SearchPage /> },
-      { path: "feeds", element: <FeedsPage /> },
     ],
+  },
+  {
+    path: "/admin",
+    element: <AdminPage />,
   },
 ]);

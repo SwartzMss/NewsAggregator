@@ -1,13 +1,35 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { deleteFeed, listFeeds, upsertFeed } from "../../lib/api";
+import {
+  deleteFeed,
+  listFeeds,
+  upsertFeed,
+  testFeed,
+  UnauthorizedError,
+} from "../../lib/api";
 import { FeedOut, FeedUpsertPayload } from "../../types/api";
 import { FeedTable } from "./FeedTable";
 import { FeedFormModal } from "./FeedFormModal";
 
-export function FeedsPage() {
+type FeedsPageProps = {
+  token: string;
+  onUnauthorized: () => void;
+};
+
+export function FeedsPage({ token, onUnauthorized }: FeedsPageProps) {
   const queryClient = useQueryClient();
-  const feedsQuery = useQuery({ queryKey: ["feeds"], queryFn: listFeeds });
+  const feedsQuery = useQuery<FeedOut[], Error>({
+    queryKey: ["feeds", token],
+    queryFn: () => listFeeds(token),
+    enabled: Boolean(token),
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (feedsQuery.error instanceof UnauthorizedError) {
+      onUnauthorized();
+    }
+  }, [feedsQuery.error, onUnauthorized]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingFeed, setEditingFeed] = useState<FeedOut | null>(null);
   const [busyIds, setBusyIds] = useState<Set<number>>(new Set());
@@ -18,11 +40,12 @@ export function FeedsPage() {
     setModalOpen(false);
   };
 
-  const invalidateFeeds = () => queryClient.invalidateQueries({ queryKey: ["feeds"], exact: true });
+  const invalidateFeeds = () =>
+    queryClient.invalidateQueries({ queryKey: ["feeds"] });
 
-  const upsertMutation = useMutation({
+  const upsertMutation = useMutation<FeedOut, Error, FeedUpsertPayload>({
     mutationFn: async (payload: FeedUpsertPayload) => {
-      const response = await upsertFeed(payload);
+      const response = await upsertFeed(token, payload);
       return response;
     },
     onSuccess: () => {
@@ -30,20 +53,28 @@ export function FeedsPage() {
       invalidateFeeds();
     },
     onError: (err: Error) => {
+      if (err instanceof UnauthorizedError) {
+        onUnauthorized();
+        return;
+      }
       setFeedback(err.message || "保存订阅源失败");
     },
   });
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useMutation<void, Error, FeedOut>({
     mutationFn: async (feed: FeedOut) => {
       setBusyIds((prev) => new Set(prev).add(feed.id));
-      await deleteFeed(feed.id);
+      await deleteFeed(token, feed.id);
     },
     onSuccess: () => {
       setFeedback("订阅源已删除");
       invalidateFeeds();
     },
     onError: (err: Error) => {
+      if (err instanceof UnauthorizedError) {
+        onUnauthorized();
+        return;
+      }
       setFeedback(err.message || "删除订阅源失败");
     },
     onSettled: (_data, _error, feed) => {
@@ -135,6 +166,7 @@ export function FeedsPage() {
           await upsertMutation.mutateAsync(payload);
         }}
         submitting={upsertMutation.isPending}
+        onTest={(url) => testFeed(token, url)}
       />
     </div>
   );
