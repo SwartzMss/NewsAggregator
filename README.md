@@ -8,6 +8,7 @@
 - **智能去重**：从 URL/发布时间规则到标题相似度，再到 DeepSeek 语义判定的多层策略，阻止重复新闻进入主表，同时保留来源追溯。
 - **数据存储**：PostgreSQL `news` schema 维护 feeds、articles、article_sources 三张核心表，支持分页与多条件查询。
 - **前端展示**：React + Vite 构建的 SPA，通过 TanStack Query 调用 API，提供文章列表与订阅源面板。
+- **标题搜索**：专用搜索页面支持标题关键字模糊匹配，结合分页快速定位历史内容。
 - **运维部署**：nginx 反向代理静态资源与 `/api`，systemd 接管 Rust 服务，部署脚本 `nginx/deploy.sh` 支持一键上线。
 
 ## 代码结构

@@ -82,6 +82,7 @@ export async function getArticles(params: {
   to?: string;
   page?: number;
   page_size?: number;
+  keyword?: string;
 }): Promise<PageResp<ArticleOut>> {
   const res = await request(`/articles${toQueryString(params)}`, {
     headers: { Accept: "application/json" },

@@ -42,6 +42,7 @@ pub struct ArticleListQuery {
     pub to: Option<String>,
     pub page: u32,
     pub page_size: u32,
+    pub keyword: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -76,6 +77,7 @@ impl Default for ArticleListQuery {
             to: None,
             page: 1,
             page_size: 20,
+            keyword: None,
         }
     }
 }

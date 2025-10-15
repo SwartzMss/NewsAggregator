@@ -1,4 +1,8 @@
-import { useInfiniteQuery, type InfiniteData, useQuery } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  type InfiniteData,
+  useQuery,
+} from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { getArticles, getFeaturedArticles } from "../../lib/api";
 import { ArticleCard } from "./ArticleCard";
@@ -11,7 +15,7 @@ export function NewsListPage() {
     PageResp<ArticleOut>,
     Error,
     InfiniteData<PageResp<ArticleOut>, number>,
-    [string],
+    ["articles"],
     number
   >({
     queryKey: ["articles"],
@@ -54,36 +58,41 @@ export function NewsListPage() {
         </section>
       )}
 
-      {query.isLoading && !articles.length ? (
-        <div className="text-sm text-slate-500">正在加载最新文章…</div>
-      ) : query.isError ? (
-        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {(query.error as Error).message || "文章列表加载失败"}
-        </div>
-      ) : articles.length > 0 ? (
-        <div className="space-y-4">
-          {articles.map((article) => (
-            <ArticleCard key={article.id} article={article} />
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-md border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
-          暂无文章。请先添加订阅源等待抓取。
-        </div>
-      )}
+      <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <header className="border-b border-slate-200 pb-3">
+          <h2 className="text-lg font-semibold text-slate-900">最新文章</h2>
+        </header>
 
-      <div className="flex items-center justify-between border-t border-slate-200 pt-4">
-        <span className="text-sm text-slate-500">共 {articles.length} 条展示内容</span>
-        {query.hasNextPage && (
-          <button
-            onClick={() => query.fetchNextPage()}
-            disabled={query.isFetchingNextPage}
-            className="rounded-md border border-primary px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {query.isFetchingNextPage ? "加载中…" : "查看更多"}
-          </button>
+        {query.isLoading && !articles.length ? (
+          <div className="text-sm text-slate-500">正在加载文章…</div>
+        ) : query.isError ? (
+          <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {(query.error as Error).message || "文章列表加载失败"}
+          </div>
+        ) : articles.length > 0 ? (
+          <div className="space-y-4">
+            {articles.map((article) => (
+              <ArticleCard key={article.id} article={article} />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-md border border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
+            暂无文章。请先添加订阅源等待抓取。
+          </div>
         )}
-      </div>
+
+        {query.hasNextPage && (
+          <div className="flex justify-center border-t border-slate-200 pt-4">
+            <button
+              onClick={() => query.fetchNextPage()}
+              disabled={query.isFetchingNextPage}
+              className="rounded-md border border-primary px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {query.isFetchingNextPage ? "加载中…" : "查看更多"}
+            </button>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

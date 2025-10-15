@@ -16,6 +16,7 @@ pub struct ArticleRow {
 pub struct ArticleListArgs {
     pub from: Option<DateTime<Utc>>,
     pub to: Option<DateTime<Utc>>,
+    pub keyword: Option<String>,
     pub limit: i64,
     pub offset: i64,
 }
@@ -35,6 +36,8 @@ pub async fn list_articles(
     pool: &PgPool,
     args: ArticleListArgs,
 ) -> Result<(Vec<ArticleRow>, i64), sqlx::Error> {
+    let keyword = args.keyword.as_ref().map(|value| format!("%{}%", value));
+
     let rows = sqlx::query_as::<_, ArticleRow>(
         r#"
         SELECT id::bigint AS id,
@@ -48,13 +51,15 @@ pub async fn list_articles(
         FROM news.articles
         WHERE ($1::timestamptz IS NULL OR published_at >= $1)
           AND ($2::timestamptz IS NULL OR published_at <= $2)
+          AND ($3::text IS NULL OR title ILIKE $3)
         ORDER BY published_at DESC
-        LIMIT $3
-        OFFSET $4
+        LIMIT $4
+        OFFSET $5
         "#,
     )
     .bind(args.from)
     .bind(args.to)
+    .bind(keyword.as_deref())
     .bind(args.limit)
     .bind(args.offset)
     .fetch_all(pool)
@@ -66,10 +71,12 @@ pub async fn list_articles(
         FROM news.articles
         WHERE ($1::timestamptz IS NULL OR published_at >= $1)
           AND ($2::timestamptz IS NULL OR published_at <= $2)
+          AND ($3::text IS NULL OR title ILIKE $3)
         "#,
     )
     .bind(args.from)
     .bind(args.to)
+    .bind(keyword.as_deref())
     .fetch_one(pool)
     .await?;
 

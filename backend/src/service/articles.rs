@@ -13,6 +13,7 @@ pub async fn list(pool: &PgPool, query: ArticleListQuery) -> AppResult<PageResp<
         to,
         page,
         page_size,
+        keyword,
     } = query;
 
     let page = if page == 0 { 1 } else { page };
@@ -22,12 +23,18 @@ pub async fn list(pool: &PgPool, query: ArticleListQuery) -> AppResult<PageResp<
 
     let from = parse_optional_datetime(from.as_deref(), "from")?;
     let to = parse_optional_datetime(to.as_deref(), "to")?;
+    let keyword = keyword
+        .as_ref()
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+        .map(|value| value.to_string());
 
     let (rows, total) = repo::articles::list_articles(
         pool,
         repo::articles::ArticleListArgs {
             from,
             to,
+            keyword,
             limit,
             offset,
         },
