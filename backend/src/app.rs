@@ -11,7 +11,7 @@ use tower_http::cors::{Any, CorsLayer};
 
 use crate::{
     api, auth,
-    config::{AppConfig, FrontendPublicConfig, HttpClientConfig},
+    config::{AiConfig, AppConfig, FetcherConfig, FrontendPublicConfig, HttpClientConfig},
     fetcher, repo,
 };
 
@@ -21,6 +21,8 @@ pub struct AppState {
     pub config: FrontendPublicConfig,
     pub admin: auth::AdminManager,
     pub http_client: HttpClientConfig,
+    pub fetcher_config: FetcherConfig,
+    pub ai_config: AiConfig,
 }
 
 pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
@@ -52,6 +54,8 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
         config: public_config,
         admin: admin_manager,
         http_client: config.http_client.clone(),
+        fetcher_config: config.fetcher.clone(),
+        ai_config: config.ai.clone(),
     };
 
     let cors = CorsLayer::new()

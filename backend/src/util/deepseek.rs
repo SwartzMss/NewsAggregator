@@ -24,6 +24,12 @@ pub struct DeepseekDecision {
     pub _raw: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct TranslationResult {
+    pub title: String,
+    pub description: Option<String>,
+}
+
 pub struct DeepseekClient {
     http: Client,
     config: DeepseekConfig,
@@ -113,6 +119,70 @@ impl DeepseekClient {
         decision._raw = content;
         Ok(decision)
     }
+
+    pub async fn translate_news(
+        &self,
+        title: &str,
+        description: Option<&str>,
+    ) -> Result<TranslationResult> {
+        let api_key = self
+            .config
+            .api_key
+            .as_deref()
+            .ok_or_else(|| anyhow!("deepseek api key missing"))?;
+
+        let base = self.config.base_url.trim_end_matches('/');
+        let url = format!("{base}/v1/chat/completions");
+
+        let body = ChatCompletionRequest {
+            model: &self.config.model,
+            messages: vec![
+                ChatMessage {
+                    role: "system",
+                    content: TRANSLATION_PROMPT.to_string(),
+                },
+                ChatMessage {
+                    role: "user",
+                    content: build_translation_input(title, description),
+                },
+            ],
+            temperature: 0.2,
+        };
+
+        let response = self
+            .http
+            .post(&url)
+            .header(header::AUTHORIZATION, format!("Bearer {api_key}"))
+            .header(header::CONTENT_TYPE, "application/json")
+            .json(&body)
+            .send()
+            .await
+            .context("deepseek translation request failed")?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let text = response.text().await.unwrap_or_default();
+            return Err(anyhow!(
+                "deepseek translation returned non-success status {}: {}",
+                status,
+                text
+            ));
+        }
+
+        let payload: ChatCompletionResponse = response
+            .json()
+            .await
+            .context("failed to parse deepseek translation response")?;
+
+        let content = payload
+            .choices
+            .into_iter()
+            .next()
+            .and_then(|choice| choice.message.content)
+            .ok_or_else(|| anyhow!("deepseek translation response missing message content"))?;
+
+        parse_translation(&content)
+    }
 }
 
 fn build_prompt(a: &ArticleSnippet<'_>, b: &ArticleSnippet<'_>) -> String {
@@ -197,3 +267,48 @@ struct ChatCompletionMessage {
 }
 
 const SYSTEM_PROMPT: &str = "你是一名资深的新闻比对助手，需要判断两条新闻是否描述同一事件。输出必须是 JSON，字段 is_duplicate、reason、confidence。";
+
+const TRANSLATION_PROMPT: &str = "你是一名专业的财经翻译，请将输入的英文新闻标题和摘要翻译成自然、准确的简体中文。输出必须是 JSON，格式为 {\"title\": \"...\", \"description\": \"...\"}，如果没有摘要可返回 null。不得添加多余文字。";
+
+fn build_translation_input(title: &str, description: Option<&str>) -> String {
+    let mut lines = vec![format!("Title: {title}")];
+    if let Some(desc) = description {
+        lines.push(format!("Summary: {desc}"));
+    } else {
+        lines.push("Summary:".to_string());
+    }
+    lines.join("\n")
+}
+
+fn parse_translation(content: &str) -> Result<TranslationResult> {
+    #[derive(Deserialize)]
+    struct TranslationPayload {
+        title: String,
+        #[serde(default)]
+        description: Option<String>,
+    }
+
+    let cleaned = content.trim();
+    let json_str = cleaned
+        .trim_start_matches("```json")
+        .trim_start_matches("```")
+        .trim_end_matches("```")
+        .trim();
+
+    let payload: TranslationPayload =
+        serde_json::from_str(json_str).or_else(|_| serde_json::from_str(cleaned))?;
+
+    let description = payload.description.and_then(|text| {
+        let trimmed = text.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    });
+
+    Ok(TranslationResult {
+        title: payload.title.trim().to_string(),
+        description,
+    })
+}

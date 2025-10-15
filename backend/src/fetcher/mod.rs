@@ -38,6 +38,12 @@ struct CandidateArticle {
     summary: ArticleSummary,
 }
 
+const TRANSLATION_LANG: &str = "zh-CN";
+
+fn should_translate_feed(source_domain: &str) -> bool {
+    source_domain.to_ascii_lowercase().contains("bloomberg.com")
+}
+
 const STRICT_DUP_THRESHOLD: f32 = 0.9;
 const DEEPSEEK_THRESHOLD: f32 = 0.6;
 const RECENT_ARTICLE_LIMIT: i64 = 200;
@@ -58,6 +64,54 @@ pub fn spawn(
     Ok(())
 }
 
+pub async fn fetch_feed_once(
+    pool: sqlx::PgPool,
+    fetcher_config: FetcherConfig,
+    http_client_config: HttpClientConfig,
+    ai_config: AiConfig,
+    feed_id: i64,
+) -> anyhow::Result<()> {
+    let config = normalize_fetcher_config(fetcher_config);
+
+    let client_builder = http_client_config
+        .apply(Client::builder().user_agent("NewsAggregatorFetcher/0.1"))
+        .context("failed to apply proxy settings for fetcher client")?
+        .timeout(Duration::from_secs(config.request_timeout_secs));
+
+    let client = Arc::new(client_builder.build()?);
+
+    let deepseek = ai_config
+        .deepseek
+        .api_key
+        .as_ref()
+        .filter(|key| !key.trim().is_empty())
+        .map(|_| DeepseekClient::new(ai_config.deepseek.clone(), &http_client_config))
+        .transpose()?;
+    let deepseek = deepseek.map(Arc::new);
+
+    let feed = feeds::find_due_feed(&pool, feed_id)
+        .await?
+        .ok_or_else(|| anyhow!("feed {feed_id} not found"))?;
+
+    process_feed(pool, client, deepseek, feed).await
+}
+
+fn normalize_fetcher_config(mut config: FetcherConfig) -> FetcherConfig {
+    if config.interval_secs == 0 {
+        config.interval_secs = 60;
+    }
+    if config.batch_size == 0 {
+        config.batch_size = 4;
+    }
+    if config.concurrency == 0 {
+        config.concurrency = 1;
+    }
+    if config.request_timeout_secs == 0 {
+        config.request_timeout_secs = 10;
+    }
+    config
+}
+
 struct Fetcher {
     pool: sqlx::PgPool,
     client: Client,
@@ -68,22 +122,11 @@ struct Fetcher {
 impl Fetcher {
     fn new(
         pool: sqlx::PgPool,
-        mut config: FetcherConfig,
+        config: FetcherConfig,
         http_client_config: HttpClientConfig,
         ai_config: AiConfig,
     ) -> anyhow::Result<Self> {
-        if config.interval_secs == 0 {
-            config.interval_secs = 60;
-        }
-        if config.batch_size == 0 {
-            config.batch_size = 4;
-        }
-        if config.concurrency == 0 {
-            config.concurrency = 1;
-        }
-        if config.request_timeout_secs == 0 {
-            config.request_timeout_secs = 10;
-        }
+        let config = normalize_fetcher_config(config);
 
         let client_builder = http_client_config
             .apply(Client::builder().user_agent("NewsAggregatorFetcher/0.1"))
@@ -278,6 +321,7 @@ async fn process_feed_locked(
             published_at,
             click_count: _,
         } = row;
+
         let (_, tokens) = prepare_title_signature(&title);
         if tokens.is_empty() {
             continue;
@@ -305,7 +349,33 @@ async fn process_feed_locked(
     let mut seen_signatures: Vec<(BTreeSet<String>, String)> = Vec::new();
 
     for entry in &entries {
-        if let Some(article) = convert_entry(feed, &entry) {
+        if let Some(mut article) = convert_entry(feed, &entry) {
+            let original_title = article.title.clone();
+            let original_description = article.description.clone();
+
+            if should_translate_feed(&feed.source_domain) {
+                if let Some(client) = deepseek.as_ref() {
+                    match client
+                        .translate_news(&original_title, original_description.as_deref())
+                        .await
+                    {
+                        Ok(translated) => {
+                            article.title = translated.title;
+                            article.description = translated.description;
+                            article.language = Some(TRANSLATION_LANG.to_string());
+                        }
+                        Err(err) => {
+                            warn!(
+                                error = ?err,
+                                feed_id = feed.id,
+                                url = %article.url,
+                                "failed to translate article"
+                            );
+                        }
+                    }
+                }
+            }
+
             let (normalized_title, tokens) = prepare_title_signature(&article.title);
 
             if tokens.is_empty() {

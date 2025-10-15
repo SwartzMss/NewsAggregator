@@ -19,7 +19,14 @@ pub async fn upsert_feed(
     State(state): State<AppState>,
     Json(payload): Json<FeedUpsertPayload>,
 ) -> AppResult<Json<FeedOut>> {
-    let feed = service::feeds::upsert(&state.pool, payload).await?;
+    let feed = service::feeds::upsert(
+        &state.pool,
+        &state.http_client,
+        &state.fetcher_config,
+        &state.ai_config,
+        payload,
+    )
+    .await?;
     Ok(Json(feed))
 }
 

@@ -80,6 +80,23 @@ pub async fn list_due_feeds(pool: &PgPool, limit: i64) -> Result<Vec<DueFeedRow>
     .await
 }
 
+pub async fn find_due_feed(pool: &PgPool, id: i64) -> Result<Option<DueFeedRow>, sqlx::Error> {
+    sqlx::query_as::<_, DueFeedRow>(
+        r#"
+        SELECT id::bigint AS id,
+               url,
+               source_domain,
+               last_etag,
+               filter_condition
+        FROM news.feeds
+        WHERE id = $1
+        "#,
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await
+}
+
 pub async fn find_by_url(pool: &PgPool, url: &str) -> Result<Option<FeedRow>, sqlx::Error> {
     sqlx::query_as::<_, FeedRow>(
         r#"

@@ -5,8 +5,9 @@ use reqwest::Client;
 use tracing::warn;
 
 use crate::{
-    config::HttpClientConfig,
+    config::{AiConfig, FetcherConfig, HttpClientConfig},
     error::{AppError, AppResult},
+    fetcher,
     model::{FeedOut, FeedTestPayload, FeedTestResult, FeedUpsertPayload},
     repo,
 };
@@ -16,7 +17,13 @@ pub async fn list(pool: &sqlx::PgPool) -> AppResult<Vec<FeedOut>> {
     Ok(rows.into_iter().map(feed_row_to_out).collect())
 }
 
-pub async fn upsert(pool: &sqlx::PgPool, payload: FeedUpsertPayload) -> AppResult<FeedOut> {
+pub async fn upsert(
+    pool: &sqlx::PgPool,
+    http_client: &HttpClientConfig,
+    fetcher_config: &FetcherConfig,
+    ai_config: &AiConfig,
+    payload: FeedUpsertPayload,
+) -> AppResult<FeedOut> {
     let FeedUpsertPayload {
         id,
         url,
@@ -60,6 +67,7 @@ pub async fn upsert(pool: &sqlx::PgPool, payload: FeedUpsertPayload) -> AppResul
     }
 
     let existing = repo::feeds::find_by_url(pool, &url).await?;
+    let is_new_feed = existing.is_none();
 
     let record = repo::feeds::FeedUpsertRecord {
         url: url.clone(),
@@ -117,6 +125,25 @@ pub async fn upsert(pool: &sqlx::PgPool, payload: FeedUpsertPayload) -> AppResul
                 }
             }
         }
+    }
+
+    if is_new_feed && response.enabled {
+        let pool = pool.clone();
+        let http_client = http_client.clone();
+        let fetcher_config = fetcher_config.clone();
+        let ai_config = ai_config.clone();
+        tokio::spawn(async move {
+            if let Err(err) =
+                fetcher::fetch_feed_once(pool, fetcher_config, http_client, ai_config, feed_id)
+                    .await
+            {
+                tracing::warn!(
+                    error = ?err,
+                    feed_id,
+                    "failed to perform immediate fetch for new feed"
+                );
+            }
+        });
     }
 
     Ok(response)
