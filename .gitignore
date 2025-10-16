@@ -23,13 +23,9 @@ target
 # Local runtime configuration
 config/config.yaml
 
-backend/logs/
-
 frontend/node_modules/
 frontend/dist/
 frontend/*.tsbuildinfo
 frontend/vite.config.js
 frontend/vite.config.d.ts
 
-# local-only docs
-docs/google_news_integration.md
