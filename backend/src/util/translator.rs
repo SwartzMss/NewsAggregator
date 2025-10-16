@@ -367,22 +367,18 @@ impl TranslationEngine {
             timeout_secs: ai_config.deepseek.timeout_secs,
         };
 
+        // 不再从配置文件/环境变量读取 Ollama，默认留空，待数据库（管理后台）写入后启用
         let base_ollama = Arc::new(RwLock::new(OllamaBaseConfig {
-            base_url: ai_config.ollama.base_url.clone(),
-            model: ai_config.ollama.model.clone(),
+            base_url: String::new(),
+            model: String::new(),
             timeout_secs: ai_config.ollama.timeout_secs,
         }));
 
         // attempt to build clients
         state.baidu_client = build_baidu_client(http_client, &state)?;
         state.deepseek_client = build_deepseek_client(http_client, &base_deepseek, &state)?;
-        let ollama_client = {
-            let guard = base_ollama
-                .read()
-                .expect("ollama base config poisoned during init");
-            build_ollama_client(http_client, &guard)?
-        };
-        state.ollama_client = ollama_client;
+        // 初始不构建 Ollama 客户端，待 settings 注入后再构建
+        state.ollama_client = None;
         clear_verification(&mut state, TranslatorProvider::Baidu);
         clear_verification(&mut state, TranslatorProvider::Deepseek);
         clear_verification(&mut state, TranslatorProvider::Ollama);
@@ -392,6 +388,8 @@ impl TranslationEngine {
         let verify_baidu = state.baidu_client.is_some();
         let verify_deepseek = state.deepseek_client.is_some();
         let verify_ollama = state.ollama_client.is_some();
+
+        
 
         let state_lock = Arc::new(RwLock::new(state));
 

@@ -576,8 +576,10 @@ function TranslationSettingsPanel({
   const provider = settings?.provider ?? "";
   const options = settings?.available_providers ?? ["deepseek", "baidu", "ollama"];
   const busy = mutation.isPending;
-  const translateDescriptions =
-    localTranslate ?? settings?.translate_descriptions ?? false;
+  const translateDescriptions = useMemo(() => {
+    if (provider === "ollama") return true; // 强制开启
+    return localTranslate ?? settings?.translate_descriptions ?? false;
+  }, [provider, localTranslate, settings?.translate_descriptions]);
   const hasBaiduCredentials =
     Boolean(settings?.baidu_app_id_masked) && Boolean(settings?.baidu_secret_key_masked);
   const hasDeepseekCredentials = Boolean(settings?.deepseek_api_key_masked);
@@ -667,6 +669,7 @@ function TranslationSettingsPanel({
 
   const handleToggleDescriptions = () => {
     if (busy) return;
+    if (provider === "ollama") return; // ollama 下禁用切换
     const next = !translateDescriptions;
     setLocalTranslate(next);
     mutation.mutate({ translate_descriptions: next });
@@ -701,7 +704,10 @@ function TranslationSettingsPanel({
                 if (!settings) return;
                 if (value === settings.provider) return;
                 if (!available(value)) return;
-                mutation.mutate({ provider: value });
+                // 立即本地生效：根据 provider 预置翻译开关
+                const nextTranslate = value === "ollama" ? true : false;
+                setLocalTranslate(nextTranslate);
+                mutation.mutate({ provider: value, translate_descriptions: nextTranslate });
               }}
               disabled={busy}
               className="mt-3 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-70"
@@ -737,10 +743,10 @@ function TranslationSettingsPanel({
                 role="switch"
                 aria-checked={translateDescriptions}
                 onClick={handleToggleDescriptions}
-                disabled={busy}
+                disabled={busy || provider === "ollama"}
                 className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition ${
                   translateDescriptions ? "bg-primary" : "bg-slate-300"
-                } ${busy ? "opacity-60" : ""}`}
+                } ${busy || provider === "ollama" ? "opacity-60 cursor-not-allowed" : ""}`}
               >
                 <span
                   className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
@@ -750,7 +756,9 @@ function TranslationSettingsPanel({
               </button>
             </div>
             <p className="mt-3 text-xs text-slate-500">
-              {translateDescriptions
+              {provider === "ollama"
+                ? "已选择 Ollama，本模式下默认且固定翻译标题与摘要。"
+                : translateDescriptions
                 ? "标题与摘要都会翻译成中文，适合人工审核或前台展示。"
                 : "仅翻译标题，更省额度，摘要保留原文。"}
             </p>

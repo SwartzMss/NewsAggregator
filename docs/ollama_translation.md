@@ -19,12 +19,12 @@
 
 ## 配置项
 
-系统会优先读取保存在数据库中的 Ollama 配置（可在管理后台「翻译服务」界面中编辑）。若数据库尚未写入，将回退到 `config/config.yaml` 或环境变量提供的默认值：
+系统仅从数据库读取 Ollama 配置（需在管理后台「翻译服务」界面中编辑并保存）。不再支持从 `config/config.yaml` 或环境变量回退读取：
 
 | 配置项 | 说明 | 默认值 | 环境变量 |
 | ------ | ---- | ------ | -------- |
-| `ai.ollama.base_url` | Ollama 服务地址，通常是本地 `http://127.0.0.1:11434` | `http://127.0.0.1:11434` | `OLLAMA_BASE_URL` |
-| `ai.ollama.model` | 翻译使用的模型名称 | `qwen2.5:3b` | `OLLAMA_MODEL` |
+| `translation.ollama_base_url` | Ollama 服务地址，例如 `http://127.0.0.1:11434` | 需在后台填写 | （不支持） |
+| `translation.ollama_model` | 翻译使用的模型名称 | 需在后台填写 | （不支持） |
 | `ai.ollama.timeout_secs` | HTTP 请求超时时间（秒） | `30` | `OLLAMA_TIMEOUT_SECS` |
 
 若希望启动时默认选用 Ollama 作为翻译服务，可额外设置：
