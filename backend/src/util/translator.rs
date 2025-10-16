@@ -258,7 +258,7 @@ pub struct TranslationEngine {
     state: Arc<RwLock<TranslationState>>,
     http_config: HttpClientConfig,
     base_deepseek: DeepseekBaseConfig,
-    base_ollama: OllamaBaseConfig,
+    base_ollama: Arc<RwLock<OllamaBaseConfig>>,
 }
 
 struct TranslationState {
@@ -298,6 +298,8 @@ pub struct TranslatorCredentialsUpdate {
     pub baidu_app_id: Option<String>,
     pub baidu_secret_key: Option<String>,
     pub deepseek_api_key: Option<String>,
+    pub ollama_base_url: Option<String>,
+    pub ollama_model: Option<String>,
     pub translate_descriptions: Option<bool>,
 }
 
@@ -365,16 +367,22 @@ impl TranslationEngine {
             timeout_secs: ai_config.deepseek.timeout_secs,
         };
 
-        let base_ollama = OllamaBaseConfig {
+        let base_ollama = Arc::new(RwLock::new(OllamaBaseConfig {
             base_url: ai_config.ollama.base_url.clone(),
             model: ai_config.ollama.model.clone(),
             timeout_secs: ai_config.ollama.timeout_secs,
-        };
+        }));
 
         // attempt to build clients
         state.baidu_client = build_baidu_client(http_client, &state)?;
         state.deepseek_client = build_deepseek_client(http_client, &base_deepseek, &state)?;
-        state.ollama_client = build_ollama_client(http_client, &base_ollama)?;
+        let ollama_client = {
+            let guard = base_ollama
+                .read()
+                .expect("ollama base config poisoned during init");
+            build_ollama_client(http_client, &guard)?
+        };
+        state.ollama_client = ollama_client;
         clear_verification(&mut state, TranslatorProvider::Baidu);
         clear_verification(&mut state, TranslatorProvider::Deepseek);
         clear_verification(&mut state, TranslatorProvider::Ollama);
@@ -385,8 +393,10 @@ impl TranslationEngine {
         let verify_deepseek = state.deepseek_client.is_some();
         let verify_ollama = state.ollama_client.is_some();
 
+        let state_lock = Arc::new(RwLock::new(state));
+
         let engine = Self {
-            state: Arc::new(RwLock::new(state)),
+            state: Arc::clone(&state_lock),
             http_config: http_client.clone(),
             base_deepseek,
             base_ollama,
@@ -519,6 +529,21 @@ impl TranslationEngine {
 
     pub fn snapshot(&self) -> TranslatorSnapshot {
         let state = self.state.read().expect("translator state poisoned");
+        let base_ollama = self
+            .base_ollama
+            .read()
+            .expect("ollama base config poisoned during snapshot");
+        let ollama_base_url = if base_ollama.base_url.trim().is_empty() {
+            None
+        } else {
+            Some(base_ollama.base_url.clone())
+        };
+        let ollama_model = if base_ollama.model.trim().is_empty() {
+            None
+        } else {
+            Some(base_ollama.model.clone())
+        };
+
         TranslatorSnapshot {
             provider: state.provider,
             baidu_configured: state.baidu_client.is_some() && state.baidu_verified,
@@ -536,16 +561,8 @@ impl TranslationEngine {
             baidu_error: state.baidu_error.clone(),
             deepseek_error: state.deepseek_error.clone(),
             ollama_error: state.ollama_error.clone(),
-            ollama_base_url: if self.base_ollama.base_url.trim().is_empty() {
-                None
-            } else {
-                Some(self.base_ollama.base_url.clone())
-            },
-            ollama_model: if self.base_ollama.model.trim().is_empty() {
-                None
-            } else {
-                Some(self.base_ollama.model.clone())
-            },
+            ollama_base_url,
+            ollama_model,
             translate_descriptions: state.translate_descriptions,
         }
     }
@@ -565,6 +582,7 @@ impl TranslationEngine {
 
         let mut baidu_changed = false;
         let mut deepseek_changed = false;
+        let mut ollama_changed = false;
 
         if let Some(app_id) = update.baidu_app_id {
             let trimmed = app_id.trim().to_string();
@@ -612,11 +630,46 @@ impl TranslationEngine {
             clear_verification(&mut state, TranslatorProvider::Deepseek);
         }
 
+        if update.ollama_base_url.is_some() || update.ollama_model.is_some() {
+            let mut base_guard = self
+                .base_ollama
+                .write()
+                .map_err(|_| anyhow!("failed to acquire ollama base config lock"))?;
+            let mut changed = false;
+            if let Some(base_url) = update.ollama_base_url {
+                let trimmed = base_url.trim().to_string();
+                if base_guard.base_url != trimmed {
+                    base_guard.base_url = trimmed;
+                    changed = true;
+                }
+            }
+            if let Some(model) = update.ollama_model {
+                let trimmed = model.trim().to_string();
+                if base_guard.model != trimmed {
+                    base_guard.model = trimmed;
+                    changed = true;
+                }
+            }
+            if changed {
+                let snapshot = base_guard.clone();
+                drop(base_guard);
+                state.ollama_client = build_ollama_client(&self.http_config, &snapshot)?;
+                clear_verification(&mut state, TranslatorProvider::Ollama);
+                ollama_changed = true;
+            } else {
+                drop(base_guard);
+            }
+        }
+
         state.baidu_client = build_baidu_client(&self.http_config, &state)?;
         state.deepseek_client =
             build_deepseek_client(&self.http_config, &self.base_deepseek, &state)?;
         if state.ollama_client.is_none() {
-            state.ollama_client = build_ollama_client(&self.http_config, &self.base_ollama)?;
+            let base_guard = self
+                .base_ollama
+                .read()
+                .map_err(|_| anyhow!("failed to read ollama base config"))?;
+            state.ollama_client = build_ollama_client(&self.http_config, &base_guard)?;
         }
 
         if let Some(flag) = update.translate_descriptions {
@@ -641,7 +694,7 @@ impl TranslationEngine {
         }
 
         drop(state);
-        self.spawn_verification_tasks(baidu_changed, deepseek_changed, false);
+        self.spawn_verification_tasks(baidu_changed, deepseek_changed, ollama_changed);
 
         Ok(())
     }

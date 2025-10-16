@@ -83,6 +83,28 @@ pub async fn update_translation_settings(
         }
     }
 
+    if let Some(base_url) = payload.ollama_base_url {
+        let trimmed = base_url.trim();
+        if trimmed.is_empty() {
+            repo::settings::delete_setting(pool, "translation.ollama_base_url").await?;
+            update.ollama_base_url = Some(String::new());
+        } else {
+            repo::settings::upsert_setting(pool, "translation.ollama_base_url", trimmed).await?;
+            update.ollama_base_url = Some(trimmed.to_string());
+        }
+    }
+
+    if let Some(model) = payload.ollama_model {
+        let trimmed = model.trim();
+        if trimmed.is_empty() {
+            repo::settings::delete_setting(pool, "translation.ollama_model").await?;
+            update.ollama_model = Some(String::new());
+        } else {
+            repo::settings::upsert_setting(pool, "translation.ollama_model", trimmed).await?;
+            update.ollama_model = Some(trimmed.to_string());
+        }
+    }
+
     if let Some(flag) = payload.translate_descriptions {
         let value = if flag { "true" } else { "false" };
         repo::settings::upsert_setting(pool, "translation.translate_descriptions", value).await?;
@@ -100,6 +122,8 @@ pub async fn update_translation_settings(
                 "百度翻译暂不可用，请确认凭据有效并稍后重试"
             } else if message.contains("Deepseek") {
                 "Deepseek 翻译暂不可用，请检查 API Key 或稍后重试"
+            } else if message.contains("Ollama") {
+                "Ollama 翻译暂不可用，请确认服务地址与模型名称"
             } else {
                 "翻译服务暂不可用，请检查配置"
             };

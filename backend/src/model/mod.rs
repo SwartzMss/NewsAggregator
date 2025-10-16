@@ -116,6 +116,10 @@ pub struct TranslationSettingsUpdate {
     #[serde(default)]
     pub deepseek_api_key: Option<String>,
     #[serde(default)]
+    pub ollama_base_url: Option<String>,
+    #[serde(default)]
+    pub ollama_model: Option<String>,
+    #[serde(default)]
     pub translate_descriptions: Option<bool>,
 }
 

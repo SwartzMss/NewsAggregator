@@ -72,6 +72,8 @@ export type TranslationSettingsUpdate = {
   baidu_app_id?: string;
   baidu_secret_key?: string;
   deepseek_api_key?: string;
+  ollama_base_url?: string;
+  ollama_model?: string;
   translate_descriptions?: boolean;
 };
 

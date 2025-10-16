@@ -3,6 +3,7 @@ use std::time::Duration;
 use anyhow::{anyhow, Context, Result};
 use reqwest::{header, Client};
 use serde::{Deserialize, Serialize};
+use url::Url;
 
 use crate::config::HttpClientConfig;
 
@@ -24,9 +25,22 @@ impl OllamaClient {
         http_config: &HttpClientConfig,
     ) -> Result<Self> {
         let timeout = Duration::from_secs(timeout_secs.max(1));
-        let builder = http_config
+        let mut builder = http_config
             .apply(Client::builder())
             .context("failed to apply proxy settings for ollama client")?;
+        if let Ok(parsed) = Url::parse(base_url) {
+            let disable_proxy = parsed
+                .host()
+                .map(|host| match host {
+                    url::Host::Domain(domain) => domain.eq_ignore_ascii_case("localhost"),
+                    url::Host::Ipv4(addr) => addr.is_loopback(),
+                    url::Host::Ipv6(addr) => addr.is_loopback(),
+                })
+                .unwrap_or(false);
+            if disable_proxy {
+                builder = builder.no_proxy();
+            }
+        }
         let http = builder
             .timeout(timeout)
             .build()

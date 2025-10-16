@@ -499,6 +499,8 @@ function TranslationSettingsPanel({
   const [baiduAppId, setBaiduAppId] = useState("");
   const [baiduSecret, setBaiduSecret] = useState("");
   const [deepseekKey, setDeepseekKey] = useState("");
+  const [ollamaBaseUrlDraft, setOllamaBaseUrlDraft] = useState<string | null>(null);
+  const [ollamaModelDraft, setOllamaModelDraft] = useState<string | null>(null);
   const [dirtyAppId, setDirtyAppId] = useState(false);
   const [dirtySecret, setDirtySecret] = useState(false);
   const [dirtyDeepseek, setDirtyDeepseek] = useState(false);
@@ -523,6 +525,8 @@ function TranslationSettingsPanel({
     setBaiduAppId("");
     setBaiduSecret("");
     setDeepseekKey("");
+    setOllamaBaseUrlDraft(null);
+    setOllamaModelDraft(null);
     setDirtyAppId(false);
     setDirtySecret(false);
     setDirtyDeepseek(false);
@@ -541,7 +545,9 @@ function TranslationSettingsPanel({
         Boolean(data.baidu_secret_key_masked);
       const deepseekPending =
         !data.deepseek_configured && Boolean(data.deepseek_api_key_masked);
-      if (baiduPending || deepseekPending) {
+      const ollamaPending =
+        !data.ollama_configured && Boolean(data.ollama_base_url?.trim());
+      if (baiduPending || deepseekPending || ollamaPending) {
         setFeedback("配置已保存，正在验证凭据…");
       } else {
         setFeedback("翻译配置已更新");
@@ -552,6 +558,8 @@ function TranslationSettingsPanel({
       setBaiduAppId("");
       setBaiduSecret("");
       setDeepseekKey("");
+      setOllamaBaseUrlDraft(null);
+      setOllamaModelDraft(null);
       setLocalTranslate(null);
     },
     onError: (err: Error) => {
@@ -573,13 +581,17 @@ function TranslationSettingsPanel({
   const hasBaiduCredentials =
     Boolean(settings?.baidu_app_id_masked) && Boolean(settings?.baidu_secret_key_masked);
   const hasDeepseekCredentials = Boolean(settings?.deepseek_api_key_masked);
-  const hasOllamaConfig = Boolean(settings?.ollama_base_url);
+  const currentOllamaBaseUrl = settings?.ollama_base_url ?? "";
+  const currentOllamaModel = settings?.ollama_model ?? "";
+  const hasOllamaConfig = Boolean(currentOllamaBaseUrl.trim());
   const pendingBaiduVerification =
     Boolean(settings) && hasBaiduCredentials && !settings?.baidu_configured && !settings?.baidu_error;
   const pendingDeepseekVerification =
     Boolean(settings) && hasDeepseekCredentials && !settings?.deepseek_configured && !settings?.deepseek_error;
   const pendingOllamaVerification =
     Boolean(settings) && hasOllamaConfig && !settings?.ollama_configured && !settings?.ollama_error;
+  const ollamaBaseUrlValue = ollamaBaseUrlDraft ?? currentOllamaBaseUrl;
+  const ollamaModelValue = ollamaModelDraft ?? currentOllamaModel;
 
   useEffect(() => {
     if (!token) return;
@@ -878,17 +890,53 @@ function TranslationSettingsPanel({
                 </span>
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1 text-xs text-slate-500">
-                  <p className="font-medium text-slate-600">服务地址</p>
-                  <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600">
-                    {settings?.ollama_base_url ?? "http://127.0.0.1:11434"}
-                  </p>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-slate-500" htmlFor="translation-ollama-base-url">
+                    服务地址
+                  </label>
+                  <input
+                    id="translation-ollama-base-url"
+                    value={ollamaBaseUrlValue}
+                    onChange={(event) => setOllamaBaseUrlDraft(event.target.value)}
+                    onBlur={() => {
+                      if (busy) return;
+                      const raw = ollamaBaseUrlDraft ?? currentOllamaBaseUrl;
+                      const trimmed = raw.trim();
+                      const currentTrimmed = currentOllamaBaseUrl.trim();
+                      if (trimmed === currentTrimmed) {
+                        setOllamaBaseUrlDraft(null);
+                        return;
+                      }
+                      setOllamaBaseUrlDraft(trimmed);
+                      autoUpdate({ ollama_base_url: trimmed });
+                    }}
+                    placeholder="http://127.0.0.1:11434"
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-xs shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
                 </div>
-                <div className="space-y-1 text-xs text-slate-500">
-                  <p className="font-medium text-slate-600">模型名称</p>
-                  <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600">
-                    {settings?.ollama_model ?? "未指定"}
-                  </p>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-slate-500" htmlFor="translation-ollama-model">
+                    模型名称
+                  </label>
+                  <input
+                    id="translation-ollama-model"
+                    value={ollamaModelValue}
+                    onChange={(event) => setOllamaModelDraft(event.target.value)}
+                    onBlur={() => {
+                      if (busy) return;
+                      const raw = ollamaModelDraft ?? currentOllamaModel;
+                      const trimmed = raw.trim();
+                      const currentTrimmed = currentOllamaModel.trim();
+                      if (trimmed === currentTrimmed) {
+                        setOllamaModelDraft(null);
+                        return;
+                      }
+                      setOllamaModelDraft(trimmed);
+                      autoUpdate({ ollama_model: trimmed });
+                    }}
+                    placeholder="qwen2.5:3b"
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-xs shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
                 </div>
               </div>
               {settings?.ollama_error ? (
@@ -897,7 +945,7 @@ function TranslationSettingsPanel({
                 <p className="mt-3 text-xs text-slate-500">正在尝试连接 Ollama 服务…</p>
               ) : (
                 <p className="mt-3 text-xs text-slate-500">
-                  如需自定义，请在服务器上通过环境变量或配置文件设置 `OLLAMA_BASE_URL`、`OLLAMA_MODEL`。
+                  填写本地服务地址与模型名称后会自动验证连通性，留空则禁用 Ollama 翻译。
                 </p>
               )}
             </section>

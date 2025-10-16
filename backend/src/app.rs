@@ -48,6 +48,10 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
         repo::settings::get_setting(&pool, "translation.baidu_secret_key").await?;
     let stored_deepseek_key =
         repo::settings::get_setting(&pool, "translation.deepseek_api_key").await?;
+    let stored_ollama_base_url =
+        repo::settings::get_setting(&pool, "translation.ollama_base_url").await?;
+    let stored_ollama_model =
+        repo::settings::get_setting(&pool, "translation.ollama_model").await?;
     let stored_translate_descriptions =
         repo::settings::get_setting(&pool, "translation.translate_descriptions").await?;
     let translate_flag = stored_translate_descriptions.as_ref().and_then(|value| {
@@ -62,6 +66,8 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
         baidu_app_id: stored_baidu_app_id,
         baidu_secret_key: stored_baidu_secret,
         deepseek_api_key: stored_deepseek_key,
+        ollama_base_url: stored_ollama_base_url,
+        ollama_model: stored_ollama_model,
         translate_descriptions: translate_flag,
         ..Default::default()
     })?;
