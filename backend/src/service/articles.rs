@@ -41,7 +41,7 @@ pub async fn list(pool: &PgPool, query: ArticleListQuery) -> AppResult<PageResp<
     )
     .await?;
 
-    tracing::debug!(page, page_size, total, "articles list queried");
+    tracing::info!(page, page_size, total, "articles list queried");
 
     let items = rows
         .into_iter()

@@ -8,7 +8,7 @@ use tokio::{
     task::JoinSet,
     time::{interval, sleep, MissedTickBehavior},
 };
-use tracing::{debug, info, warn};
+use tracing::{info, warn};
 
 use crate::{
     config::{FetcherConfig, HttpClientConfig},
@@ -229,7 +229,7 @@ impl Fetcher {
     ) -> anyhow::Result<()> {
         let feeds = feeds::list_due_feeds(&pool, config.batch_size as i64).await?;
         if feeds.is_empty() {
-            debug!("no feeds eligible this round");
+            info!("no feeds eligible this round");
             return Ok(());
         }
 
@@ -247,7 +247,7 @@ impl Fetcher {
             let delay = retry_delay;
 
             set.spawn(async move {
-                debug!(feed_id = feed.id, url = %feed.url, "fetching feed");
+                info!(feed_id = feed.id, url = %feed.url, "fetching feed");
                 if let Err(err) = process_feed(
                     pool_cloned,
                     client_cloned,
@@ -317,7 +317,7 @@ async fn process_feed(
                     break;
                 }
 
-                debug!(
+                info!(
                     feed_id = feed.id,
                     url = %feed.url,
                     attempt = attempt + 1,
@@ -374,7 +374,7 @@ async fn process_feed_locked(
     let headers = response.headers().clone();
     if status == StatusCode::NOT_MODIFIED {
         feeds::mark_not_modified(&pool, feed.id, status.as_u16() as i16).await?;
-        debug!(
+        info!(
             feed_id = feed.id,
             status = status.as_u16(),
             "feed not modified"
@@ -451,7 +451,21 @@ async fn process_feed_locked(
             let original_description = article.description.clone();
 
             if should_translate_title(&original_title) {
-                let description_input = if translation.translate_descriptions() {
+                let translate_desc_flag = translation.translate_descriptions();
+                let has_original_desc = original_description
+                    .as_ref()
+                    .map(|s| !s.trim().is_empty())
+                    .unwrap_or(false);
+
+                info!(
+                    feed_id = feed.id,
+                    url = %article.url,
+                    translate_descriptions = translate_desc_flag,
+                    has_original_description = has_original_desc,
+                    "pre-translation decision"
+                );
+
+                let description_input = if translate_desc_flag {
                     original_description.as_deref()
                 } else {
                     None
@@ -465,11 +479,21 @@ async fn process_feed_locked(
                         article.title = translated.title;
                         article.description = translated.description.or(original_description);
                         article.language = Some(TRANSLATION_LANG.to_string());
+
+                        if translate_desc_flag && has_original_desc && article.description.is_none() {
+                            warn!(
+                                feed_id = feed.id,
+                                url = %article.url,
+                                "translator returned no description while description translation is enabled"
+                            );
+                        }
                     }
                     Ok(None) => {
-                        debug!(
+                        let providers = translation.available_providers();
+                        info!(
                             feed_id = feed.id,
                             url = %article.url,
+                            available_providers = providers.len(),
                             "translation skipped (no provider configured)"
                         );
                     }
@@ -478,8 +502,36 @@ async fn process_feed_locked(
                             error = %err,
                             feed_id = feed.id,
                             url = %article.url,
-                            "failed to translate article"
+                            "failed to translate article, will retry once"
                         );
+                        // 一次失败重试（短暂延迟后再试一次）
+                        sleep(Duration::from_millis(300)).await;
+                        match translation
+                            .translate(&original_title, description_input)
+                            .await
+                        {
+                            Ok(Some(translated)) => {
+                                article.title = translated.title;
+                                article.description =
+                                    translated.description.or(original_description);
+                                article.language = Some(TRANSLATION_LANG.to_string());
+                            }
+                            Ok(None) => {
+                                info!(
+                                    feed_id = feed.id,
+                                    url = %article.url,
+                                    "translation skipped after retry (no provider configured)"
+                                );
+                            }
+                            Err(err2) => {
+                                warn!(
+                                    error = %err2,
+                                    feed_id = feed.id,
+                                    url = %article.url,
+                                    "failed to translate article after retry"
+                                );
+                            }
+                        }
                     }
                 }
             }
@@ -495,7 +547,7 @@ async fn process_feed_locked(
                 let similarity = jaccard_similarity(&tokens, existing_tokens);
                 if similarity >= STRICT_DUP_THRESHOLD {
                     is_duplicate = true;
-                    debug!(
+                    info!(
                         feed_id = feed.id,
                         similarity,
                         title = %article.title,
@@ -506,7 +558,7 @@ async fn process_feed_locked(
 
                 if normalized_title == *existing_title {
                     is_duplicate = true;
-                    debug!(
+                    info!(
                         feed_id = feed.id,
                         title = %article.title,
                         "skip article due to identical normalized title"
@@ -624,6 +676,20 @@ async fn process_feed_locked(
                 }
             }
 
+            // 入库前的数据快照（仅日志，不修改数据）
+            let preview_desc = article
+                .description
+                .as_deref()
+                .map(|s| if s.len() > 80 { &s[..80] } else { s })
+                .unwrap_or("");
+            info!(
+                feed_id = feed.id,
+                url = %article.url,
+                language = %article.language.as_deref().unwrap_or(""),
+                preview_desc = preview_desc,
+                "pre-insert article snapshot"
+            );
+
             seen_signatures.push((tokens.clone(), normalized_title.clone()));
             articles.push(article);
         }
@@ -665,7 +731,7 @@ async fn process_feed_locked(
             "inserted articles"
         );
     } else {
-        debug!(feed_id = feed.id, "no new articles parsed");
+        info!(feed_id = feed.id, "no new articles parsed");
     }
 
     let title = parsed_feed.title.as_ref().map(|text| text.content.clone());
@@ -789,7 +855,7 @@ async fn record_failure(
         feeds::mark_failure(pool, feed_id, status).await?;
         warn!(feed_id, status, "marked feed fetch failure");
     } else {
-        debug!(
+        info!(
             feed_id,
             status, "feed fetch failed, will attempt quick retry"
         );

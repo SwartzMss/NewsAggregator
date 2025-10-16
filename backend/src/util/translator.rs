@@ -2,7 +2,8 @@ use std::sync::{Arc, RwLock};
 
 use anyhow::{anyhow, Result};
 use tokio::runtime::Handle;
-use tracing::{debug, warn};
+use std::time::Instant;
+use tracing::{info, warn};
 
 use crate::config::{AiConfig, HttpClientConfig, TranslatorConfig};
 
@@ -108,7 +109,8 @@ async fn verify_provider_credentials(
 
     if verify_baidu {
         if let Some(client) = baidu_client {
-            debug!("verifying baidu translator credentials");
+            let started = Instant::now();
+            info!(phase = "start", provider = "baidu", "verifying translator credentials");
             let result = client
                 .translate(VERIFICATION_SAMPLE_TEXT, "auto", "zh")
                 .await;
@@ -120,13 +122,21 @@ async fn verify_provider_credentials(
                 Ok(_) => {
                     guard.baidu_verified = true;
                     guard.baidu_error = None;
+                    info!(
+                        phase = "end",
+                        provider = "baidu",
+                        elapsed_ms = started.elapsed().as_millis() as u64,
+                        "verification completed"
+                    );
                 }
                 Err(err) => {
                     guard.baidu_verified = false;
                     guard.baidu_error = Some(truncate_error(err));
                     warn!(
                         error = guard.baidu_error.as_deref().unwrap_or_default(),
-                        "baidu translator credential verification failed"
+                        provider = "baidu",
+                        elapsed_ms = started.elapsed().as_millis() as u64,
+                        "translator credential verification failed"
                     );
                 }
             }
@@ -137,7 +147,8 @@ async fn verify_provider_credentials(
 
     if verify_deepseek {
         if let Some(client) = deepseek_client {
-            debug!("verifying deepseek translator credentials");
+            let started = Instant::now();
+            info!(phase = "start", provider = "deepseek", "verifying translator credentials");
             let result = client.translate_news(VERIFICATION_SAMPLE_TEXT, None).await;
 
             let mut guard = state
@@ -147,13 +158,21 @@ async fn verify_provider_credentials(
                 Ok(_) => {
                     guard.deepseek_verified = true;
                     guard.deepseek_error = None;
+                    info!(
+                        phase = "end",
+                        provider = "deepseek",
+                        elapsed_ms = started.elapsed().as_millis() as u64,
+                        "verification completed"
+                    );
                 }
                 Err(err) => {
                     guard.deepseek_verified = false;
                     guard.deepseek_error = Some(truncate_error(err));
                     warn!(
                         error = guard.deepseek_error.as_deref().unwrap_or_default(),
-                        "deepseek translator credential verification failed"
+                        provider = "deepseek",
+                        elapsed_ms = started.elapsed().as_millis() as u64,
+                        "translator credential verification failed"
                     );
                 }
             }
@@ -164,7 +183,8 @@ async fn verify_provider_credentials(
 
     if verify_ollama {
         if let Some(client) = ollama_client {
-            debug!("verifying ollama translator connectivity");
+            let started = Instant::now();
+            info!(phase = "start", provider = "ollama", "verifying translator connectivity");
             let result = client.translate_news(VERIFICATION_SAMPLE_TEXT, None).await;
 
             let mut guard = state
@@ -174,13 +194,21 @@ async fn verify_provider_credentials(
                 Ok(_) => {
                     guard.ollama_verified = true;
                     guard.ollama_error = None;
+                    info!(
+                        phase = "end",
+                        provider = "ollama",
+                        elapsed_ms = started.elapsed().as_millis() as u64,
+                        "verification completed"
+                    );
                 }
                 Err(err) => {
                     guard.ollama_verified = false;
                     guard.ollama_error = Some(truncate_error(err));
                     warn!(
                         error = guard.ollama_error.as_deref().unwrap_or_default(),
-                        "ollama translator verification failed"
+                        provider = "ollama",
+                        elapsed_ms = started.elapsed().as_millis() as u64,
+                        "translator verification failed"
                     );
                 }
             }
@@ -791,6 +819,16 @@ impl TranslationEngine {
                     _ => None,
                 };
 
+                let desc_in_len = description.map(|s| s.len()).unwrap_or(0);
+                let desc_out_len = translated_description.as_ref().map(|s| s.len()).unwrap_or(0);
+                info!(
+                    provider = %TranslatorProvider::Baidu.as_str(),
+                    title_len = translated_title.len(),
+                    desc_in_len,
+                    desc_out_len,
+                    "translation success"
+                );
+
                 Ok(TranslationResult {
                     title: translated_title,
                     description: translated_description,
@@ -812,6 +850,18 @@ impl TranslationEngine {
                 client
                     .translate_news(title, description)
                     .await
+                    .map(|result| {
+                        let desc_in_len = description.map(|s| s.len()).unwrap_or(0);
+                        let desc_out_len = result.description.as_ref().map(|s| s.len()).unwrap_or(0);
+                        info!(
+                            provider = %TranslatorProvider::Deepseek.as_str(),
+                            title_len = result.title.len(),
+                            desc_in_len,
+                            desc_out_len,
+                            "translation success"
+                        );
+                        result
+                    })
                     .map_err(TranslationError::Other)
             }
             TranslatorProvider::Ollama => {
@@ -831,6 +881,18 @@ impl TranslationEngine {
                 client
                     .translate_news(title, description)
                     .await
+                    .map(|result| {
+                        let desc_in_len = description.map(|s| s.len()).unwrap_or(0);
+                        let desc_out_len = result.description.as_ref().map(|s| s.len()).unwrap_or(0);
+                        info!(
+                            provider = %TranslatorProvider::Ollama.as_str(),
+                            title_len = result.title.len(),
+                            desc_in_len,
+                            desc_out_len,
+                            "translation success"
+                        );
+                        result
+                    })
                     .map_err(TranslationError::Other)
             }
         }
