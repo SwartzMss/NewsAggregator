@@ -9,14 +9,21 @@ use crate::config::{AiConfig, HttpClientConfig, TranslatorConfig};
 use super::{
     baidu::BaiduTranslator,
     deepseek::{DeepseekClient, TranslationResult},
+    ollama::OllamaClient,
 };
 
 const VERIFICATION_SAMPLE_TEXT: &str = "NewsAggregator ping";
+const PROVIDER_PRIORITY: [TranslatorProvider; 3] = [
+    TranslatorProvider::Deepseek,
+    TranslatorProvider::Baidu,
+    TranslatorProvider::Ollama,
+];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TranslatorProvider {
     Deepseek,
     Baidu,
+    Ollama,
 }
 
 fn clear_verification(state: &mut TranslationState, provider: TranslatorProvider) {
@@ -29,6 +36,10 @@ fn clear_verification(state: &mut TranslationState, provider: TranslatorProvider
             state.deepseek_verified = false;
             state.deepseek_error = None;
         }
+        TranslatorProvider::Ollama => {
+            state.ollama_verified = false;
+            state.ollama_error = None;
+        }
     }
 }
 
@@ -36,6 +47,7 @@ fn provider_available(state: &TranslationState, provider: TranslatorProvider) ->
     match provider {
         TranslatorProvider::Baidu => state.baidu_client.is_some() && state.baidu_verified,
         TranslatorProvider::Deepseek => state.deepseek_client.is_some() && state.deepseek_verified,
+        TranslatorProvider::Ollama => state.ollama_client.is_some() && state.ollama_verified,
     }
 }
 
@@ -44,7 +56,7 @@ fn ensure_provider_consistency(state: &mut TranslationState) {
         return;
     }
 
-    if let Some(fallback) = [TranslatorProvider::Deepseek, TranslatorProvider::Baidu]
+    if let Some(fallback) = PROVIDER_PRIORITY
         .into_iter()
         .find(|provider| provider_available(state, *provider))
     {
@@ -56,12 +68,13 @@ async fn verify_provider_credentials(
     state: Arc<RwLock<TranslationState>>,
     verify_baidu: bool,
     verify_deepseek: bool,
+    verify_ollama: bool,
 ) {
-    if !verify_baidu && !verify_deepseek {
+    if !verify_baidu && !verify_deepseek && !verify_ollama {
         return;
     }
 
-    let (baidu_client, deepseek_client) = {
+    let (baidu_client, deepseek_client, ollama_client) = {
         let mut guard = state
             .write()
             .expect("translator state poisoned before verification");
@@ -82,7 +95,15 @@ async fn verify_provider_credentials(
             None
         };
 
-        (baidu, deepseek)
+        let ollama = if verify_ollama {
+            let client = guard.ollama_client.clone();
+            clear_verification(&mut guard, TranslatorProvider::Ollama);
+            client
+        } else {
+            None
+        };
+
+        (baidu, deepseek, ollama)
     };
 
     if verify_baidu {
@@ -141,7 +162,34 @@ async fn verify_provider_credentials(
         }
     }
 
-    if verify_baidu || verify_deepseek {
+    if verify_ollama {
+        if let Some(client) = ollama_client {
+            debug!("verifying ollama translator connectivity");
+            let result = client.translate_news(VERIFICATION_SAMPLE_TEXT, None).await;
+
+            let mut guard = state
+                .write()
+                .expect("translator state poisoned while updating ollama verification");
+            match result {
+                Ok(_) => {
+                    guard.ollama_verified = true;
+                    guard.ollama_error = None;
+                }
+                Err(err) => {
+                    guard.ollama_verified = false;
+                    guard.ollama_error = Some(truncate_error(err));
+                    warn!(
+                        error = guard.ollama_error.as_deref().unwrap_or_default(),
+                        "ollama translator verification failed"
+                    );
+                }
+            }
+        } else if let Ok(mut guard) = state.write() {
+            clear_verification(&mut guard, TranslatorProvider::Ollama);
+        }
+    }
+
+    if verify_baidu || verify_deepseek || verify_ollama {
         if let Ok(mut guard) = state.write() {
             ensure_provider_consistency(&mut guard);
         }
@@ -162,6 +210,7 @@ impl TranslatorProvider {
         match self {
             TranslatorProvider::Deepseek => "deepseek",
             TranslatorProvider::Baidu => "baidu",
+            TranslatorProvider::Ollama => "ollama",
         }
     }
 }
@@ -173,6 +222,7 @@ impl std::str::FromStr for TranslatorProvider {
         match value.trim().to_ascii_lowercase().as_str() {
             "deepseek" => Ok(TranslatorProvider::Deepseek),
             "baidu" => Ok(TranslatorProvider::Baidu),
+            "ollama" => Ok(TranslatorProvider::Ollama),
             other => Err(anyhow!("unsupported translator provider: {other}")),
         }
     }
@@ -208,6 +258,7 @@ pub struct TranslationEngine {
     state: Arc<RwLock<TranslationState>>,
     http_config: HttpClientConfig,
     base_deepseek: DeepseekBaseConfig,
+    base_ollama: OllamaBaseConfig,
 }
 
 struct TranslationState {
@@ -221,11 +272,21 @@ struct TranslationState {
     deepseek_client: Option<Arc<DeepseekClient>>,
     deepseek_verified: bool,
     deepseek_error: Option<String>,
+    ollama_client: Option<Arc<OllamaClient>>,
+    ollama_verified: bool,
+    ollama_error: Option<String>,
     translate_descriptions: bool,
 }
 
 #[derive(Debug, Clone)]
 struct DeepseekBaseConfig {
+    base_url: String,
+    model: String,
+    timeout_secs: u64,
+}
+
+#[derive(Debug, Clone)]
+struct OllamaBaseConfig {
     base_url: String,
     model: String,
     timeout_secs: u64,
@@ -245,11 +306,15 @@ pub struct TranslatorSnapshot {
     pub provider: TranslatorProvider,
     pub baidu_configured: bool,
     pub deepseek_configured: bool,
+    pub ollama_configured: bool,
     pub baidu_app_id_masked: Option<String>,
     pub baidu_secret_key_masked: Option<String>,
     pub deepseek_api_key_masked: Option<String>,
     pub baidu_error: Option<String>,
     pub deepseek_error: Option<String>,
+    pub ollama_error: Option<String>,
+    pub ollama_base_url: Option<String>,
+    pub ollama_model: Option<String>,
     pub translate_descriptions: bool,
 }
 
@@ -288,6 +353,9 @@ impl TranslationEngine {
             deepseek_client: None,
             deepseek_verified: false,
             deepseek_error: None,
+            ollama_client: None,
+            ollama_verified: false,
+            ollama_error: None,
             translate_descriptions: false,
         };
 
@@ -297,30 +365,34 @@ impl TranslationEngine {
             timeout_secs: ai_config.deepseek.timeout_secs,
         };
 
+        let base_ollama = OllamaBaseConfig {
+            base_url: ai_config.ollama.base_url.clone(),
+            model: ai_config.ollama.model.clone(),
+            timeout_secs: ai_config.ollama.timeout_secs,
+        };
+
         // attempt to build clients
         state.baidu_client = build_baidu_client(http_client, &state)?;
         state.deepseek_client = build_deepseek_client(http_client, &base_deepseek, &state)?;
+        state.ollama_client = build_ollama_client(http_client, &base_ollama)?;
         clear_verification(&mut state, TranslatorProvider::Baidu);
         clear_verification(&mut state, TranslatorProvider::Deepseek);
+        clear_verification(&mut state, TranslatorProvider::Ollama);
 
-        if state.provider == TranslatorProvider::Baidu && state.baidu_client.is_none() {
-            if state.deepseek_client.is_some() {
-                state.provider = TranslatorProvider::Deepseek;
-            }
-        } else if state.provider == TranslatorProvider::Deepseek && state.deepseek_client.is_none()
-        {
-            if state.baidu_client.is_some() {
-                state.provider = TranslatorProvider::Baidu;
-            }
-        }
+        ensure_provider_consistency(&mut state);
+
+        let verify_baidu = state.baidu_client.is_some();
+        let verify_deepseek = state.deepseek_client.is_some();
+        let verify_ollama = state.ollama_client.is_some();
 
         let engine = Self {
             state: Arc::new(RwLock::new(state)),
             http_config: http_client.clone(),
             base_deepseek,
+            base_ollama,
         };
 
-        engine.spawn_verification_tasks(true, true);
+        engine.spawn_verification_tasks(verify_baidu, verify_deepseek, verify_ollama);
 
         Ok(engine)
     }
@@ -343,6 +415,7 @@ impl TranslationEngine {
         let has_client = match provider {
             TranslatorProvider::Baidu => guard.baidu_client.is_some(),
             TranslatorProvider::Deepseek => guard.deepseek_client.is_some(),
+            TranslatorProvider::Ollama => guard.ollama_client.is_some(),
         };
 
         if !has_client {
@@ -354,8 +427,9 @@ impl TranslationEngine {
 
         if !available {
             match provider {
-                TranslatorProvider::Baidu => self.spawn_verification_tasks(true, false),
-                TranslatorProvider::Deepseek => self.spawn_verification_tasks(false, true),
+                TranslatorProvider::Baidu => self.spawn_verification_tasks(true, false, false),
+                TranslatorProvider::Deepseek => self.spawn_verification_tasks(false, true, false),
+                TranslatorProvider::Ollama => self.spawn_verification_tasks(false, false, true),
             }
         }
 
@@ -366,7 +440,7 @@ impl TranslationEngine {
         self.state
             .read()
             .map(|state| {
-                [TranslatorProvider::Deepseek, TranslatorProvider::Baidu]
+                PROVIDER_PRIORITY
                     .into_iter()
                     .filter(|provider| provider_available(&state, *provider))
                     .collect()
@@ -397,8 +471,13 @@ impl TranslationEngine {
             .and_then(|state| state.deepseek_client.as_ref().map(Arc::clone))
     }
 
-    fn spawn_verification_tasks(&self, verify_baidu: bool, verify_deepseek: bool) {
-        if !verify_baidu && !verify_deepseek {
+    fn spawn_verification_tasks(
+        &self,
+        verify_baidu: bool,
+        verify_deepseek: bool,
+        verify_ollama: bool,
+    ) {
+        if !verify_baidu && !verify_deepseek && !verify_ollama {
             return;
         }
 
@@ -406,7 +485,13 @@ impl TranslationEngine {
         match Handle::try_current() {
             Ok(handle) => {
                 handle.spawn(async move {
-                    verify_provider_credentials(state, verify_baidu, verify_deepseek).await;
+                    verify_provider_credentials(
+                        state,
+                        verify_baidu,
+                        verify_deepseek,
+                        verify_ollama,
+                    )
+                    .await;
                 });
             }
             Err(error) => {
@@ -423,6 +508,10 @@ impl TranslationEngine {
                         guard.deepseek_verified = false;
                         guard.deepseek_error = Some("无法执行凭据验证任务".to_string());
                     }
+                    if verify_ollama && guard.ollama_client.is_some() {
+                        guard.ollama_verified = false;
+                        guard.ollama_error = Some("无法执行凭据验证任务".to_string());
+                    }
                 }
             }
         }
@@ -434,6 +523,7 @@ impl TranslationEngine {
             provider: state.provider,
             baidu_configured: state.baidu_client.is_some() && state.baidu_verified,
             deepseek_configured: state.deepseek_client.is_some() && state.deepseek_verified,
+            ollama_configured: state.ollama_client.is_some() && state.ollama_verified,
             baidu_app_id_masked: state.baidu_app_id.as_ref().map(|value| mask_secret(value)),
             baidu_secret_key_masked: state
                 .baidu_secret_key
@@ -445,6 +535,17 @@ impl TranslationEngine {
                 .map(|value| mask_secret(value)),
             baidu_error: state.baidu_error.clone(),
             deepseek_error: state.deepseek_error.clone(),
+            ollama_error: state.ollama_error.clone(),
+            ollama_base_url: if self.base_ollama.base_url.trim().is_empty() {
+                None
+            } else {
+                Some(self.base_ollama.base_url.clone())
+            },
+            ollama_model: if self.base_ollama.model.trim().is_empty() {
+                None
+            } else {
+                Some(self.base_ollama.model.clone())
+            },
             translate_descriptions: state.translate_descriptions,
         }
     }
@@ -514,6 +615,9 @@ impl TranslationEngine {
         state.baidu_client = build_baidu_client(&self.http_config, &state)?;
         state.deepseek_client =
             build_deepseek_client(&self.http_config, &self.base_deepseek, &state)?;
+        if state.ollama_client.is_none() {
+            state.ollama_client = build_ollama_client(&self.http_config, &self.base_ollama)?;
+        }
 
         if let Some(flag) = update.translate_descriptions {
             state.translate_descriptions = flag;
@@ -528,7 +632,7 @@ impl TranslationEngine {
             }
             state.provider = provider;
         } else if !provider_available(&state, state.provider) {
-            if let Some(fallback) = [TranslatorProvider::Deepseek, TranslatorProvider::Baidu]
+            if let Some(fallback) = PROVIDER_PRIORITY
                 .into_iter()
                 .find(|candidate| provider_available(&state, *candidate))
             {
@@ -537,7 +641,7 @@ impl TranslationEngine {
         }
 
         drop(state);
-        self.spawn_verification_tasks(baidu_changed, deepseek_changed);
+        self.spawn_verification_tasks(baidu_changed, deepseek_changed, false);
 
         Ok(())
     }
@@ -556,12 +660,10 @@ impl TranslationEngine {
             if provider_available(&state, state.provider) {
                 order.push(state.provider);
             }
-            let fallback = match state.provider {
-                TranslatorProvider::Baidu => TranslatorProvider::Deepseek,
-                TranslatorProvider::Deepseek => TranslatorProvider::Baidu,
-            };
-            if provider_available(&state, fallback) && !order.contains(&fallback) {
-                order.push(fallback);
+            for candidate in PROVIDER_PRIORITY {
+                if candidate != state.provider && provider_available(&state, candidate) {
+                    order.push(candidate);
+                }
             }
             if order.is_empty() {
                 return Ok(None);
@@ -661,6 +763,25 @@ impl TranslationEngine {
                     .await
                     .map_err(TranslationError::Other)
             }
+            TranslatorProvider::Ollama => {
+                let (client, verified) = {
+                    let state = self.state.read().map_err(|_| {
+                        TranslationError::Other(anyhow!("translator lock poisoned"))
+                    })?;
+                    (state.ollama_client.clone(), state.ollama_verified)
+                };
+
+                let client = client.ok_or(TranslationError::NotConfigured)?;
+
+                if !verified {
+                    return Err(TranslationError::NotConfigured);
+                }
+
+                client
+                    .translate_news(title, description)
+                    .await
+                    .map_err(TranslationError::Other)
+            }
         }
     }
 }
@@ -702,6 +823,22 @@ fn build_deepseek_client(
     config.timeout_secs = base_config.timeout_secs;
 
     Ok(Some(Arc::new(DeepseekClient::new(config, http_config)?)))
+}
+
+fn build_ollama_client(
+    http_config: &HttpClientConfig,
+    base_config: &OllamaBaseConfig,
+) -> Result<Option<Arc<OllamaClient>>> {
+    if base_config.base_url.trim().is_empty() || base_config.model.trim().is_empty() {
+        return Ok(None);
+    }
+
+    Ok(Some(Arc::new(OllamaClient::new(
+        &base_config.base_url,
+        &base_config.model,
+        base_config.timeout_secs,
+        http_config,
+    )?)))
 }
 
 fn map_baidu_error(err: crate::util::baidu::BaiduError) -> TranslationError {

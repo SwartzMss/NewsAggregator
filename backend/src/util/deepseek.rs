@@ -268,9 +268,9 @@ struct ChatCompletionMessage {
 
 const SYSTEM_PROMPT: &str = "你是一名资深的新闻比对助手，需要判断两条新闻是否描述同一事件。输出必须是 JSON，字段 is_duplicate、reason、confidence。";
 
-const TRANSLATION_PROMPT: &str = "你是一名专业的财经翻译，请将输入的英文新闻标题和摘要翻译成自然、准确的简体中文。输出必须是 JSON，格式为 {\"title\": \"...\", \"description\": \"...\"}，如果没有摘要可返回 null。不得添加多余文字。";
+pub(crate) const TRANSLATION_PROMPT: &str = "你是一名专业的财经翻译，请将输入的英文新闻标题和摘要翻译成自然、准确的简体中文。输出必须是 JSON，格式为 {\"title\": \"...\", \"description\": \"...\"}，如果没有摘要可返回 null。不得添加多余文字。";
 
-fn build_translation_input(title: &str, description: Option<&str>) -> String {
+pub(crate) fn build_translation_input(title: &str, description: Option<&str>) -> String {
     let mut lines = vec![format!("Title: {title}")];
     if let Some(desc) = description {
         lines.push(format!("Summary: {desc}"));
@@ -280,7 +280,7 @@ fn build_translation_input(title: &str, description: Option<&str>) -> String {
     lines.join("\n")
 }
 
-fn parse_translation(content: &str) -> Result<TranslationResult> {
+pub(crate) fn parse_translation(content: &str) -> Result<TranslationResult> {
     #[derive(Deserialize)]
     struct TranslationPayload {
         title: String,

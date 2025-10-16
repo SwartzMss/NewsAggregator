@@ -22,11 +22,15 @@ pub async fn get_translation_settings(
             .collect(),
         baidu_configured: snapshot.baidu_configured,
         deepseek_configured: snapshot.deepseek_configured,
+        ollama_configured: snapshot.ollama_configured,
         baidu_app_id_masked: snapshot.baidu_app_id_masked,
         baidu_secret_key_masked: snapshot.baidu_secret_key_masked,
         deepseek_api_key_masked: snapshot.deepseek_api_key_masked,
         baidu_error: snapshot.baidu_error,
         deepseek_error: snapshot.deepseek_error,
+        ollama_error: snapshot.ollama_error,
+        ollama_base_url: snapshot.ollama_base_url,
+        ollama_model: snapshot.ollama_model,
         translate_descriptions: snapshot.translate_descriptions,
     })
 }

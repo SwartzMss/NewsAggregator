@@ -93,11 +93,15 @@ pub struct TranslationSettingsOut {
     pub available_providers: Vec<String>,
     pub baidu_configured: bool,
     pub deepseek_configured: bool,
+    pub ollama_configured: bool,
     pub baidu_app_id_masked: Option<String>,
     pub baidu_secret_key_masked: Option<String>,
     pub deepseek_api_key_masked: Option<String>,
     pub baidu_error: Option<String>,
     pub deepseek_error: Option<String>,
+    pub ollama_error: Option<String>,
+    pub ollama_base_url: Option<String>,
+    pub ollama_model: Option<String>,
     pub translate_descriptions: bool,
 }
 

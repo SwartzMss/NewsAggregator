@@ -566,21 +566,25 @@ function TranslationSettingsPanel({
 
   const settings = settingsQuery.data;
   const provider = settings?.provider ?? "";
-  const options = settings?.available_providers ?? ["deepseek", "baidu"];
+  const options = settings?.available_providers ?? ["deepseek", "baidu", "ollama"];
   const busy = mutation.isPending;
   const translateDescriptions =
     localTranslate ?? settings?.translate_descriptions ?? false;
   const hasBaiduCredentials =
     Boolean(settings?.baidu_app_id_masked) && Boolean(settings?.baidu_secret_key_masked);
   const hasDeepseekCredentials = Boolean(settings?.deepseek_api_key_masked);
+  const hasOllamaConfig = Boolean(settings?.ollama_base_url);
   const pendingBaiduVerification =
     Boolean(settings) && hasBaiduCredentials && !settings?.baidu_configured && !settings?.baidu_error;
   const pendingDeepseekVerification =
     Boolean(settings) && hasDeepseekCredentials && !settings?.deepseek_configured && !settings?.deepseek_error;
+  const pendingOllamaVerification =
+    Boolean(settings) && hasOllamaConfig && !settings?.ollama_configured && !settings?.ollama_error;
 
   useEffect(() => {
     if (!token) return;
-    if (!pendingBaiduVerification && !pendingDeepseekVerification) return;
+    if (!pendingBaiduVerification && !pendingDeepseekVerification && !pendingOllamaVerification)
+      return;
     const timer = window.setInterval(() => {
       queryClient.invalidateQueries({ queryKey: ["translation-settings", token] });
     }, 4000);
@@ -588,22 +592,28 @@ function TranslationSettingsPanel({
   }, [
     pendingBaiduVerification,
     pendingDeepseekVerification,
+    pendingOllamaVerification,
     queryClient,
     token,
   ]);
 
-  const formatLabel = (value: string) =>
-    value === "baidu" ? "百度翻译" : "Deepseek";
+  const formatLabel = (value: string) => {
+    if (value === "baidu") return "百度翻译";
+    if (value === "ollama") return "Ollama 本地";
+    return "Deepseek";
+  };
   const available = (value: string) => {
     if (!settings) return false;
     if (value === "baidu") return settings.baidu_configured;
     if (value === "deepseek") return settings.deepseek_configured;
+    if (value === "ollama") return settings.ollama_configured;
     return false;
   };
   const providerError = (value: string) => {
     if (!settings) return null;
     if (value === "baidu") return settings.baidu_error ?? null;
     if (value === "deepseek") return settings.deepseek_error ?? null;
+    if (value === "ollama") return settings.ollama_error ?? null;
     return null;
   };
   const providerStatusSuffix = (value: string) => {
@@ -613,6 +623,9 @@ function TranslationSettingsPanel({
     if (errorMessage) return "（验证失败）";
     const hasCredential =
       value === "baidu" ? hasBaiduCredentials : hasDeepseekCredentials;
+    if (value === "ollama") {
+      return hasOllamaConfig ? "（待验证）" : "（未配置）";
+    }
     return hasCredential ? "（待验证）" : "（未配置）";
   };
   const statusHints: string[] = [];
@@ -621,6 +634,9 @@ function TranslationSettingsPanel({
   }
   if (pendingBaiduVerification) {
     statusHints.push("百度翻译凭据验证中…");
+  }
+  if (pendingOllamaVerification) {
+    statusHints.push("Ollama 连通性验证中…");
   }
   if (settings || localTranslate !== null) {
     statusHints.push(
@@ -842,6 +858,48 @@ function TranslationSettingsPanel({
               ) : !hasBaiduCredentials && (settings?.baidu_app_id_masked || settings?.baidu_secret_key_masked) ? (
                 <p className="mt-3 text-xs text-orange-500">请同时填写 App ID 与 Secret Key。</p>
               ) : null}
+            </section>
+            <section className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm lg:col-span-2">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-700">Ollama 本地翻译</p>
+                  <p className="text-xs text-slate-500">
+                    使用本地部署模型完成翻译任务，需先部署并启动 Ollama 服务。
+                  </p>
+                </div>
+                <span
+                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    settings?.ollama_configured
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-slate-200 text-slate-600"
+                  }`}
+                >
+                  {settings?.ollama_configured ? "可用" : "未配置"}
+                </span>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1 text-xs text-slate-500">
+                  <p className="font-medium text-slate-600">服务地址</p>
+                  <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600">
+                    {settings?.ollama_base_url ?? "http://127.0.0.1:11434"}
+                  </p>
+                </div>
+                <div className="space-y-1 text-xs text-slate-500">
+                  <p className="font-medium text-slate-600">模型名称</p>
+                  <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600">
+                    {settings?.ollama_model ?? "未指定"}
+                  </p>
+                </div>
+              </div>
+              {settings?.ollama_error ? (
+                <p className="mt-3 text-xs text-red-500">{settings.ollama_error}</p>
+              ) : pendingOllamaVerification ? (
+                <p className="mt-3 text-xs text-slate-500">正在尝试连接 Ollama 服务…</p>
+              ) : (
+                <p className="mt-3 text-xs text-slate-500">
+                  如需自定义，请在服务器上通过环境变量或配置文件设置 `OLLAMA_BASE_URL`、`OLLAMA_MODEL`。
+                </p>
+              )}
             </section>
           </div>
 

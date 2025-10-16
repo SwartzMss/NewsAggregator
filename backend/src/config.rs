@@ -154,12 +154,32 @@ impl Default for BaiduTranslatorConfig {
 #[serde(default)]
 pub struct AiConfig {
     pub deepseek: DeepseekConfig,
+    pub ollama: OllamaConfig,
 }
 
 impl Default for AiConfig {
     fn default() -> Self {
         Self {
             deepseek: DeepseekConfig::default(),
+            ollama: OllamaConfig::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default)]
+pub struct OllamaConfig {
+    pub base_url: String,
+    pub model: String,
+    pub timeout_secs: u64,
+}
+
+impl Default for OllamaConfig {
+    fn default() -> Self {
+        Self {
+            base_url: "http://127.0.0.1:11434".to_string(),
+            model: "qwen2.5:3b".to_string(),
+            timeout_secs: 30,
         }
     }
 }
@@ -286,6 +306,14 @@ impl AppConfig {
             config.fetcher.request_timeout_secs = timeout;
         }
 
+        if let Some(attempts) = parse_optional_env("FETCH_QUICK_RETRY_ATTEMPTS")? {
+            config.fetcher.quick_retry_attempts = attempts;
+        }
+
+        if let Some(delay) = parse_optional_env("FETCH_QUICK_RETRY_DELAY_SECS")? {
+            config.fetcher.quick_retry_delay_secs = delay;
+        }
+
         if let Ok(proxy) = std::env::var("HTTP_PROXY") {
             config.http_client.http_proxy = Some(proxy);
         }
@@ -318,6 +346,22 @@ impl AppConfig {
 
         if let Ok(log_level) = std::env::var("LOG_LEVEL") {
             config.logging.level = Some(log_level);
+        }
+
+        if let Ok(base_url) = std::env::var("OLLAMA_BASE_URL") {
+            if !base_url.trim().is_empty() {
+                config.ai.ollama.base_url = base_url;
+            }
+        }
+
+        if let Ok(model) = std::env::var("OLLAMA_MODEL") {
+            if !model.trim().is_empty() {
+                config.ai.ollama.model = model;
+            }
+        }
+
+        if let Some(timeout) = parse_optional_env("OLLAMA_TIMEOUT_SECS")? {
+            config.ai.ollama.timeout_secs = timeout;
         }
 
         if let Ok(api_key) = std::env::var("DEEPSEEK_API_KEY") {

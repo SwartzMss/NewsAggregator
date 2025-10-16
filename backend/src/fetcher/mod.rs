@@ -155,6 +155,9 @@ fn normalize_fetcher_config(mut config: FetcherConfig) -> FetcherConfig {
     if config.request_timeout_secs == 0 {
         config.request_timeout_secs = 10;
     }
+    if config.quick_retry_attempts > 0 && config.quick_retry_delay_secs == 0 {
+        config.quick_retry_delay_secs = 10;
+    }
     config
 }
 

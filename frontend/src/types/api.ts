@@ -55,11 +55,15 @@ export type TranslationSettings = {
   available_providers: string[];
   baidu_configured: boolean;
   deepseek_configured: boolean;
+  ollama_configured: boolean;
   baidu_app_id_masked?: string | null;
   baidu_secret_key_masked?: string | null;
   deepseek_api_key_masked?: string | null;
   baidu_error?: string | null;
   deepseek_error?: string | null;
+  ollama_error?: string | null;
+  ollama_base_url?: string | null;
+  ollama_model?: string | null;
   translate_descriptions: boolean;
 };
 
