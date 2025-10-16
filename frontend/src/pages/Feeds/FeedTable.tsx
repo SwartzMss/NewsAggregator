@@ -3,25 +3,13 @@ import { formatDateTime } from "../../lib/time";
 
 export type FeedTableProps = {
   feeds: FeedOut[];
-  onToggle: (feed: FeedOut, enabled: boolean) => Promise<void> | void;
   onEdit: (feed: FeedOut) => void;
   onDelete: (feed: FeedOut) => Promise<void> | void;
-  onTest?: (feed: FeedOut) => Promise<void> | void;
   busyIds: Set<number>;
-  testingIds?: Set<number>;
   emptyMessage?: string;
 };
 
-export function FeedTable({
-  feeds,
-  onToggle,
-  onEdit,
-  onDelete,
-  onTest,
-  busyIds,
-  testingIds,
-  emptyMessage,
-}: FeedTableProps) {
+export function FeedTable({ feeds, onEdit, onDelete, busyIds, emptyMessage }: FeedTableProps) {
   if (feeds.length === 0) {
     return (
       <div className="rounded-md border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
@@ -30,7 +18,7 @@ export function FeedTable({
     );
   }
 
-  const testingSet = testingIds ?? new Set<number>();
+  const testingSet = new Set<number>();
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -42,7 +30,6 @@ export function FeedTable({
               <th className="hidden md:table-cell px-4 py-3">最新抓取</th>
               <th className="hidden lg:table-cell px-4 py-3">状态</th>
               <th className="hidden lg:table-cell px-4 py-3">失败次数</th>
-              <th className="px-4 py-3">启用</th>
               <th className="px-4 py-3 text-right">操作</th>
             </tr>
           </thead>
@@ -107,28 +94,7 @@ export function FeedTable({
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <label className="inline-flex items-center gap-2 text-sm text-slate-600">
-                      <input
-                        type="checkbox"
-                        checked={feed.enabled}
-                        onChange={(event) => onToggle(feed, event.target.checked)}
-                        disabled={busy}
-                        className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
-                      />
-                      {feed.enabled ? "开启" : "关闭"}
-                    </label>
-                  </td>
-                  <td className="px-4 py-3">
                     <div className="flex flex-wrap justify-end gap-2">
-                      {onTest && (
-                        <button
-                          onClick={() => onTest(feed)}
-                          disabled={testing}
-                          className="rounded-md border border-primary px-3 py-1 text-xs font-medium text-primary hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {testing ? "测试中…" : "测试抓取"}
-                        </button>
-                      )}
                       <button
                         onClick={() => onEdit(feed)}
                         className="rounded-md border border-slate-300 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"

@@ -1,12 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  deleteFeed,
-  listFeeds,
-  upsertFeed,
-  testFeed,
-  UnauthorizedError,
-} from "../../lib/api";
+import { deleteFeed, listFeeds, upsertFeed, testFeed, UnauthorizedError } from "../../lib/api";
 import { FeedOut, FeedUpsertPayload } from "../../types/api";
 import { FeedTable } from "./FeedTable";
 import { FeedFormModal } from "./FeedFormModal";
@@ -48,7 +42,6 @@ export function FeedsPage({
   const [modalOpen, setModalOpen] = useState(false);
   const [editingFeed, setEditingFeed] = useState<FeedOut | null>(null);
   const [busyIds, setBusyIds] = useState<Set<number>>(new Set());
-  const [testingIds, setTestingIds] = useState<Set<number>>(new Set());
   const [feedback, setFeedback] = useState<FeedbackState>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -118,23 +111,7 @@ export function FeedsPage({
     },
   });
 
-  const handleToggle = async (feed: FeedOut, enabled: boolean) => {
-    setBusyIds((prev) => new Set(prev).add(feed.id));
-    try {
-      await upsertMutation.mutateAsync({
-        id: feed.id,
-        url: feed.url,
-        source_domain: feed.source_domain,
-        enabled,
-      });
-    } finally {
-      setBusyIds((prev) => {
-        const next = new Set(prev);
-        next.delete(feed.id);
-        return next;
-      });
-    }
-  };
+  // Inline toggle removed: enabling/disabling should be done via edit modal
 
   const handleDelete = async (feed: FeedOut) => {
     if (!confirm(`确认删除订阅源 ${feed.title ?? feed.source_domain} 吗？`)) {
@@ -148,39 +125,11 @@ export function FeedsPage({
     setModalOpen(true);
   };
 
-  const handleTestFeed = async (feed: FeedOut) => {
-    setTestingIds((prev) => new Set(prev).add(feed.id));
-    setFeedback(null);
-    try {
-      const result = await testFeed(token, feed.url);
-      const summary =
-        result.entry_count > 0
-          ? `抓取成功：${result.status}，解析到 ${result.entry_count} 条内容`
-          : `抓取成功：${result.status}，未返回可用条目`;
-      setFeedback({
-        type: "info",
-        message: `${feed.title ?? feed.source_domain} ${summary}`,
-      });
-      invalidateFeeds();
-    } catch (err) {
-      setFeedback({
-        type: "error",
-        message:
-          (err as Error).message ||
-          `${feed.title ?? feed.source_domain} 测试抓取失败`,
-      });
-    } finally {
-      setTestingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(feed.id);
-        return next;
-      });
-    }
-  };
+  // Row-level "测试抓取" removed to avoid duplication with modal test
 
   const feeds = feedsQuery.data ?? [];
   const busySet = useMemo(() => busyIds, [busyIds]);
-  const testingSet = useMemo(() => testingIds, [testingIds]);
+  const testingSet = useMemo(() => new Set<number>(), []);
 
   const stats = useMemo(() => {
     const total = feeds.length;
@@ -345,12 +294,9 @@ export function FeedsPage({
       ) : (
         <FeedTable
           feeds={filteredFeeds}
-          onToggle={handleToggle}
           onEdit={(feed) => handleOpenModal(feed)}
           onDelete={handleDelete}
-          onTest={handleTestFeed}
           busyIds={busySet}
-          testingIds={testingSet}
           emptyMessage={emptyMessage}
         />
       )}
