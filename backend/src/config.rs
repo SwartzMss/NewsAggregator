@@ -42,6 +42,8 @@ pub struct FetcherConfig {
     pub batch_size: u32,
     pub concurrency: u32,
     pub request_timeout_secs: u64,
+    pub quick_retry_attempts: u32,
+    pub quick_retry_delay_secs: u64,
 }
 
 impl Default for FetcherConfig {
@@ -51,6 +53,8 @@ impl Default for FetcherConfig {
             batch_size: 8,
             concurrency: 4,
             request_timeout_secs: 15,
+            quick_retry_attempts: 1,
+            quick_retry_delay_secs: 10,
         }
     }
 }

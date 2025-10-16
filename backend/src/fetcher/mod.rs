@@ -6,7 +6,7 @@ use feed_rs::{model::Entry, parser};
 use reqwest::{Client, StatusCode};
 use tokio::{
     task::JoinSet,
-    time::{interval, MissedTickBehavior},
+    time::{interval, sleep, MissedTickBehavior},
 };
 use tracing::{debug, info, warn};
 
@@ -41,8 +41,53 @@ struct CandidateArticle {
 
 const TRANSLATION_LANG: &str = "zh-CN";
 
-fn should_translate_feed(source_domain: &str) -> bool {
-    source_domain.to_ascii_lowercase().contains("bloomberg.com")
+fn should_translate_title(title: &str) -> bool {
+    if title.trim().is_empty() {
+        return false;
+    }
+
+    if contains_cjk(title) {
+        return false;
+    }
+
+    let mut ascii_letters = 0;
+    let mut non_ascii_letters = 0;
+
+    for ch in title.chars() {
+        if ch.is_ascii_alphabetic() {
+            ascii_letters += 1;
+        } else if ch.is_alphabetic() {
+            non_ascii_letters += 1;
+        }
+    }
+
+    let total_letters = ascii_letters + non_ascii_letters;
+    if total_letters == 0 {
+        return false;
+    }
+
+    if ascii_letters == 0 {
+        return false;
+    }
+
+    let ratio = ascii_letters as f32 / total_letters as f32;
+    ratio >= 0.6
+}
+
+fn contains_cjk(value: &str) -> bool {
+    value.chars().any(|ch| {
+        matches!(
+            ch,
+            '\u{4E00}'..='\u{9FFF}'
+                | '\u{3400}'..='\u{4DBF}'
+                | '\u{20000}'..='\u{2A6DF}'
+                | '\u{2A700}'..='\u{2B73F}'
+                | '\u{2B740}'..='\u{2B81F}'
+                | '\u{2B820}'..='\u{2CEAF}'
+                | '\u{F900}'..='\u{FAFF}'
+                | '\u{2F800}'..='\u{2FA1F}'
+        )
+    })
 }
 
 const STRICT_DUP_THRESHOLD: f32 = 0.9;
@@ -85,7 +130,16 @@ pub async fn fetch_feed_once(
         .await?
         .ok_or_else(|| anyhow!("feed {feed_id} not found"))?;
 
-    process_feed(pool, client, translator, feed).await
+    let retry_delay = Duration::from_secs(config.quick_retry_delay_secs);
+    process_feed(
+        pool,
+        client,
+        translator,
+        feed,
+        config.quick_retry_attempts,
+        retry_delay,
+    )
+    .await
 }
 
 fn normalize_fetcher_config(mut config: FetcherConfig) -> FetcherConfig {
@@ -180,16 +234,26 @@ impl Fetcher {
 
         let concurrency = config.concurrency as usize;
         let mut set = JoinSet::new();
+        let retry_attempts = config.quick_retry_attempts;
+        let retry_delay = Duration::from_secs(config.quick_retry_delay_secs);
 
         for feed in feeds {
             let pool_cloned = pool.clone();
             let client_cloned = client.clone();
             let translation_cloned = Arc::clone(&translation);
+            let delay = retry_delay;
 
             set.spawn(async move {
                 debug!(feed_id = feed.id, url = %feed.url, "fetching feed");
-                if let Err(err) =
-                    process_feed(pool_cloned, client_cloned, translation_cloned, feed.clone()).await
+                if let Err(err) = process_feed(
+                    pool_cloned,
+                    client_cloned,
+                    translation_cloned,
+                    feed.clone(),
+                    retry_attempts,
+                    delay,
+                )
+                .await
                 {
                     warn!(
                         error = ?err,
@@ -218,12 +282,51 @@ async fn process_feed(
     client: Arc<Client>,
     translation: Arc<TranslationEngine>,
     feed: DueFeedRow,
+    retry_attempts: u32,
+    retry_delay: Duration,
 ) -> anyhow::Result<()> {
     let mut lock_conn = pool.acquire().await?;
     feeds::acquire_processing_lock(&mut lock_conn, feed.id).await?;
 
     let feed_id = feed.id;
-    let result = process_feed_locked(pool.clone(), client, translation, &feed).await;
+    let max_attempts = retry_attempts.saturating_add(1) as usize;
+    let mut result = Ok(());
+
+    for attempt in 0..max_attempts {
+        let is_last = attempt + 1 == max_attempts;
+        let outcome = process_feed_locked(
+            pool.clone(),
+            client.clone(),
+            Arc::clone(&translation),
+            &feed,
+            is_last,
+        )
+        .await;
+
+        match outcome {
+            Ok(_) => {
+                result = Ok(());
+                break;
+            }
+            Err(err) => {
+                result = Err(err);
+                if is_last {
+                    break;
+                }
+
+                debug!(
+                    feed_id = feed.id,
+                    url = %feed.url,
+                    attempt = attempt + 1,
+                    "feed fetch failed, retrying shortly"
+                );
+
+                if !retry_delay.is_zero() {
+                    sleep(retry_delay).await;
+                }
+            }
+        }
+    }
 
     let release_result = feeds::release_processing_lock(&mut lock_conn, feed_id).await;
     drop(lock_conn);
@@ -243,6 +346,7 @@ async fn process_feed_locked(
     client: Arc<Client>,
     translation: Arc<TranslationEngine>,
     feed: &DueFeedRow,
+    persist_failure: bool,
 ) -> anyhow::Result<()> {
     let mut request = client.get(&feed.url);
     if let Some(etag) = &feed.last_etag {
@@ -258,7 +362,7 @@ async fn process_feed_locked(
                 chain = %format_error_chain(&err),
                 "failed to fetch feed"
             );
-            record_failure(&pool, feed.id, err.status()).await?;
+            record_failure(&pool, feed.id, err.status(), persist_failure).await?;
             return Err(err.into());
         }
     };
@@ -276,14 +380,14 @@ async fn process_feed_locked(
     }
 
     if !status.is_success() {
-        feeds::mark_failure(&pool, feed.id, status.as_u16() as i16).await?;
+        record_failure(&pool, feed.id, Some(status), persist_failure).await?;
         return Err(anyhow!("unexpected status {}", status));
     }
 
     let bytes = match response.bytes().await {
         Ok(bytes) => bytes,
         Err(err) => {
-            feeds::mark_failure(&pool, feed.id, status.as_u16() as i16).await?;
+            record_failure(&pool, feed.id, Some(status), persist_failure).await?;
             return Err(err.into());
         }
     };
@@ -291,7 +395,7 @@ async fn process_feed_locked(
     let mut parsed_feed = match parser::parse(&bytes[..]) {
         Ok(feed) => feed,
         Err(err) => {
-            feeds::mark_failure(&pool, feed.id, status.as_u16() as i16).await?;
+            record_failure(&pool, feed.id, Some(status), persist_failure).await?;
             return Err(err.into());
         }
     };
@@ -343,14 +447,20 @@ async fn process_feed_locked(
             let original_title = article.title.clone();
             let original_description = article.description.clone();
 
-            if should_translate_feed(&feed.source_domain) {
+            if should_translate_title(&original_title) {
+                let description_input = if translation.translate_descriptions() {
+                    original_description.as_deref()
+                } else {
+                    None
+                };
+
                 match translation
-                    .translate(&original_title, original_description.as_deref())
+                    .translate(&original_title, description_input)
                     .await
                 {
                     Ok(Some(translated)) => {
                         article.title = translated.title;
-                        article.description = translated.description;
+                        article.description = translated.description.or(original_description);
                         article.language = Some(TRANSLATION_LANG.to_string());
                     }
                     Ok(None) => {
@@ -669,9 +779,17 @@ async fn record_failure(
     pool: &sqlx::PgPool,
     feed_id: i64,
     http_status: Option<StatusCode>,
+    persist: bool,
 ) -> anyhow::Result<()> {
     let status = http_status.map(|s| s.as_u16() as i16).unwrap_or(0);
-    feeds::mark_failure(pool, feed_id, status).await?;
-    warn!(feed_id, status, "marked feed fetch failure");
+    if persist {
+        feeds::mark_failure(pool, feed_id, status).await?;
+        warn!(feed_id, status, "marked feed fetch failure");
+    } else {
+        debug!(
+            feed_id,
+            status, "feed fetch failed, will attempt quick retry"
+        );
+    }
     Ok(())
 }

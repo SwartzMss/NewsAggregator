@@ -503,6 +503,7 @@ function TranslationSettingsPanel({
   const [dirtySecret, setDirtySecret] = useState(false);
   const [dirtyDeepseek, setDirtyDeepseek] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [localTranslate, setLocalTranslate] = useState<boolean | null>(null);
 
   const settingsQuery = useQuery<TranslationSettings, Error>({
     queryKey: ["translation-settings", token],
@@ -525,6 +526,7 @@ function TranslationSettingsPanel({
     setDirtyAppId(false);
     setDirtySecret(false);
     setDirtyDeepseek(false);
+    setLocalTranslate(null);
   }, [settingsQuery.data]);
 
   const mutation = useMutation<TranslationSettings, Error, TranslationSettingsUpdate>({
@@ -550,6 +552,7 @@ function TranslationSettingsPanel({
       setBaiduAppId("");
       setBaiduSecret("");
       setDeepseekKey("");
+      setLocalTranslate(null);
     },
     onError: (err: Error) => {
       if (err instanceof UnauthorizedError) {
@@ -557,6 +560,7 @@ function TranslationSettingsPanel({
       } else {
         setFeedback(err.message || "翻译配置更新失败");
       }
+      setLocalTranslate(null);
     },
   });
 
@@ -564,6 +568,8 @@ function TranslationSettingsPanel({
   const provider = settings?.provider ?? "";
   const options = settings?.available_providers ?? ["deepseek", "baidu"];
   const busy = mutation.isPending;
+  const translateDescriptions =
+    localTranslate ?? settings?.translate_descriptions ?? false;
   const hasBaiduCredentials =
     Boolean(settings?.baidu_app_id_masked) && Boolean(settings?.baidu_secret_key_masked);
   const hasDeepseekCredentials = Boolean(settings?.deepseek_api_key_masked);
@@ -616,6 +622,11 @@ function TranslationSettingsPanel({
   if (pendingBaiduVerification) {
     statusHints.push("百度翻译凭据验证中…");
   }
+  if (settings || localTranslate !== null) {
+    statusHints.push(
+      translateDescriptions ? "当前翻译标题和摘要。" : "当前仅翻译标题。"
+    );
+  }
   const statusMessage = busy
     ? "正在更新翻译配置…"
     : feedback ?? (statusHints.length > 0 ? statusHints.join(" ") : null);
@@ -624,6 +635,13 @@ function TranslationSettingsPanel({
     if (busy) return;
     if (Object.keys(payload).length === 0) return;
     mutation.mutate(payload);
+  };
+
+  const handleToggleDescriptions = () => {
+    if (busy) return;
+    const next = !translateDescriptions;
+    setLocalTranslate(next);
+    mutation.mutate({ translate_descriptions: next });
   };
 
   return (
@@ -677,6 +695,38 @@ function TranslationSettingsPanel({
               })}
             </select>
           </div>
+
+          <section className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-slate-700">翻译内容范围</p>
+                <p className="text-xs text-slate-500">
+                  默认仅翻译标题，开启后会同步翻译摘要。
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={translateDescriptions}
+                onClick={handleToggleDescriptions}
+                disabled={busy}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition ${
+                  translateDescriptions ? "bg-primary" : "bg-slate-300"
+                } ${busy ? "opacity-60" : ""}`}
+              >
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
+                    translateDescriptions ? "translate-x-5" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
+            <p className="mt-3 text-xs text-slate-500">
+              {translateDescriptions
+                ? "标题与摘要都会翻译成中文，适合人工审核或前台展示。"
+                : "仅翻译标题，更省额度，摘要保留原文。"}
+            </p>
+          </section>
 
           <div className="grid gap-4 lg:grid-cols-2">
             <section className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm">

@@ -60,6 +60,7 @@ export type TranslationSettings = {
   deepseek_api_key_masked?: string | null;
   baidu_error?: string | null;
   deepseek_error?: string | null;
+  translate_descriptions: boolean;
 };
 
 export type TranslationSettingsUpdate = {
@@ -67,6 +68,7 @@ export type TranslationSettingsUpdate = {
   baidu_app_id?: string;
   baidu_secret_key?: string;
   deepseek_api_key?: string;
+  translate_descriptions?: boolean;
 };
 
 export type AdminLoginResponse = {

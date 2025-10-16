@@ -27,6 +27,7 @@ pub async fn get_translation_settings(
         deepseek_api_key_masked: snapshot.deepseek_api_key_masked,
         baidu_error: snapshot.baidu_error,
         deepseek_error: snapshot.deepseek_error,
+        translate_descriptions: snapshot.translate_descriptions,
     })
 }
 
@@ -76,6 +77,12 @@ pub async fn update_translation_settings(
             repo::settings::upsert_setting(pool, "translation.deepseek_api_key", &api_key).await?;
             update.deepseek_api_key = Some(api_key);
         }
+    }
+
+    if let Some(flag) = payload.translate_descriptions {
+        let value = if flag { "true" } else { "false" };
+        repo::settings::upsert_setting(pool, "translation.translate_descriptions", value).await?;
+        update.translate_descriptions = Some(flag);
     }
 
     if let Err(err) = translator.update_credentials(update) {

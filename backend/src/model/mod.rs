@@ -98,6 +98,7 @@ pub struct TranslationSettingsOut {
     pub deepseek_api_key_masked: Option<String>,
     pub baidu_error: Option<String>,
     pub deepseek_error: Option<String>,
+    pub translate_descriptions: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -110,6 +111,8 @@ pub struct TranslationSettingsUpdate {
     pub baidu_secret_key: Option<String>,
     #[serde(default)]
     pub deepseek_api_key: Option<String>,
+    #[serde(default)]
+    pub translate_descriptions: Option<bool>,
 }
 
 impl Default for ArticleListQuery {

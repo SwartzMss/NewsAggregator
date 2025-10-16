@@ -221,6 +221,7 @@ struct TranslationState {
     deepseek_client: Option<Arc<DeepseekClient>>,
     deepseek_verified: bool,
     deepseek_error: Option<String>,
+    translate_descriptions: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -236,6 +237,7 @@ pub struct TranslatorCredentialsUpdate {
     pub baidu_app_id: Option<String>,
     pub baidu_secret_key: Option<String>,
     pub deepseek_api_key: Option<String>,
+    pub translate_descriptions: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
@@ -248,6 +250,7 @@ pub struct TranslatorSnapshot {
     pub deepseek_api_key_masked: Option<String>,
     pub baidu_error: Option<String>,
     pub deepseek_error: Option<String>,
+    pub translate_descriptions: bool,
 }
 
 impl TranslationEngine {
@@ -285,6 +288,7 @@ impl TranslationEngine {
             deepseek_client: None,
             deepseek_verified: false,
             deepseek_error: None,
+            translate_descriptions: false,
         };
 
         let base_deepseek = DeepseekBaseConfig {
@@ -441,7 +445,15 @@ impl TranslationEngine {
                 .map(|value| mask_secret(value)),
             baidu_error: state.baidu_error.clone(),
             deepseek_error: state.deepseek_error.clone(),
+            translate_descriptions: state.translate_descriptions,
         }
+    }
+
+    pub fn translate_descriptions(&self) -> bool {
+        self.state
+            .read()
+            .map(|state| state.translate_descriptions)
+            .unwrap_or(false)
     }
 
     pub fn update_credentials(&self, update: TranslatorCredentialsUpdate) -> Result<()> {
@@ -502,6 +514,10 @@ impl TranslationEngine {
         state.baidu_client = build_baidu_client(&self.http_config, &state)?;
         state.deepseek_client =
             build_deepseek_client(&self.http_config, &self.base_deepseek, &state)?;
+
+        if let Some(flag) = update.translate_descriptions {
+            state.translate_descriptions = flag;
+        }
 
         if let Some(provider) = update.provider {
             if !provider_available(&state, provider) {
