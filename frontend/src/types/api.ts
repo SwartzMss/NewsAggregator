@@ -58,6 +58,8 @@ export type TranslationSettings = {
   baidu_app_id_masked?: string | null;
   baidu_secret_key_masked?: string | null;
   deepseek_api_key_masked?: string | null;
+  baidu_error?: string | null;
+  deepseek_error?: string | null;
 };
 
 export type TranslationSettingsUpdate = {

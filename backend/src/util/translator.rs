@@ -1,7 +1,8 @@
 use std::sync::{Arc, RwLock};
 
 use anyhow::{anyhow, Result};
-use tracing::warn;
+use tokio::runtime::Handle;
+use tracing::{debug, warn};
 
 use crate::config::{AiConfig, HttpClientConfig, TranslatorConfig};
 
@@ -10,10 +11,150 @@ use super::{
     deepseek::{DeepseekClient, TranslationResult},
 };
 
+const VERIFICATION_SAMPLE_TEXT: &str = "NewsAggregator ping";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TranslatorProvider {
     Deepseek,
     Baidu,
+}
+
+fn clear_verification(state: &mut TranslationState, provider: TranslatorProvider) {
+    match provider {
+        TranslatorProvider::Baidu => {
+            state.baidu_verified = false;
+            state.baidu_error = None;
+        }
+        TranslatorProvider::Deepseek => {
+            state.deepseek_verified = false;
+            state.deepseek_error = None;
+        }
+    }
+}
+
+fn provider_available(state: &TranslationState, provider: TranslatorProvider) -> bool {
+    match provider {
+        TranslatorProvider::Baidu => state.baidu_client.is_some() && state.baidu_verified,
+        TranslatorProvider::Deepseek => state.deepseek_client.is_some() && state.deepseek_verified,
+    }
+}
+
+fn ensure_provider_consistency(state: &mut TranslationState) {
+    if provider_available(state, state.provider) {
+        return;
+    }
+
+    if let Some(fallback) = [TranslatorProvider::Deepseek, TranslatorProvider::Baidu]
+        .into_iter()
+        .find(|provider| provider_available(state, *provider))
+    {
+        state.provider = fallback;
+    }
+}
+
+async fn verify_provider_credentials(
+    state: Arc<RwLock<TranslationState>>,
+    verify_baidu: bool,
+    verify_deepseek: bool,
+) {
+    if !verify_baidu && !verify_deepseek {
+        return;
+    }
+
+    let (baidu_client, deepseek_client) = {
+        let mut guard = state
+            .write()
+            .expect("translator state poisoned before verification");
+
+        let baidu = if verify_baidu {
+            let client = guard.baidu_client.clone();
+            clear_verification(&mut guard, TranslatorProvider::Baidu);
+            client
+        } else {
+            None
+        };
+
+        let deepseek = if verify_deepseek {
+            let client = guard.deepseek_client.clone();
+            clear_verification(&mut guard, TranslatorProvider::Deepseek);
+            client
+        } else {
+            None
+        };
+
+        (baidu, deepseek)
+    };
+
+    if verify_baidu {
+        if let Some(client) = baidu_client {
+            debug!("verifying baidu translator credentials");
+            let result = client
+                .translate(VERIFICATION_SAMPLE_TEXT, "auto", "zh")
+                .await;
+
+            let mut guard = state
+                .write()
+                .expect("translator state poisoned while updating baidu verification");
+            match result {
+                Ok(_) => {
+                    guard.baidu_verified = true;
+                    guard.baidu_error = None;
+                }
+                Err(err) => {
+                    guard.baidu_verified = false;
+                    guard.baidu_error = Some(truncate_error(err));
+                    warn!(
+                        error = guard.baidu_error.as_deref().unwrap_or_default(),
+                        "baidu translator credential verification failed"
+                    );
+                }
+            }
+        } else if let Ok(mut guard) = state.write() {
+            clear_verification(&mut guard, TranslatorProvider::Baidu);
+        }
+    }
+
+    if verify_deepseek {
+        if let Some(client) = deepseek_client {
+            debug!("verifying deepseek translator credentials");
+            let result = client.translate_news(VERIFICATION_SAMPLE_TEXT, None).await;
+
+            let mut guard = state
+                .write()
+                .expect("translator state poisoned while updating deepseek verification");
+            match result {
+                Ok(_) => {
+                    guard.deepseek_verified = true;
+                    guard.deepseek_error = None;
+                }
+                Err(err) => {
+                    guard.deepseek_verified = false;
+                    guard.deepseek_error = Some(truncate_error(err));
+                    warn!(
+                        error = guard.deepseek_error.as_deref().unwrap_or_default(),
+                        "deepseek translator credential verification failed"
+                    );
+                }
+            }
+        } else if let Ok(mut guard) = state.write() {
+            clear_verification(&mut guard, TranslatorProvider::Deepseek);
+        }
+    }
+
+    if verify_baidu || verify_deepseek {
+        if let Ok(mut guard) = state.write() {
+            ensure_provider_consistency(&mut guard);
+        }
+    }
+}
+
+fn truncate_error<E: std::fmt::Display>(err: E) -> String {
+    let mut message = err.to_string();
+    const MAX_LEN: usize = 200;
+    if message.len() > MAX_LEN {
+        message.truncate(MAX_LEN);
+    }
+    message
 }
 
 impl TranslatorProvider {
@@ -74,8 +215,12 @@ struct TranslationState {
     baidu_app_id: Option<String>,
     baidu_secret_key: Option<String>,
     baidu_client: Option<Arc<BaiduTranslator>>,
+    baidu_verified: bool,
+    baidu_error: Option<String>,
     deepseek_api_key: Option<String>,
     deepseek_client: Option<Arc<DeepseekClient>>,
+    deepseek_verified: bool,
+    deepseek_error: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -101,6 +246,8 @@ pub struct TranslatorSnapshot {
     pub baidu_app_id_masked: Option<String>,
     pub baidu_secret_key_masked: Option<String>,
     pub deepseek_api_key_masked: Option<String>,
+    pub baidu_error: Option<String>,
+    pub deepseek_error: Option<String>,
 }
 
 impl TranslationEngine {
@@ -127,6 +274,8 @@ impl TranslationEngine {
                 .map(|value| value.trim().to_string())
                 .filter(|value| !value.is_empty()),
             baidu_client: None,
+            baidu_verified: false,
+            baidu_error: None,
             deepseek_api_key: ai_config
                 .deepseek
                 .api_key
@@ -134,6 +283,8 @@ impl TranslationEngine {
                 .map(|value| value.trim().to_string())
                 .filter(|value| !value.is_empty()),
             deepseek_client: None,
+            deepseek_verified: false,
+            deepseek_error: None,
         };
 
         let base_deepseek = DeepseekBaseConfig {
@@ -145,6 +296,8 @@ impl TranslationEngine {
         // attempt to build clients
         state.baidu_client = build_baidu_client(http_client, &state)?;
         state.deepseek_client = build_deepseek_client(http_client, &base_deepseek, &state)?;
+        clear_verification(&mut state, TranslatorProvider::Baidu);
+        clear_verification(&mut state, TranslatorProvider::Deepseek);
 
         if state.provider == TranslatorProvider::Baidu && state.baidu_client.is_none() {
             if state.deepseek_client.is_some() {
@@ -157,11 +310,15 @@ impl TranslationEngine {
             }
         }
 
-        Ok(Self {
+        let engine = Self {
             state: Arc::new(RwLock::new(state)),
             http_config: http_client.clone(),
             base_deepseek,
-        })
+        };
+
+        engine.spawn_verification_tasks(true, true);
+
+        Ok(engine)
     }
 
     #[allow(dead_code)]
@@ -178,28 +335,46 @@ impl TranslationEngine {
             .write()
             .map_err(|_| anyhow!("failed to acquire translator state lock"))?;
 
-        let available = match provider {
+        let available = provider_available(&guard, provider);
+        let has_client = match provider {
             TranslatorProvider::Baidu => guard.baidu_client.is_some(),
             TranslatorProvider::Deepseek => guard.deepseek_client.is_some(),
         };
 
-        if !available {
+        if !has_client {
             return Err(anyhow!("translator provider {:?} unavailable", provider));
         }
 
         guard.provider = provider;
+        drop(guard);
+
+        if !available {
+            match provider {
+                TranslatorProvider::Baidu => self.spawn_verification_tasks(true, false),
+                TranslatorProvider::Deepseek => self.spawn_verification_tasks(false, true),
+            }
+        }
+
         Ok(())
     }
 
     pub fn available_providers(&self) -> Vec<TranslatorProvider> {
-        vec![TranslatorProvider::Deepseek, TranslatorProvider::Baidu]
+        self.state
+            .read()
+            .map(|state| {
+                [TranslatorProvider::Deepseek, TranslatorProvider::Baidu]
+                    .into_iter()
+                    .filter(|provider| provider_available(&state, *provider))
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     #[allow(dead_code)]
     pub fn is_baidu_available(&self) -> bool {
         self.state
             .read()
-            .map(|state| state.baidu_client.is_some())
+            .map(|state| provider_available(&state, TranslatorProvider::Baidu))
             .unwrap_or(false)
     }
 
@@ -207,7 +382,7 @@ impl TranslationEngine {
     pub fn is_deepseek_available(&self) -> bool {
         self.state
             .read()
-            .map(|state| state.deepseek_client.is_some())
+            .map(|state| provider_available(&state, TranslatorProvider::Deepseek))
             .unwrap_or(false)
     }
 
@@ -218,12 +393,43 @@ impl TranslationEngine {
             .and_then(|state| state.deepseek_client.as_ref().map(Arc::clone))
     }
 
+    fn spawn_verification_tasks(&self, verify_baidu: bool, verify_deepseek: bool) {
+        if !verify_baidu && !verify_deepseek {
+            return;
+        }
+
+        let state = Arc::clone(&self.state);
+        match Handle::try_current() {
+            Ok(handle) => {
+                handle.spawn(async move {
+                    verify_provider_credentials(state, verify_baidu, verify_deepseek).await;
+                });
+            }
+            Err(error) => {
+                warn!(
+                    error = %error,
+                    "unable to spawn translator credential verification task"
+                );
+                if let Ok(mut guard) = state.write() {
+                    if verify_baidu && guard.baidu_client.is_some() {
+                        guard.baidu_verified = false;
+                        guard.baidu_error = Some("无法执行凭据验证任务".to_string());
+                    }
+                    if verify_deepseek && guard.deepseek_client.is_some() {
+                        guard.deepseek_verified = false;
+                        guard.deepseek_error = Some("无法执行凭据验证任务".to_string());
+                    }
+                }
+            }
+        }
+    }
+
     pub fn snapshot(&self) -> TranslatorSnapshot {
         let state = self.state.read().expect("translator state poisoned");
         TranslatorSnapshot {
             provider: state.provider,
-            baidu_configured: state.baidu_client.is_some(),
-            deepseek_configured: state.deepseek_client.is_some(),
+            baidu_configured: state.baidu_client.is_some() && state.baidu_verified,
+            deepseek_configured: state.deepseek_client.is_some() && state.deepseek_verified,
             baidu_app_id_masked: state.baidu_app_id.as_ref().map(|value| mask_secret(value)),
             baidu_secret_key_masked: state
                 .baidu_secret_key
@@ -233,6 +439,8 @@ impl TranslationEngine {
                 .deepseek_api_key
                 .as_ref()
                 .map(|value| mask_secret(value)),
+            baidu_error: state.baidu_error.clone(),
+            deepseek_error: state.deepseek_error.clone(),
         }
     }
 
@@ -242,31 +450,53 @@ impl TranslationEngine {
             .write()
             .map_err(|_| anyhow!("failed to acquire translator state lock"))?;
 
+        let mut baidu_changed = false;
+        let mut deepseek_changed = false;
+
         if let Some(app_id) = update.baidu_app_id {
             let trimmed = app_id.trim().to_string();
-            state.baidu_app_id = if trimmed.is_empty() {
+            let new_value = if trimmed.is_empty() {
                 None
             } else {
                 Some(trimmed)
             };
+            if state.baidu_app_id != new_value {
+                baidu_changed = true;
+            }
+            state.baidu_app_id = new_value;
         }
 
         if let Some(secret) = update.baidu_secret_key {
             let trimmed = secret.trim().to_string();
-            state.baidu_secret_key = if trimmed.is_empty() {
+            let new_value = if trimmed.is_empty() {
                 None
             } else {
                 Some(trimmed)
             };
+            if state.baidu_secret_key != new_value {
+                baidu_changed = true;
+            }
+            state.baidu_secret_key = new_value;
         }
 
         if let Some(api_key) = update.deepseek_api_key {
             let trimmed = api_key.trim().to_string();
-            state.deepseek_api_key = if trimmed.is_empty() {
+            let new_value = if trimmed.is_empty() {
                 None
             } else {
                 Some(trimmed)
             };
+            if state.deepseek_api_key != new_value {
+                deepseek_changed = true;
+            }
+            state.deepseek_api_key = new_value;
+        }
+
+        if baidu_changed {
+            clear_verification(&mut state, TranslatorProvider::Baidu);
+        }
+        if deepseek_changed {
+            clear_verification(&mut state, TranslatorProvider::Deepseek);
         }
 
         state.baidu_client = build_baidu_client(&self.http_config, &state)?;
@@ -274,27 +504,24 @@ impl TranslationEngine {
             build_deepseek_client(&self.http_config, &self.base_deepseek, &state)?;
 
         if let Some(provider) = update.provider {
-            let available = match provider {
-                TranslatorProvider::Baidu => state.baidu_client.is_some(),
-                TranslatorProvider::Deepseek => state.deepseek_client.is_some(),
-            };
-            if !available {
+            if !provider_available(&state, provider) {
                 return Err(anyhow!(
                     "translator provider {:?} unavailable after update",
                     provider
                 ));
             }
             state.provider = provider;
-        } else if state.provider == TranslatorProvider::Baidu && state.baidu_client.is_none() {
-            if state.deepseek_client.is_some() {
-                state.provider = TranslatorProvider::Deepseek;
-            }
-        } else if state.provider == TranslatorProvider::Deepseek && state.deepseek_client.is_none()
-        {
-            if state.baidu_client.is_some() {
-                state.provider = TranslatorProvider::Baidu;
+        } else if !provider_available(&state, state.provider) {
+            if let Some(fallback) = [TranslatorProvider::Deepseek, TranslatorProvider::Baidu]
+                .into_iter()
+                .find(|candidate| provider_available(&state, *candidate))
+            {
+                state.provider = fallback;
             }
         }
+
+        drop(state);
+        self.spawn_verification_tasks(baidu_changed, deepseek_changed);
 
         Ok(())
     }
@@ -309,17 +536,21 @@ impl TranslationEngine {
                 .state
                 .read()
                 .map_err(|_| anyhow!("translator lock poisoned"))?;
-            if state.baidu_client.is_none() && state.deepseek_client.is_none() {
+            let mut order = Vec::new();
+            if provider_available(&state, state.provider) {
+                order.push(state.provider);
+            }
+            let fallback = match state.provider {
+                TranslatorProvider::Baidu => TranslatorProvider::Deepseek,
+                TranslatorProvider::Deepseek => TranslatorProvider::Baidu,
+            };
+            if provider_available(&state, fallback) && !order.contains(&fallback) {
+                order.push(fallback);
+            }
+            if order.is_empty() {
                 return Ok(None);
             }
-            match state.provider {
-                TranslatorProvider::Baidu => {
-                    vec![TranslatorProvider::Baidu, TranslatorProvider::Deepseek]
-                }
-                TranslatorProvider::Deepseek => {
-                    vec![TranslatorProvider::Deepseek, TranslatorProvider::Baidu]
-                }
-            }
+            order
         };
 
         let mut last_error: Option<anyhow::Error> = None;
@@ -364,13 +595,18 @@ impl TranslationEngine {
     ) -> Result<TranslationResult, TranslationError> {
         match provider {
             TranslatorProvider::Baidu => {
-                let client = self
-                    .state
-                    .read()
-                    .map_err(|_| TranslationError::Other(anyhow!("translator lock poisoned")))?
-                    .baidu_client
-                    .clone()
-                    .ok_or(TranslationError::NotConfigured)?;
+                let (client, verified) = {
+                    let state = self.state.read().map_err(|_| {
+                        TranslationError::Other(anyhow!("translator lock poisoned"))
+                    })?;
+                    (state.baidu_client.clone(), state.baidu_verified)
+                };
+
+                let client = client.ok_or(TranslationError::NotConfigured)?;
+
+                if !verified {
+                    return Err(TranslationError::NotConfigured);
+                }
 
                 let translated_title = client
                     .translate(title, "auto", "zh")
@@ -392,13 +628,18 @@ impl TranslationEngine {
                 })
             }
             TranslatorProvider::Deepseek => {
-                let client = self
-                    .state
-                    .read()
-                    .map_err(|_| TranslationError::Other(anyhow!("translator lock poisoned")))?
-                    .deepseek_client
-                    .clone()
-                    .ok_or(TranslationError::NotConfigured)?;
+                let (client, verified) = {
+                    let state = self.state.read().map_err(|_| {
+                        TranslationError::Other(anyhow!("translator lock poisoned"))
+                    })?;
+                    (state.deepseek_client.clone(), state.deepseek_verified)
+                };
+
+                let client = client.ok_or(TranslationError::NotConfigured)?;
+
+                if !verified {
+                    return Err(TranslationError::NotConfigured);
+                }
                 client
                     .translate_news(title, description)
                     .await

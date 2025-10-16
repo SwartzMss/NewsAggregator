@@ -13,7 +13,7 @@ use crate::{
     api, auth,
     config::{AppConfig, FetcherConfig, FrontendPublicConfig, HttpClientConfig},
     fetcher, repo,
-    util::translator::{TranslatorCredentialsUpdate, TranslationEngine, TranslatorProvider},
+    util::translator::{TranslationEngine, TranslatorCredentialsUpdate, TranslatorProvider},
 };
 
 #[derive(Clone)]

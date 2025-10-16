@@ -163,7 +163,7 @@ export function AdminPage() {
       {
         key: "feeds",
         label: "订阅源管理",
-        description: "维护 RSS 订阅源与抓取配置。",
+        description: "添加、监控并测试后台抓取源。",
         render: () => (
           <FeedsPage
             token={token}
@@ -319,7 +319,7 @@ export function AdminPage() {
           <div className="fixed inset-y-0 left-0 z-50 w-64 bg-white px-6 py-6 shadow-2xl">
             <div className="mb-6 flex items-center justify-between">
               <span className="text-lg font-semibold tracking-wide text-slate-900">
-                News
+                新闻聚合面板
               </span>
               <button
                 onClick={() => setSidebarOpen(false)}
@@ -356,7 +356,7 @@ export function AdminPage() {
       <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:border-r lg:border-slate-200 lg:bg-white">
         <div className="flex h-20 items-center justify-center border-b border-slate-200">
           <span className="text-lg font-semibold tracking-wide text-slate-900">
-            News
+            新闻聚合面板
           </span>
         </div>
         <nav className="flex-1 space-y-1 px-6 py-6">
@@ -532,7 +532,18 @@ function TranslationSettingsPanel({
       updateTranslationSettings(token, payload),
     onSuccess: (data) => {
       queryClient.setQueryData(["translation-settings", token], data);
-      setFeedback("翻译配置已更新");
+      queryClient.invalidateQueries({ queryKey: ["translation-settings", token] });
+      const baiduPending =
+        !data.baidu_configured &&
+        Boolean(data.baidu_app_id_masked) &&
+        Boolean(data.baidu_secret_key_masked);
+      const deepseekPending =
+        !data.deepseek_configured && Boolean(data.deepseek_api_key_masked);
+      if (baiduPending || deepseekPending) {
+        setFeedback("配置已保存，正在验证凭据…");
+      } else {
+        setFeedback("翻译配置已更新");
+      }
       setDirtyAppId(false);
       setDirtySecret(false);
       setDirtyDeepseek(false);
@@ -553,6 +564,27 @@ function TranslationSettingsPanel({
   const provider = settings?.provider ?? "";
   const options = settings?.available_providers ?? ["deepseek", "baidu"];
   const busy = mutation.isPending;
+  const hasBaiduCredentials =
+    Boolean(settings?.baidu_app_id_masked) && Boolean(settings?.baidu_secret_key_masked);
+  const hasDeepseekCredentials = Boolean(settings?.deepseek_api_key_masked);
+  const pendingBaiduVerification =
+    Boolean(settings) && hasBaiduCredentials && !settings?.baidu_configured && !settings?.baidu_error;
+  const pendingDeepseekVerification =
+    Boolean(settings) && hasDeepseekCredentials && !settings?.deepseek_configured && !settings?.deepseek_error;
+
+  useEffect(() => {
+    if (!token) return;
+    if (!pendingBaiduVerification && !pendingDeepseekVerification) return;
+    const timer = window.setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ["translation-settings", token] });
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [
+    pendingBaiduVerification,
+    pendingDeepseekVerification,
+    queryClient,
+    token,
+  ]);
 
   const formatLabel = (value: string) =>
     value === "baidu" ? "百度翻译" : "Deepseek";
@@ -562,22 +594,35 @@ function TranslationSettingsPanel({
     if (value === "deepseek") return settings.deepseek_configured;
     return false;
   };
+  const providerError = (value: string) => {
+    if (!settings) return null;
+    if (value === "baidu") return settings.baidu_error ?? null;
+    if (value === "deepseek") return settings.deepseek_error ?? null;
+    return null;
+  };
+  const providerStatusSuffix = (value: string) => {
+    if (!settings) return "（未配置）";
+    if (available(value)) return "";
+    const errorMessage = providerError(value);
+    if (errorMessage) return "（验证失败）";
+    const hasCredential =
+      value === "baidu" ? hasBaiduCredentials : hasDeepseekCredentials;
+    return hasCredential ? "（待验证）" : "（未配置）";
+  };
+  const statusHints: string[] = [];
+  if (pendingDeepseekVerification) {
+    statusHints.push("Deepseek 凭据验证中…");
+  }
+  if (pendingBaiduVerification) {
+    statusHints.push("百度翻译凭据验证中…");
+  }
+  const statusMessage = busy
+    ? "正在更新翻译配置…"
+    : feedback ?? (statusHints.length > 0 ? statusHints.join(" ") : null);
 
-  const handleSave = () => {
-    const payload: TranslationSettingsUpdate = {};
-    if (dirtyAppId) {
-      payload.baidu_app_id = baiduAppId;
-    }
-    if (dirtySecret) {
-      payload.baidu_secret_key = baiduSecret;
-    }
-    if (dirtyDeepseek) {
-      payload.deepseek_api_key = deepseekKey;
-    }
-    if (Object.keys(payload).length === 0) {
-      setFeedback("没有需要更新的字段");
-      return;
-    }
+  const autoUpdate = (payload: TranslationSettingsUpdate) => {
+    if (busy) return;
+    if (Object.keys(payload).length === 0) return;
     mutation.mutate(payload);
   };
 
@@ -591,10 +636,18 @@ function TranslationSettingsPanel({
         </div>
       ) : (
         <>
-          <div>
-            <label className="text-sm font-medium text-slate-700">
-              默认翻译服务
-            </label>
+          <div className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-slate-700">默认翻译服务</p>
+                <p className="text-xs text-slate-500">
+                  选择后台操作默认使用的翻译服务提供商。
+                </p>
+              </div>
+              <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                当前：{provider ? formatLabel(provider) : "未选择"}
+              </span>
+            </div>
             <select
               value={provider}
               onChange={(event) => {
@@ -605,99 +658,148 @@ function TranslationSettingsPanel({
                 mutation.mutate({ provider: value });
               }}
               disabled={busy}
-              className="mt-2 w-60 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-70"
+              className="mt-3 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {options.map((option) => (
-                <option key={option} value={option} disabled={!available(option)}>
-                  {`${formatLabel(option)}${available(option) ? "" : "（未配置）"}`}
-                </option>
-              ))}
+              {options.map((option) => {
+                const disabled = !available(option);
+                const errorMessage = providerError(option);
+                const suffix = disabled ? providerStatusSuffix(option) : "";
+                return (
+                  <option
+                    key={option}
+                    value={option}
+                    disabled={disabled}
+                    title={errorMessage || undefined}
+                  >
+                    {`${formatLabel(option)}${suffix}`}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
-              <p className="text-xs font-medium text-slate-500">Deepseek</p>
-              <p
-                className={`text-sm font-semibold ${
-                  settings?.deepseek_configured ? "text-emerald-600" : "text-slate-400"
-                }`}
-              >
-                {settings?.deepseek_configured ? "已配置" : "未配置"}
-              </p>
-              <input
-                value={dirtyDeepseek ? deepseekKey : ""}
-                onChange={(event) => {
-                  setDeepseekKey(event.target.value);
-                  setDirtyDeepseek(true);
-                }}
-                placeholder={
-                  settings?.deepseek_api_key_masked ?? "请输入 Deepseek API Key"
-                }
-                className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-xs shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-
-            <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm space-y-2">
-              <div>
-                <p className="text-xs font-medium text-slate-500">百度 App ID</p>
-                <input
-                  value={dirtyAppId ? baiduAppId : ""}
-                  onChange={(event) => {
-                    setBaiduAppId(event.target.value);
-                    setDirtyAppId(true);
-                  }}
-                  placeholder={settings?.baidu_app_id_masked ?? "请输入 App ID"}
-                  className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-xs shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <section className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-700">Deepseek</p>
+                  <p className="text-xs text-slate-500">
+                    使用语言模型快速完成中英文互译。
+                  </p>
+                </div>
+                <span
+                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    settings?.deepseek_configured
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-slate-200 text-slate-600"
+                  }`}
+                >
+                  {settings?.deepseek_configured ? "可用" : "未配置"}
+                </span>
               </div>
-              <div>
-                <p className="text-xs font-medium text-slate-500">百度 Secret Key</p>
+              <div className="mt-4 space-y-2">
+                <label className="text-xs font-medium text-slate-500" htmlFor="translation-deepseek-key">
+                  Deepseek API Key
+                </label>
                 <input
-                  value={dirtySecret ? baiduSecret : ""}
+                  id="translation-deepseek-key"
+                  value={dirtyDeepseek ? deepseekKey : ""}
                   onChange={(event) => {
-                    setBaiduSecret(event.target.value);
-                    setDirtySecret(true);
+                    setDeepseekKey(event.target.value);
+                    setDirtyDeepseek(true);
+                  }}
+                  onBlur={() => {
+                    if (!dirtyDeepseek) return;
+                    autoUpdate({ deepseek_api_key: deepseekKey });
                   }}
                   placeholder={
-                    settings?.baidu_secret_key_masked ?? "请输入 Secret Key"
+                    settings?.deepseek_api_key_masked ?? "请输入 Deepseek API Key"
                   }
-                  className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-xs shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-xs shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
+                {settings?.deepseek_error ? (
+                  <p className="text-xs text-red-500">{settings.deepseek_error}</p>
+                ) : pendingDeepseekVerification ? (
+                  <p className="text-xs text-slate-500">正在验证 API 凭据…</p>
+                ) : null}
               </div>
-            </div>
+            </section>
+
+            <section className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-700">百度翻译</p>
+                  <p className="text-xs text-slate-500">
+                    绑定凭据后可作为冗余的翻译备选方案。
+                  </p>
+                </div>
+                <span
+                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    settings?.baidu_configured
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-slate-200 text-slate-600"
+                  }`}
+                >
+                  {settings?.baidu_configured ? "可用" : "未配置"}
+                </span>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-slate-500" htmlFor="translation-baidu-app-id">
+                    App ID
+                  </label>
+                  <input
+                    id="translation-baidu-app-id"
+                    value={dirtyAppId ? baiduAppId : ""}
+                    onChange={(event) => {
+                      setBaiduAppId(event.target.value);
+                      setDirtyAppId(true);
+                    }}
+                    onBlur={() => {
+                      if (!dirtyAppId) return;
+                      autoUpdate({ baidu_app_id: baiduAppId });
+                    }}
+                    placeholder={settings?.baidu_app_id_masked ?? "请输入 App ID"}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-xs shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-slate-500" htmlFor="translation-baidu-secret">
+                    Secret Key
+                  </label>
+                  <input
+                    id="translation-baidu-secret"
+                    value={dirtySecret ? baiduSecret : ""}
+                    onChange={(event) => {
+                      setBaiduSecret(event.target.value);
+                      setDirtySecret(true);
+                    }}
+                    onBlur={() => {
+                      if (!dirtySecret) return;
+                      autoUpdate({ baidu_secret_key: baiduSecret });
+                    }}
+                    placeholder={
+                      settings?.baidu_secret_key_masked ?? "请输入 Secret Key"
+                    }
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-xs shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+              </div>
+              {settings?.baidu_error ? (
+                <p className="mt-3 text-xs text-red-500">{settings.baidu_error}</p>
+              ) : pendingBaiduVerification ? (
+                <p className="mt-3 text-xs text-slate-500">正在验证 API 凭据…</p>
+              ) : !hasBaiduCredentials && (settings?.baidu_app_id_masked || settings?.baidu_secret_key_masked) ? (
+                <p className="mt-3 text-xs text-orange-500">请同时填写 App ID 与 Secret Key。</p>
+              ) : null}
+            </section>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={busy}
-              className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              保存凭据
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setBaiduAppId("");
-                setBaiduSecret("");
-                setDeepseekKey("");
-                setDirtyAppId(false);
-                setDirtySecret(false);
-                setDirtyDeepseek(false);
-              }}
-              className="inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
-            >
-              重置输入
-            </button>
-            {busy && (
-              <span className="text-xs text-slate-500">正在更新…</span>
-            )}
-            {feedback && !busy && (
-              <span className="text-xs text-slate-500">{feedback}</span>
-            )}
-          </div>
+          {statusMessage ? (
+            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+              {statusMessage}
+            </div>
+          ) : null}
         </>
       )}
     </div>

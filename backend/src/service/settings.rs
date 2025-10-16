@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use tracing::warn;
+
 use crate::{
     error::{AppError, AppResult},
     model::{TranslationSettingsOut, TranslationSettingsUpdate},
@@ -23,6 +25,8 @@ pub async fn get_translation_settings(
         baidu_app_id_masked: snapshot.baidu_app_id_masked,
         baidu_secret_key_masked: snapshot.baidu_secret_key_masked,
         deepseek_api_key_masked: snapshot.deepseek_api_key_masked,
+        baidu_error: snapshot.baidu_error,
+        deepseek_error: snapshot.deepseek_error,
     })
 }
 
@@ -74,9 +78,24 @@ pub async fn update_translation_settings(
         }
     }
 
-    translator
-        .update_credentials(update)
-        .map_err(AppError::Internal)?;
+    if let Err(err) = translator.update_credentials(update) {
+        let message = err.to_string();
+        if message.contains("unavailable") {
+            warn!(
+                error = %err,
+                "translator provider unavailable when updating credentials"
+            );
+            let user_message = if message.contains("Baidu") {
+                "百度翻译暂不可用，请确认凭据有效并稍后重试"
+            } else if message.contains("Deepseek") {
+                "Deepseek 翻译暂不可用，请检查 API Key 或稍后重试"
+            } else {
+                "翻译服务暂不可用，请检查配置"
+            };
+            return Err(AppError::BadRequest(user_message.into()));
+        }
+        return Err(AppError::Internal(err));
+    }
 
     if let Some(provider_raw) = payload.provider {
         let provider = provider_raw

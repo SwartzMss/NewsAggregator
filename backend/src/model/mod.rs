@@ -96,6 +96,8 @@ pub struct TranslationSettingsOut {
     pub baidu_app_id_masked: Option<String>,
     pub baidu_secret_key_masked: Option<String>,
     pub deepseek_api_key_masked: Option<String>,
+    pub baidu_error: Option<String>,
+    pub deepseek_error: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
