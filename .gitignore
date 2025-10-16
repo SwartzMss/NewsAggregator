@@ -30,3 +30,6 @@ frontend/dist/
 frontend/*.tsbuildinfo
 frontend/vite.config.js
 frontend/vite.config.d.ts
+
+# local-only docs
+docs/google_news_integration.md
