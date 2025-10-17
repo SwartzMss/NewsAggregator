@@ -25,9 +25,6 @@ http_client:
   http_proxy: "http://172.20.160.1:7890"
   https_proxy: "http://172.20.160.1:7890"
 
-translator:
-  provider: "deepseek" # 可选值：deepseek、baidu；推荐通过后台设置百度凭据
-
 admin:
   username: "admin"
   password: "123456"
