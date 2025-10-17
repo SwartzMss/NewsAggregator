@@ -72,6 +72,8 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
 
     if let Some(saved_provider) = repo::settings::get_setting(&pool, "translation.provider").await?
     {
+        tracing::info!("loaded translator provider from database: {}", saved_provider);
+        
         match saved_provider.parse::<TranslatorProvider>() {
             Ok(provider) => {
                 if let Err(err) = translator.set_provider(provider) {
@@ -90,6 +92,8 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
                 );
             }
         }
+    } else {
+        tracing::info!("no translator provider configured, translation disabled");
     }
 
     fetcher::spawn(

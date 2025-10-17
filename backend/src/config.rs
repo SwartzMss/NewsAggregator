@@ -150,21 +150,6 @@ impl Default for BaiduTranslatorConfig {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
-#[serde(default)]
-pub struct AiConfig {
-    pub deepseek: DeepseekConfig,
-    pub ollama: OllamaConfig,
-}
-
-impl Default for AiConfig {
-    fn default() -> Self {
-        Self {
-            deepseek: DeepseekConfig::default(),
-            ollama: OllamaConfig::default(),
-        }
-    }
-}
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
@@ -184,21 +169,6 @@ impl Default for OllamaConfig {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
-#[serde(default)]
-pub struct TranslatorConfig {
-    pub provider: String,
-    pub baidu: BaiduTranslatorConfig,
-}
-
-impl Default for TranslatorConfig {
-    fn default() -> Self {
-        Self {
-            provider: "deepseek".to_string(),
-            baidu: BaiduTranslatorConfig::default(),
-        }
-    }
-}
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
@@ -245,24 +215,21 @@ impl Default for AppConfig {
 }
 
 impl AppConfig {
-    pub fn from_env() -> anyhow::Result<Self> {
-        let explicit_path = std::env::var("CONFIG_FILE").ok();
-        let config = if let Some(path) = explicit_path {
-            let path = PathBuf::from(path);
-            if !path.exists() {
-                return Err(anyhow!("config file {:?} not found", path));
-            }
-            Self::load_from_file(&path)?
+    /// 从默认的配置文件搜索路径加载配置（不读取任何环境变量）。
+    pub fn load() -> anyhow::Result<Self> {
+        if let Some(path) = locate_default_config() {
+            Self::load_from_file(&path)
         } else {
-            let path = locate_default_config();
-            if let Some(path) = path {
-                Self::load_from_file(&path)?
-            } else {
-                AppConfig::default()
-            }
-        };
+            Ok(AppConfig::default())
+        }
+    }
 
-        Self::apply_env_overrides(config)
+    /// 从指定的文件路径显式加载配置。
+    pub fn load_from_path(path: &Path) -> anyhow::Result<Self> {
+        if !path.exists() {
+            return Err(anyhow!("config file {:?} not found", path));
+        }
+        Self::load_from_file(path)
     }
 
     fn load_from_file(path: &Path) -> anyhow::Result<Self> {
@@ -273,95 +240,10 @@ impl AppConfig {
         Ok(config)
     }
 
-    fn apply_env_overrides(mut config: AppConfig) -> anyhow::Result<AppConfig> {
-        if let Ok(bind) = std::env::var("SERVER_BIND") {
-            config.server.bind = bind;
-        }
-
-        if let Ok(url) = std::env::var("DATABASE_URL") {
-            config.db.url = url;
-        }
-
-        if let Some(max_conn) = parse_optional_env("DB_MAX_CONNECTIONS")? {
-            config.db.max_connections = max_conn;
-        }
-
-        if let Some(interval) = parse_optional_env("FETCH_INTERVAL_SECS")? {
-            config.fetcher.interval_secs = interval;
-        }
-
-        if let Some(batch) = parse_optional_env("FETCH_BATCH_SIZE")? {
-            config.fetcher.batch_size = batch;
-        }
-
-        if let Some(concurrency) = parse_optional_env("FETCH_CONCURRENCY")? {
-            config.fetcher.concurrency = concurrency;
-        }
-
-        if let Some(timeout) = parse_optional_env("FETCH_TIMEOUT_SECS")? {
-            config.fetcher.request_timeout_secs = timeout;
-        }
-
-        if let Some(attempts) = parse_optional_env("FETCH_QUICK_RETRY_ATTEMPTS")? {
-            config.fetcher.quick_retry_attempts = attempts;
-        }
-
-        if let Some(delay) = parse_optional_env("FETCH_QUICK_RETRY_DELAY_SECS")? {
-            config.fetcher.quick_retry_delay_secs = delay;
-        }
-
-        if let Ok(proxy) = std::env::var("HTTP_PROXY") {
-            config.http_client.http_proxy = Some(proxy);
-        }
-
-        if let Ok(proxy) = std::env::var("HTTPS_PROXY") {
-            config.http_client.https_proxy = Some(proxy);
-        }
-
-        if let Ok(log_file) = std::env::var("LOG_FILE_PATH") {
-            config.logging.file = log_file;
-        }
-
-        if let Ok(log_level) = std::env::var("LOG_LEVEL") {
-            config.logging.level = Some(log_level);
-        }
-
-        if let Ok(admin_username) = std::env::var("ADMIN_USERNAME") {
-            if !admin_username.trim().is_empty() {
-                config.admin.username = admin_username;
-            }
-        }
-
-        if let Ok(admin_password) = std::env::var("ADMIN_PASSWORD") {
-            if !admin_password.trim().is_empty() {
-                config.admin.password = admin_password;
-            }
-        }
-
-        if let Some(ttl) = parse_optional_env::<u64>("ADMIN_SESSION_TTL_SECS")? {
-            config.admin.session_ttl_secs = ttl.max(60);
-        }
-
-        if config.db.url.trim().is_empty() {
-            return Err(anyhow!(
-                "database url missing; set DATABASE_URL env var or db.url in config file"
-            ));
-        }
-
-        config.http_client.http_proxy = normalize_proxy(config.http_client.http_proxy.take());
-        config.http_client.https_proxy = normalize_proxy(config.http_client.https_proxy.take());
-
-        Ok(config)
-    }
-
     pub fn frontend_public_config(&self) -> FrontendPublicConfig {
-        let mut candidates: Vec<String> = Vec::new();
+    // 依次收集可能的外部可访问 API 基础地址候选，然后选取第一个有效的。
+    let mut candidates: Vec<String> = Vec::new();
 
-        if let Ok(env_override) = std::env::var("PUBLIC_API_BASE_URL") {
-            if !env_override.trim().is_empty() {
-                candidates.push(env_override);
-            }
-        }
 
         if let Some(explicit) = self
             .deployment
@@ -418,6 +300,7 @@ impl AppConfig {
     }
 }
 
+// 规范化代理地址：空字符串或全空白会被转换为 None。
 fn normalize_proxy(value: Option<String>) -> Option<String> {
     value.and_then(|v| {
         let trimmed = v.trim();
@@ -429,30 +312,9 @@ fn normalize_proxy(value: Option<String>) -> Option<String> {
     })
 }
 
-fn normalize_optional_string(value: String) -> Option<String> {
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
-        None
-    } else {
-        Some(trimmed.to_string())
-    }
-}
 
-fn parse_optional_env<T>(key: &str) -> anyhow::Result<Option<T>>
-where
-    T: std::str::FromStr,
-    T::Err: std::error::Error + Send + Sync + 'static,
-{
-    match std::env::var(key) {
-        Ok(v) => Ok(Some(
-            v.parse::<T>()
-                .with_context(|| format!("{key} must be a valid value"))?,
-        )),
-        Err(std::env::VarError::NotPresent) => Ok(None),
-        Err(err) => Err(err.into()),
-    }
-}
 
+// 查找默认配置文件路径，按顺序返回第一个存在的路径。
 fn locate_default_config() -> Option<PathBuf> {
     let candidates = [
         PathBuf::from("config/config.yaml"),
@@ -504,6 +366,7 @@ pub struct FrontendPublicConfig {
     pub api_base_url: String,
 }
 
+// 将主机或地址补全为带协议的形式，未指定协议时默认使用 http。
 fn format_host_base(host: &str) -> String {
     let trimmed = host.trim();
     if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
@@ -513,6 +376,7 @@ fn format_host_base(host: &str) -> String {
     }
 }
 
+// 确保基础 URL 末尾包含 /api 后缀，避免前端使用时自行拼接。
 fn ensure_api_suffix(base: &str) -> String {
     let normalized = base.trim_end_matches('/');
     if normalized.ends_with("/api") {

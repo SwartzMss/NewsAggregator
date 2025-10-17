@@ -20,7 +20,7 @@ use tracing_subscriber::{
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let config = config::AppConfig::from_env().context("failed to load configuration")?;
+    let config = config::AppConfig::load().context("failed to load configuration")?;
     setup_tracing(&config)?;
     let addr: SocketAddr = config
         .server

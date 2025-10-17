@@ -353,7 +353,7 @@ impl TranslationEngine {
         http_client: &HttpClientConfig,
     ) -> Result<Self> {
         let mut state = TranslationState {
-            provider: TranslatorProvider::Deepseek, // 默认提供商，但不会被使用直到从数据库加载
+            provider: TranslatorProvider::Deepseek, // 占位符，但如果没有可用提供商就不会被使用
             baidu_app_id: None, // 不从配置文件读取，仅从数据库读取
             baidu_secret_key: None, // 不从配置文件读取，仅从数据库读取
             baidu_client: None,
