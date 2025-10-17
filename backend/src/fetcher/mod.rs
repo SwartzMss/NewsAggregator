@@ -6,7 +6,7 @@ use feed_rs::{model::Entry, parser};
 use reqwest::{Client, StatusCode};
 use tokio::{
     task::JoinSet,
-    time::{interval, sleep, MissedTickBehavior},
+    time::{interval, sleep, timeout, MissedTickBehavior},
 };
 use tracing::{info, warn};
 
@@ -443,7 +443,8 @@ async fn process_feed_locked(
     let mut articles = Vec::new();
     let mut seen_signatures: Vec<(BTreeSet<String>, String)> = Vec::new();
 
-    let deepseek = translation.deepseek_client();
+    // Use Ollama client for LLM-based duplicate adjudication
+    let ollama = translation.ollama_client();
 
     for entry in &entries {
         if let Some(mut article) = convert_entry(feed, &entry) {
@@ -600,7 +601,7 @@ async fn process_feed_locked(
                     }
 
                     if similarity >= DEEPSEEK_THRESHOLD {
-                        if let Some(client) = deepseek.as_ref() {
+                        if let Some(client) = ollama.as_ref() {
                             if deepseek_checks >= MAX_DEEPSEEK_CHECKS {
                                 break;
                             }
@@ -626,11 +627,33 @@ async fn process_feed_locked(
                                 summary: existing_summary_ref,
                             };
 
-                            match client
-                                .judge_similarity(&new_snippet, &existing_snippet)
-                                .await
+                            let started = std::time::Instant::now();
+                            info!(
+                                feed_id = feed.id,
+                                title = %article.title,
+                                existing_article_id = candidate.summary.article_id,
+                                "deepseek similarity check start"
+                            );
+                            // Hard cap LLM check duration to avoid long hangs
+                            let timeout_secs: u64 = 10;
+                            match timeout(
+                                Duration::from_secs(timeout_secs),
+                                client.judge_similarity(&new_snippet, &existing_snippet),
+                            )
+                            .await
+                            .map_err(|_| anyhow!("llm judge_similarity timed out in {}s", timeout_secs))
+                            .and_then(|r| r.map_err(anyhow::Error::from))
                             {
                                 Ok(decision) => {
+                                    let elapsed_ms = started.elapsed().as_millis() as u64;
+                                    info!(
+                                        feed_id = feed.id,
+                                        title = %article.title,
+                                        existing_article_id = candidate.summary.article_id,
+                                        elapsed_ms,
+                                        is_duplicate = decision.is_duplicate,
+                                        "deepseek similarity check done"
+                                    );
                                     if decision.is_duplicate {
                                         let reason = decision
                                             .reason
@@ -660,9 +683,11 @@ async fn process_feed_locked(
                                     }
                                 }
                                 Err(err) => {
+                                    let elapsed_ms = started.elapsed().as_millis() as u64;
                                     warn!(
                                         error = ?err,
                                         feed_id = feed.id,
+                                        elapsed_ms,
                                         "deepseek similarity check failed"
                                     );
                                 }

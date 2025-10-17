@@ -507,6 +507,13 @@ impl TranslationEngine {
             .and_then(|state| state.deepseek_client.as_ref().map(Arc::clone))
     }
 
+    pub fn ollama_client(&self) -> Option<Arc<OllamaClient>> {
+        self.state
+            .read()
+            .ok()
+            .and_then(|state| state.ollama_client.as_ref().map(Arc::clone))
+    }
+
     fn spawn_verification_tasks(
         &self,
         verify_baidu: bool,

@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
 use reqwest::{header, Client};
+use url::Url;
 use serde::{Deserialize, Serialize};
 
 use crate::config::{DeepseekConfig, HttpClientConfig};
@@ -38,9 +39,23 @@ pub struct DeepseekClient {
 impl DeepseekClient {
     pub fn new(config: DeepseekConfig, http_client: &HttpClientConfig) -> Result<Self> {
         let timeout = Duration::from_secs(config.timeout_secs.max(1));
-        let builder = http_client
+        let mut builder = http_client
             .apply(Client::builder())
             .context("failed to apply proxy settings for deepseek client")?;
+        // Disable proxy when Deepseek base_url points to a loopback/localhost address
+        if let Ok(parsed) = Url::parse(self_base_url(base_url_from_config(&config)).as_str()) {
+            let disable_proxy = parsed
+                .host()
+                .map(|host| match host {
+                    url::Host::Domain(domain) => domain.eq_ignore_ascii_case("localhost"),
+                    url::Host::Ipv4(addr) => addr.is_loopback(),
+                    url::Host::Ipv6(addr) => addr.is_loopback(),
+                })
+                .unwrap_or(false);
+            if disable_proxy {
+                builder = builder.no_proxy();
+            }
+        }
         let http = builder
             .timeout(timeout)
             .build()
@@ -185,7 +200,15 @@ impl DeepseekClient {
     }
 }
 
-fn build_prompt(a: &ArticleSnippet<'_>, b: &ArticleSnippet<'_>) -> String {
+fn base_url_from_config(config: &DeepseekConfig) -> &str {
+    config.base_url.as_str()
+}
+
+fn self_base_url(url: &str) -> String {
+    url.trim_end_matches('/').to_string()
+}
+
+pub fn build_prompt(a: &ArticleSnippet<'_>, b: &ArticleSnippet<'_>) -> String {
     fn lines(snippet: &ArticleSnippet<'_>, label: &str) -> String {
         let mut parts = vec![format!("标题: {}", snippet.title)];
         if let Some(source) = snippet.source {
@@ -210,7 +233,7 @@ fn build_prompt(a: &ArticleSnippet<'_>, b: &ArticleSnippet<'_>) -> String {
     )
 }
 
-fn parse_decision(content: &str) -> Result<DeepseekDecision> {
+pub fn parse_decision(content: &str) -> Result<DeepseekDecision> {
     let cleaned = content.trim();
     let json_str = cleaned
         .trim_start_matches("```json")

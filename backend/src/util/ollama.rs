@@ -8,7 +8,8 @@ use url::Url;
 use crate::config::HttpClientConfig;
 
 use super::deepseek::{
-    build_translation_input, parse_translation, TranslationResult, TRANSLATION_PROMPT,
+    build_prompt, build_translation_input, parse_decision, parse_translation, DeepseekDecision,
+    TranslationResult, TRANSLATION_PROMPT,
 };
 
 pub struct OllamaClient {
@@ -106,6 +107,59 @@ impl OllamaClient {
 
         parse_translation(&content)
             .context("failed to parse ollama translation payload: ensure模型提示输出 JSON")
+    }
+
+    pub async fn judge_similarity(
+        &self,
+        a: &crate::util::deepseek::ArticleSnippet<'_>,
+        b: &crate::util::deepseek::ArticleSnippet<'_>,
+    ) -> Result<DeepseekDecision> {
+        if self.base_url.is_empty() {
+            return Err(anyhow!("ollama base url not configured"));
+        }
+
+        let url = format!("{}/api/chat", self.base_url);
+        let payload = ChatRequest {
+            model: self.model.clone(),
+            messages: vec![
+                ChatMessage {
+                    role: "system",
+                    content: "你是新闻重复检测助手。仅输出一个 JSON，如 {\"is_duplicate\": true/false, \"reason\": \"...\", \"confidence\": 0-1 }。不要输出其它文本。".to_string(),
+                },
+                ChatMessage {
+                    role: "user",
+                    content: build_prompt(a, b),
+                },
+            ],
+            stream: false,
+        };
+
+        let response = self
+            .http
+            .post(&url)
+            .header(header::CONTENT_TYPE, "application/json")
+            .json(&payload)
+            .send()
+            .await
+            .context("ollama similarity request failed")?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            return Err(anyhow!(
+                "ollama similarity returned non-success status {}: {}",
+                status,
+                body
+            ));
+        }
+
+        let text = response
+            .text()
+            .await
+            .context("failed to read ollama similarity response")?;
+
+        let content = extract_content(&text).unwrap_or_else(|| text.clone());
+        parse_decision(&content).context("failed to parse ollama similarity payload: ensure输出 JSON")
     }
 }
 
