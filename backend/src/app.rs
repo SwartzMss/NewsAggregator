@@ -38,8 +38,6 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
 
     let translator = Arc::new(TranslationEngine::new(
         &config.http_client,
-        &config.translator,
-        &config.ai,
     )?);
 
     let stored_baidu_app_id =

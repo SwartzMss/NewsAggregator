@@ -5,7 +5,7 @@ use tokio::runtime::Handle;
 use std::time::Instant;
 use tracing::{info, warn};
 
-use crate::config::{AiConfig, HttpClientConfig, TranslatorConfig};
+use crate::config::HttpClientConfig;
 
 use super::{
     baidu::BaiduTranslator,
@@ -351,35 +351,15 @@ pub struct TranslatorSnapshot {
 impl TranslationEngine {
     pub fn new(
         http_client: &HttpClientConfig,
-        translator_config: &TranslatorConfig,
-        ai_config: &AiConfig,
     ) -> Result<Self> {
         let mut state = TranslationState {
-            provider: translator_config
-                .provider
-                .parse::<TranslatorProvider>()
-                .unwrap_or(TranslatorProvider::Deepseek),
-            baidu_app_id: translator_config
-                .baidu
-                .app_id
-                .as_ref()
-                .map(|value| value.trim().to_string())
-                .filter(|value| !value.is_empty()),
-            baidu_secret_key: translator_config
-                .baidu
-                .secret_key
-                .as_ref()
-                .map(|value| value.trim().to_string())
-                .filter(|value| !value.is_empty()),
+            provider: TranslatorProvider::Deepseek, // 默认提供商，但不会被使用直到从数据库加载
+            baidu_app_id: None, // 不从配置文件读取，仅从数据库读取
+            baidu_secret_key: None, // 不从配置文件读取，仅从数据库读取
             baidu_client: None,
             baidu_verified: false,
             baidu_error: None,
-            deepseek_api_key: ai_config
-                .deepseek
-                .api_key
-                .as_ref()
-                .map(|value| value.trim().to_string())
-                .filter(|value| !value.is_empty()),
+            deepseek_api_key: None, // 不从配置文件读取，仅从数据库读取
             deepseek_client: None,
             deepseek_verified: false,
             deepseek_error: None,
@@ -390,16 +370,16 @@ impl TranslationEngine {
         };
 
         let base_deepseek = DeepseekBaseConfig {
-            base_url: ai_config.deepseek.base_url.clone(),
-            model: ai_config.deepseek.model.clone(),
-            timeout_secs: ai_config.deepseek.timeout_secs,
+            base_url: "https://api.deepseek.com".to_string(),
+            model: "deepseek-chat".to_string(),
+            timeout_secs: 30,
         };
 
         // 不再从配置文件/环境变量读取 Ollama，默认留空，待数据库（管理后台）写入后启用
         let base_ollama = Arc::new(RwLock::new(OllamaBaseConfig {
             base_url: String::new(),
             model: String::new(),
-            timeout_secs: ai_config.ollama.timeout_secs,
+            timeout_secs: 30,
         }));
 
         // attempt to build clients

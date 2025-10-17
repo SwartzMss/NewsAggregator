@@ -226,8 +226,6 @@ pub struct AppConfig {
     pub fetcher: FetcherConfig,
     pub logging: LoggingConfig,
     pub http_client: HttpClientConfig,
-    pub ai: AiConfig,
-    pub translator: TranslatorConfig,
     pub deployment: DeploymentConfig,
     pub admin: AdminConfig,
 }
@@ -240,8 +238,6 @@ impl Default for AppConfig {
             fetcher: FetcherConfig::default(),
             logging: LoggingConfig::default(),
             http_client: HttpClientConfig::default(),
-            ai: AiConfig::default(),
-            translator: TranslatorConfig::default(),
             deployment: DeploymentConfig::default(),
             admin: AdminConfig::default(),
         }
@@ -322,62 +318,12 @@ impl AppConfig {
             config.http_client.https_proxy = Some(proxy);
         }
 
-        if let Ok(provider) = std::env::var("TRANSLATOR_PROVIDER") {
-            if !provider.trim().is_empty() {
-                config.translator.provider = provider;
-            }
-        }
-
-        if let Ok(app_id) = std::env::var("BAIDU_APP_ID") {
-            if !app_id.trim().is_empty() {
-                config.translator.baidu.app_id = Some(app_id);
-            }
-        }
-
-        if let Ok(secret) = std::env::var("BAIDU_SECRET_KEY") {
-            if !secret.trim().is_empty() {
-                config.translator.baidu.secret_key = Some(secret);
-            }
-        }
-
         if let Ok(log_file) = std::env::var("LOG_FILE_PATH") {
             config.logging.file = log_file;
         }
 
         if let Ok(log_level) = std::env::var("LOG_LEVEL") {
             config.logging.level = Some(log_level);
-        }
-
-        if let Ok(base_url) = std::env::var("OLLAMA_BASE_URL") {
-            if !base_url.trim().is_empty() {
-                config.ai.ollama.base_url = base_url;
-            }
-        }
-
-        if let Ok(model) = std::env::var("OLLAMA_MODEL") {
-            if !model.trim().is_empty() {
-                config.ai.ollama.model = model;
-            }
-        }
-
-        if let Some(timeout) = parse_optional_env("OLLAMA_TIMEOUT_SECS")? {
-            config.ai.ollama.timeout_secs = timeout;
-        }
-
-        if let Ok(api_key) = std::env::var("DEEPSEEK_API_KEY") {
-            config.ai.deepseek.api_key = Some(api_key);
-        }
-
-        if let Ok(base_url) = std::env::var("DEEPSEEK_BASE_URL") {
-            config.ai.deepseek.base_url = base_url;
-        }
-
-        if let Ok(model) = std::env::var("DEEPSEEK_MODEL") {
-            config.ai.deepseek.model = model;
-        }
-
-        if let Some(timeout) = parse_optional_env("DEEPSEEK_TIMEOUT_SECS")? {
-            config.ai.deepseek.timeout_secs = timeout;
         }
 
         if let Ok(admin_username) = std::env::var("ADMIN_USERNAME") {
@@ -404,19 +350,6 @@ impl AppConfig {
 
         config.http_client.http_proxy = normalize_proxy(config.http_client.http_proxy.take());
         config.http_client.https_proxy = normalize_proxy(config.http_client.https_proxy.take());
-        config.translator.provider = normalize_provider(&config.translator.provider);
-        config.translator.baidu.app_id = config
-            .translator
-            .baidu
-            .app_id
-            .take()
-            .and_then(|v| normalize_optional_string(v));
-        config.translator.baidu.secret_key = config
-            .translator
-            .baidu
-            .secret_key
-            .take()
-            .and_then(|v| normalize_optional_string(v));
 
         Ok(config)
     }
@@ -494,15 +427,6 @@ fn normalize_proxy(value: Option<String>) -> Option<String> {
             Some(trimmed.to_string())
         }
     })
-}
-
-fn normalize_provider(value: &str) -> String {
-    let normalized = value.trim().to_ascii_lowercase();
-    if normalized.is_empty() {
-        "deepseek".to_string()
-    } else {
-        normalized
-    }
 }
 
 fn normalize_optional_string(value: String) -> Option<String> {
