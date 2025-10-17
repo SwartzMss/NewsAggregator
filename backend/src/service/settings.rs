@@ -15,11 +15,7 @@ pub async fn get_translation_settings(
     let snapshot = translator.snapshot();
     Ok(TranslationSettingsOut {
         provider: snapshot.provider.as_str().to_string(),
-        available_providers: translator
-            .available_providers()
-            .into_iter()
-            .map(|provider| provider.as_str().to_string())
-            .collect(),
+        translation_enabled: snapshot.translation_enabled,
         baidu_configured: snapshot.baidu_configured,
         deepseek_configured: snapshot.deepseek_configured,
         ollama_configured: snapshot.ollama_configured,
@@ -109,6 +105,11 @@ pub async fn update_translation_settings(
         let value = if flag { "true" } else { "false" };
         repo::settings::upsert_setting(pool, "translation.translate_descriptions", value).await?;
         update.translate_descriptions = Some(flag);
+    }
+    if let Some(flag) = payload.translation_enabled {
+        let value = if flag { "true" } else { "false" };
+        repo::settings::upsert_setting(pool, "translation.enabled", value).await?;
+        update.translation_enabled = Some(flag);
     }
 
     if let Err(err) = translator.update_credentials(update) {

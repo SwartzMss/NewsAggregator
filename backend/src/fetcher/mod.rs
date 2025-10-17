@@ -1,5 +1,17 @@
 use std::{collections::BTreeSet, sync::Arc, time::Duration};
 
+// 抓取器（Fetcher）模块：
+// 负责周期性地抓取订阅源（RSS/Atom）内容，进行：
+// 1. 网络请求（支持代理与超时）
+// 2. 条目解析与字段规范化（URL 归一化、发布时间提取）
+// 3. 标题去重（同一批次内 + 与最近历史文章）
+// 4. 可选的标题与摘要翻译（多翻译提供者级联，失败重试一次）
+// 5. 基于 Jaccard 相似度 + LLM（Deepseek/Ollama）判断跨文章重复
+// 6. 入库（文章主表 + 来源追踪表）与失败状态标记
+// 7. 支持快速重试与并发抓取控制
+//
+// 设计目标：稳定、可观察（丰富 tracing 日志）、对失败具备自恢复能力，避免重复与垃圾内容进入主库。
+
 use anyhow::{anyhow, Context};
 use chrono::{DateTime, Utc};
 use feed_rs::{model::Entry, parser};
@@ -25,6 +37,7 @@ use crate::{
     },
 };
 
+// 最近文章的简要信息，用于与当前抓取文章做相似度比较
 struct ArticleSummary {
     article_id: i64,
     title: String,
@@ -34,6 +47,7 @@ struct ArticleSummary {
     published_at: DateTime<Utc>,
 }
 
+// 候选文章：预先分词后的 Token 集合 + 摘要
 struct CandidateArticle {
     tokens: BTreeSet<String>,
     summary: ArticleSummary,
@@ -42,6 +56,11 @@ struct CandidateArticle {
 const TRANSLATION_LANG: &str = "zh-CN";
 
 fn should_translate_title(title: &str) -> bool {
+    // 翻译判定逻辑：
+    // 1. 空标题不翻译
+    // 2. 已包含 CJK（中文、日文、韩文统一表意字符）则认为不需要翻译
+    // 3. 统计 ASCII 字母 vs 非 ASCII 字母比例，避免纯符号或数字
+    // 4. ASCII 比例 >= 0.6 认为是英文主导，触发翻译
     if title.trim().is_empty() {
         return false;
     }
@@ -90,9 +109,13 @@ fn contains_cjk(value: &str) -> bool {
     })
 }
 
+// Jaccard 严格重复阈值：>= 0.9 判定为几乎完全重复
 const STRICT_DUP_THRESHOLD: f32 = 0.9;
+// 触发 LLM 深度相似度判定的较宽松阈值：>= 0.6 进入 Deepseek 检查
 const DEEPSEEK_THRESHOLD: f32 = 0.6;
+// 最近历史文章数量上限：控制比较规模与性能
 const RECENT_ARTICLE_LIMIT: i64 = 200;
+// 对单篇新文章进行 LLM 相似度检查的最大次数（防止成本与延迟爆炸）
 const MAX_DEEPSEEK_CHECKS: usize = 3;
 
 pub fn spawn(
@@ -101,6 +124,7 @@ pub fn spawn(
     http_client_config: HttpClientConfig,
     translator: Arc<TranslationEngine>,
 ) -> anyhow::Result<()> {
+    // 后台启动永久运行的抓取循环任务
     let fetcher = Fetcher::new(pool, fetcher_config, http_client_config, translator)?;
     tokio::spawn(async move {
         if let Err(err) = fetcher.run().await {
@@ -143,6 +167,7 @@ pub async fn fetch_feed_once(
 }
 
 fn normalize_fetcher_config(mut config: FetcherConfig) -> FetcherConfig {
+    // 对用户配置进行兜底规范：避免出现 0 导致逻辑停滞或请求无超时
     if config.interval_secs == 0 {
         config.interval_secs = 60;
     }
@@ -204,7 +229,7 @@ impl Fetcher {
         let translation = Arc::clone(&translation);
         let mut ticker = interval(Duration::from_secs(config.interval_secs));
         ticker.set_missed_tick_behavior(MissedTickBehavior::Delay);
-        ticker.tick().await; // immediate first run
+    ticker.tick().await; // 立即执行一次（不等待第一个间隔）
 
         loop {
             ticker.tick().await;
@@ -216,6 +241,7 @@ impl Fetcher {
             )
             .await
             {
+                // 单轮抓取失败记录日志，但不退出主循环（保持自恢复）
                 warn!(error = ?err, "fetcher iteration failed");
             }
         }
@@ -241,6 +267,7 @@ impl Fetcher {
         let retry_delay = Duration::from_secs(config.quick_retry_delay_secs);
 
         for feed in feeds {
+            // 每个 feed 使用 tokio JoinSet 并发处理，受 concurrency 限制
             let pool_cloned = pool.clone();
             let client_cloned = client.clone();
             let translation_cloned = Arc::clone(&translation);
@@ -290,6 +317,7 @@ async fn process_feed(
 ) -> anyhow::Result<()> {
     let mut lock_conn = pool.acquire().await?;
     feeds::acquire_processing_lock(&mut lock_conn, feed.id).await?;
+    // 获得分布式/数据库级锁，避免同一个 feed 并发抓取
 
     let feed_id = feed.id;
     let max_attempts = retry_attempts.saturating_add(1) as usize;
@@ -355,6 +383,7 @@ async fn process_feed_locked(
     if let Some(etag) = &feed.last_etag {
         request = request.header(reqwest::header::IF_NONE_MATCH, etag);
     }
+    // 使用 ETag 支持服务器端增量更新：未修改则快速跳过
     let response = match request.send().await {
         Ok(resp) => resp,
         Err(err) => {
@@ -404,6 +433,7 @@ async fn process_feed_locked(
     };
 
     let recent_articles = articles::list_recent_articles(&pool, RECENT_ARTICLE_LIMIT).await?;
+    // 构造历史候选集合（近期文章做近似重复检测）
     let mut historical_candidates = Vec::new();
     for row in recent_articles {
         let ArticleRow {
@@ -452,6 +482,15 @@ async fn process_feed_locked(
             let original_description = article.description.clone();
 
             if should_translate_title(&original_title) {
+                if !translation.translation_enabled() {
+                    info!(
+                        feed_id = feed.id,
+                        url = %article.url,
+                        "translation disabled globally, skipping"
+                    );
+                    // 不进行翻译但保留原始标题/描述
+                } else {
+                // 翻译流程：根据是否翻译摘要决定传入 description；若无可用 provider 返回 None
                 let translate_desc_flag = translation.translate_descriptions();
                 let has_original_desc = original_description
                     .as_ref()
@@ -477,6 +516,7 @@ async fn process_feed_locked(
                     .await
                 {
                     Ok(Some(translated)) => {
+                        // 成功翻译：替换标题/摘要并标记语言
                         article.title = translated.title;
                         article.description = translated.description.or(original_description);
                         article.language = Some(TRANSLATION_LANG.to_string());
@@ -490,15 +530,23 @@ async fn process_feed_locked(
                         }
                     }
                     Ok(None) => {
-                        let providers = translation.available_providers();
+                        let provider = translation.current_provider().as_str();
+                        let provider_available = match provider {
+                            "baidu" => translation.is_baidu_available(),
+                            "deepseek" => translation.is_deepseek_available(),
+                            "ollama" => translation.ollama_client().is_some(),
+                            _ => false,
+                        };
                         info!(
                             feed_id = feed.id,
                             url = %article.url,
-                            available_providers = providers.len(),
-                            "translation skipped (no provider configured)"
+                            provider = provider,
+                            provider_available,
+                            "translation skipped (provider unavailable)"
                         );
                     }
                     Err(err) => {
+                        // 第一次失败后短暂重试一次，降低瞬时网络抖动影响
                         warn!(
                             error = %err,
                             feed_id = feed.id,
@@ -535,6 +583,7 @@ async fn process_feed_locked(
                         }
                     }
                 }
+                }
             }
 
             let (normalized_title, tokens) = prepare_title_signature(&article.title);
@@ -545,6 +594,7 @@ async fn process_feed_locked(
 
             let mut is_duplicate = false;
             for (existing_tokens, existing_title) in &seen_signatures {
+                // 同一批次内部去重：严格 Jaccard + 归一化标题匹配
                 let similarity = jaccard_similarity(&tokens, existing_tokens);
                 if similarity >= STRICT_DUP_THRESHOLD {
                     is_duplicate = true;
@@ -577,6 +627,7 @@ async fn process_feed_locked(
                 for candidate in &historical_candidates {
                     let similarity = jaccard_similarity(&tokens, &candidate.tokens);
                     if similarity >= STRICT_DUP_THRESHOLD {
+                        // 与历史文章严格匹配：直接标记来源并跳过
                         record_article_source(
                             &pool,
                             feed,
@@ -655,6 +706,7 @@ async fn process_feed_locked(
                                         "deepseek similarity check done"
                                     );
                                     if decision.is_duplicate {
+                                        // LLM 判定重复：记录来源与理由（reason）
                                         let reason = decision
                                             .reason
                                             .as_deref()
@@ -724,6 +776,7 @@ async fn process_feed_locked(
     if article_count > 0 {
         let inserted = articles::insert_articles(&pool, articles).await?;
         for (article_id, article) in &inserted {
+            // primary 决策：来源于当前 feed 的主插入
             record_article_source(&pool, feed, article, *article_id, Some("primary"), None).await;
         }
         if let Some(condition) = feed
@@ -784,6 +837,7 @@ async fn process_feed_locked(
 }
 
 fn format_error_chain(err: &(dyn std::error::Error + 'static)) -> String {
+    // 展开错误链，便于日志中追踪底层原因
     let mut parts = vec![err.to_string()];
     let mut current = err.source();
 
@@ -824,6 +878,8 @@ async fn record_article_source(
 }
 
 fn convert_entry(feed: &DueFeedRow, entry: &Entry) -> Option<NewArticle> {
+    // 将 feed_rs 的 Entry 转换为内部 NewArticle 结构
+    // 处理标题、链接、描述、语言与发布时间（优先 published，其次 updated，最后当前时间）
     let title = entry.title.as_ref()?.content.trim();
     if title.is_empty() {
         return None;
@@ -877,6 +933,7 @@ async fn record_failure(
 ) -> anyhow::Result<()> {
     let status = http_status.map(|s| s.as_u16() as i16).unwrap_or(0);
     if persist {
+        // 持久记录失败（超过快速重试次数或不再重试）
         feeds::mark_failure(pool, feed_id, status).await?;
         warn!(feed_id, status, "marked feed fetch failure");
     } else {

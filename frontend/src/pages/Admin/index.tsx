@@ -574,7 +574,16 @@ function TranslationSettingsPanel({
 
   const settings = settingsQuery.data;
   const provider = settings?.provider ?? "";
-  const options = settings?.available_providers ?? ["deepseek", "baidu", "ollama"];
+  const translationEnabled = settings?.translation_enabled ?? false;
+  // 根据后端返回的 *_configured 字段动态生成可选 provider 列表；不再使用 fallback 默认值
+  const options = useMemo(() => {
+    if (!settings) return [] as string[];
+    const list: string[] = [];
+    if (settings.deepseek_configured) list.push("deepseek");
+    if (settings.baidu_configured) list.push("baidu");
+    if (settings.ollama_configured) list.push("ollama");
+    return list;
+  }, [settings]);
   const busy = mutation.isPending;
   const translateDescriptions = useMemo(() => {
     if (provider === "ollama") return true; // 强制开启
@@ -686,6 +695,29 @@ function TranslationSettingsPanel({
       ) : (
         <>
           <div className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <p className="text-sm font-medium text-slate-700">启用翻译功能</p>
+                <p className="text-xs text-slate-500">关闭后不进行任何翻译，但仍可配置各服务的凭据。</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={translationEnabled}
+                onClick={() => {
+                  if (busy) return;
+                  const next = !translationEnabled;
+                  // 如果关闭翻译，不修改 provider；如果开启且当前 provider 不可用，保持原值，前端提示用户选择
+                  mutation.mutate({ translation_enabled: next });
+                }}
+                disabled={busy}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition ${translationEnabled ? 'bg-primary' : 'bg-slate-300'} disabled:opacity-60`}
+              >
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${translationEnabled ? 'translate-x-5' : 'translate-x-1'}`}
+                />
+              </button>
+            </div>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-slate-700">默认翻译服务</p>
@@ -709,9 +741,14 @@ function TranslationSettingsPanel({
                 setLocalTranslate(nextTranslate);
                 mutation.mutate({ provider: value, translate_descriptions: nextTranslate });
               }}
-              disabled={busy}
+              disabled={busy || !translationEnabled}
               className="mt-3 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-70"
             >
+              {options.length === 0 && (
+                <option value="" disabled>
+                  暂无已验证的翻译服务
+                </option>
+              )}
               {options.map((option) => {
                 const disabled = !available(option);
                 const errorMessage = providerError(option);

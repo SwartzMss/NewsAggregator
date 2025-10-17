@@ -13,12 +13,7 @@ use super::{
     ollama::OllamaClient,
 };
 
-const VERIFICATION_SAMPLE_TEXT: &str = "NewsAggregator ping";
-const PROVIDER_PRIORITY: [TranslatorProvider; 3] = [
-    TranslatorProvider::Deepseek,
-    TranslatorProvider::Baidu,
-    TranslatorProvider::Ollama,
-];
+const VERIFICATION_SAMPLE_TEXT: &str = "NewsAggregator ping"; // 验证连接用的短文本
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TranslatorProvider {
@@ -52,18 +47,7 @@ fn provider_available(state: &TranslationState, provider: TranslatorProvider) ->
     }
 }
 
-fn ensure_provider_consistency(state: &mut TranslationState) {
-    if provider_available(state, state.provider) {
-        return;
-    }
-
-    if let Some(fallback) = PROVIDER_PRIORITY
-        .into_iter()
-        .find(|provider| provider_available(state, *provider))
-    {
-        state.provider = fallback;
-    }
-}
+// 自动回退逻辑已移除：不再按优先级切换 provider
 
 async fn verify_provider_credentials(
     state: Arc<RwLock<TranslationState>>,
@@ -217,11 +201,7 @@ async fn verify_provider_credentials(
         }
     }
 
-    if verify_baidu || verify_deepseek || verify_ollama {
-        if let Ok(mut guard) = state.write() {
-            ensure_provider_consistency(&mut guard);
-        }
-    }
+    // 这里不再进行 provider 自动回退
 }
 
 fn truncate_error<E: std::fmt::Display>(err: E) -> String {
@@ -304,6 +284,7 @@ struct TranslationState {
     ollama_verified: bool,
     ollama_error: Option<String>,
     translate_descriptions: bool,
+    translation_enabled: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -329,6 +310,7 @@ pub struct TranslatorCredentialsUpdate {
     pub ollama_base_url: Option<String>,
     pub ollama_model: Option<String>,
     pub translate_descriptions: Option<bool>,
+    pub translation_enabled: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
@@ -346,6 +328,7 @@ pub struct TranslatorSnapshot {
     pub ollama_base_url: Option<String>,
     pub ollama_model: Option<String>,
     pub translate_descriptions: bool,
+    pub translation_enabled: bool,
 }
 
 impl TranslationEngine {
@@ -367,6 +350,7 @@ impl TranslationEngine {
             ollama_verified: false,
             ollama_error: None,
             translate_descriptions: false,
+            translation_enabled: false,
         };
 
         let base_deepseek = DeepseekBaseConfig {
@@ -391,7 +375,7 @@ impl TranslationEngine {
         clear_verification(&mut state, TranslatorProvider::Deepseek);
         clear_verification(&mut state, TranslatorProvider::Ollama);
 
-        ensure_provider_consistency(&mut state);
+    // 不做自动 provider 回退；保持用户后续显式设置
 
         let verify_baidu = state.baidu_client.is_some();
         let verify_deepseek = state.deepseek_client.is_some();
@@ -452,17 +436,7 @@ impl TranslationEngine {
         Ok(())
     }
 
-    pub fn available_providers(&self) -> Vec<TranslatorProvider> {
-        self.state
-            .read()
-            .map(|state| {
-                PROVIDER_PRIORITY
-                    .into_iter()
-                    .filter(|provider| provider_available(&state, *provider))
-                    .collect()
-            })
-            .unwrap_or_default()
-    }
+    // 已移除 available_providers，前端通过 snapshot 中的 *configured 字段判断哪些可用
 
     #[allow(dead_code)]
     pub fn is_baidu_available(&self) -> bool {
@@ -577,6 +551,7 @@ impl TranslationEngine {
             ollama_base_url,
             ollama_model,
             translate_descriptions: state.translate_descriptions,
+            translation_enabled: state.translation_enabled,
         }
     }
 
@@ -584,6 +559,13 @@ impl TranslationEngine {
         self.state
             .read()
             .map(|state| state.translate_descriptions)
+            .unwrap_or(false)
+    }
+
+    pub fn translation_enabled(&self) -> bool {
+        self.state
+            .read()
+            .map(|state| state.translation_enabled)
             .unwrap_or(false)
     }
 
@@ -688,6 +670,9 @@ impl TranslationEngine {
         if let Some(flag) = update.translate_descriptions {
             state.translate_descriptions = flag;
         }
+        if let Some(flag) = update.translation_enabled {
+            state.translation_enabled = flag;
+        }
 
         if let Some(provider) = update.provider {
             if !provider_available(&state, provider) {
@@ -698,12 +683,7 @@ impl TranslationEngine {
             }
             state.provider = provider;
         } else if !provider_available(&state, state.provider) {
-            if let Some(fallback) = PROVIDER_PRIORITY
-                .into_iter()
-                .find(|candidate| provider_available(&state, *candidate))
-            {
-                state.provider = fallback;
-            }
+            // 不进行 fallback；当前 provider 若失效，翻译时返回 None
         }
 
         drop(state);
@@ -712,62 +692,27 @@ impl TranslationEngine {
         Ok(())
     }
 
-    pub async fn translate(
-        &self,
-        title: &str,
-        description: Option<&str>,
-    ) -> Result<Option<TranslationResult>> {
-        let order = {
-            let state = self
-                .state
-                .read()
-                .map_err(|_| anyhow!("translator lock poisoned"))?;
-            let mut order = Vec::new();
+    pub async fn translate(&self, title: &str, description: Option<&str>) -> Result<Option<TranslationResult>> {
+        let provider = {
+            let state = self.state.read().map_err(|_| anyhow!("translator lock poisoned"))?;
             if provider_available(&state, state.provider) {
-                order.push(state.provider);
+                state.provider
+            } else {
+                return Ok(None); // 当前选定的 provider 不可用，直接跳过
             }
-            for candidate in PROVIDER_PRIORITY {
-                if candidate != state.provider && provider_available(&state, candidate) {
-                    order.push(candidate);
-                }
-            }
-            if order.is_empty() {
-                return Ok(None);
-            }
-            order
         };
 
-        let mut last_error: Option<anyhow::Error> = None;
-
-        for provider in order {
-            match self.try_provider(provider, title, description).await {
-                Ok(result) => return Ok(Some(result)),
-                Err(TranslationError::NotConfigured) => continue,
-                Err(err @ TranslationError::QuotaExceeded) => {
-                    warn!(
-                        provider = provider.as_str(),
-                        error = %err,
-                        "translator quota exceeded, trying fallback"
-                    );
-                    last_error = Some(err.into_anyhow());
-                    continue;
-                }
-                Err(err) => {
-                    warn!(
-                        provider = provider.as_str(),
-                        error = %err,
-                        "translator failed"
-                    );
-                    last_error = Some(err.into_anyhow());
-                    continue;
-                }
+        match self.try_provider(provider, title, description).await {
+            Ok(result) => Ok(Some(result)),
+            Err(TranslationError::NotConfigured) => Ok(None),
+            Err(err @ TranslationError::QuotaExceeded) => {
+                warn!(provider = provider.as_str(), error = %err, "translator quota exceeded");
+                Err(err.into_anyhow())
             }
-        }
-
-        if let Some(err) = last_error {
-            Err(err)
-        } else {
-            Ok(None)
+            Err(err) => {
+                warn!(provider = provider.as_str(), error = %err, "translator failed");
+                Err(err.into_anyhow())
+            }
         }
     }
 

@@ -90,7 +90,7 @@ pub struct FeedTestResult {
 #[derive(Debug, Serialize)]
 pub struct TranslationSettingsOut {
     pub provider: String,
-    pub available_providers: Vec<String>,
+    pub translation_enabled: bool,
     pub baidu_configured: bool,
     pub deepseek_configured: bool,
     pub ollama_configured: bool,
@@ -109,6 +109,8 @@ pub struct TranslationSettingsOut {
 pub struct TranslationSettingsUpdate {
     #[serde(default)]
     pub provider: Option<String>,
+    #[serde(default)]
+    pub translation_enabled: Option<bool>,
     #[serde(default)]
     pub baidu_app_id: Option<String>,
     #[serde(default)]

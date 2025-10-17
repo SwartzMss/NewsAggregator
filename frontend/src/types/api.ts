@@ -52,7 +52,7 @@ export type FeedTestResult = {
 
 export type TranslationSettings = {
   provider: string;
-  available_providers: string[];
+  translation_enabled: boolean;
   baidu_configured: boolean;
   deepseek_configured: boolean;
   ollama_configured: boolean;
@@ -69,6 +69,7 @@ export type TranslationSettings = {
 
 export type TranslationSettingsUpdate = {
   provider?: string;
+  translation_enabled?: boolean;
   baidu_app_id?: string;
   baidu_secret_key?: string;
   deepseek_api_key?: string;

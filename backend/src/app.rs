@@ -52,6 +52,8 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
         repo::settings::get_setting(&pool, "translation.ollama_model").await?;
     let stored_translate_descriptions =
         repo::settings::get_setting(&pool, "translation.translate_descriptions").await?;
+    let stored_translation_enabled =
+        repo::settings::get_setting(&pool, "translation.enabled").await?;
     let translate_flag = stored_translate_descriptions.as_ref().and_then(|value| {
         match value.trim().to_ascii_lowercase().as_str() {
             "true" | "1" | "yes" | "on" => Some(true),
@@ -67,6 +69,13 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
         ollama_base_url: stored_ollama_base_url,
         ollama_model: stored_ollama_model,
         translate_descriptions: translate_flag,
+        translation_enabled: stored_translation_enabled.as_ref().and_then(|v| {
+            match v.trim().to_ascii_lowercase().as_str() {
+                "true" | "1" | "yes" | "on" => Some(true),
+                "false" | "0" | "no" | "off" => Some(false),
+                _ => None,
+            }
+        }),
         ..Default::default()
     })?;
 
