@@ -7,6 +7,8 @@ import {
   AdminLoginResponse,
   TranslationSettings,
   TranslationSettingsUpdate,
+  AiDedupSettings,
+  AiDedupSettingsUpdate,
 } from "../types/api";
 
 type QueryParams = Record<string, string | number | undefined | null>;
@@ -40,7 +42,8 @@ const loadBaseFromConfig = async (): Promise<string | null> => {
 const getApiBase = async (): Promise<string> => {
   if (cachedApiBase) return cachedApiBase;
 
-  const fromEnv = import.meta.env.VITE_API_BASE_URL;
+  // Vite env var if provided overrides config.
+  const fromEnv = (import.meta as any).env?.VITE_API_BASE_URL;
   if (fromEnv && typeof fromEnv === "string" && fromEnv.trim()) {
     cachedApiBase = normalizeBase(fromEnv);
     return cachedApiBase;
@@ -282,4 +285,35 @@ export async function testFeed(
   }
 
   return (await res.json()) as FeedTestResult;
+}
+
+// AI Dedup settings
+export async function getAiDedupSettings(
+  token: string
+): Promise<AiDedupSettings> {
+  const res = await adminRequest(
+    "/admin/api/settings/ai_dedup",
+    token,
+    { headers: { Accept: "application/json" } }
+  );
+  return parseJSON<AiDedupSettings>(res);
+}
+
+export async function updateAiDedupSettings(
+  token: string,
+  payload: AiDedupSettingsUpdate
+): Promise<AiDedupSettings> {
+  const res = await adminRequest(
+    "/admin/api/settings/ai_dedup",
+    token,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+  return parseJSON<AiDedupSettings>(res);
 }

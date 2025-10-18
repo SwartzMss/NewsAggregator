@@ -336,24 +336,41 @@ async fn process_feed(
 
         match outcome {
             Ok(_) => {
+                // 成功：记录成功尝试次数（attempt 从 0 开始，展示为 attempt+1）
+                info!(
+                    feed_id = feed.id,
+                    url = %feed.url,
+                    attempt = attempt + 1,
+                    max_attempts,
+                    "feed fetch succeeded"
+                );
                 result = Ok(());
                 break;
             }
             Err(err) => {
                 result = Err(err);
                 if is_last {
+                    // 最后一次失败：打印错误并结束，不再重试
+                    warn!(
+                        feed_id = feed.id,
+                        url = %feed.url,
+                        attempt = attempt + 1,
+                        error = ?err,
+                        "feed fetch failed, all retry attempts exhausted"
+                    );
                     break;
-                }
-
-                info!(
-                    feed_id = feed.id,
-                    url = %feed.url,
-                    attempt = attempt + 1,
-                    "feed fetch failed, retrying shortly"
-                );
-
-                if !retry_delay.is_zero() {
-                    sleep(retry_delay).await;
+                } else {
+                    // 仍有剩余重试次数：打印错误并等待重试
+                    info!(
+                        feed_id = feed.id,
+                        url = %feed.url,
+                        attempt = attempt + 1,
+                        error = ?err,
+                        "feed fetch failed, retrying shortly"
+                    );
+                    if !retry_delay.is_zero() {
+                        sleep(retry_delay).await;
+                    }
                 }
             }
         }
@@ -416,6 +433,13 @@ async fn process_feed_locked(
         return Err(anyhow!("unexpected status {}", status));
     }
 
+    info!(
+        feed_id = feed.id,
+        status = status.as_u16(),
+        url = %feed.url,
+        "feed http fetch succeeded"
+    );
+
     let bytes = match response.bytes().await {
         Ok(bytes) => bytes,
         Err(err) => {
@@ -425,7 +449,17 @@ async fn process_feed_locked(
     };
 
     let mut parsed_feed = match parser::parse(&bytes[..]) {
-        Ok(feed) => feed,
+        Ok(feed) => {
+            let entry_count = feed.entries.len();
+            info!(
+                feed_id = feed.id,
+                status = status.as_u16(),
+                entry_count,
+                bytes_len = bytes.len(),
+                "feed xml parsed"
+            );
+            feed
+        }
         Err(err) => {
             record_failure(&pool, feed.id, Some(status), persist_failure).await?;
             return Err(err.into());
@@ -433,6 +467,12 @@ async fn process_feed_locked(
     };
 
     let recent_articles = articles::list_recent_articles(&pool, RECENT_ARTICLE_LIMIT).await?;
+    // 读取 AI 去重设置（简单每次请求一次；后续可缓存优化）
+    let ai_dedup_enabled = repo::settings::get_setting(&pool, "ai_dedup.enabled")
+        .await?
+        .map(|v| v == "true")
+        .unwrap_or(false);
+    let ai_dedup_provider = repo::settings::get_setting(&pool, "ai_dedup.provider").await?;
     // 构造历史候选集合（近期文章做近似重复检测）
     let mut historical_candidates = Vec::new();
     for row in recent_articles {
@@ -479,9 +519,25 @@ async fn process_feed_locked(
     for entry in &entries {
         if let Some(mut article) = convert_entry(feed, &entry) {
             let original_title = article.title.clone();
-            let original_description = article.description.clone();
 
-            if should_translate_title(&original_title) {
+            // 提前归一化：空或全空白描述直接设为 None，避免后续重复判空
+            if let Some(desc) = &article.description {
+                if desc.trim().is_empty() {
+                    article.description = None;
+                }
+            }
+
+            // 无论是否需要翻译，都记录一次判定结果日志
+            let need_translate = should_translate_title(&original_title);
+            info!(
+                feed_id = feed.id,
+                url = %article.url,
+                need_translate,
+                title = %original_title,
+                "title translation decision"
+            );
+
+            if need_translate {
                 if !translation.translation_enabled() {
                     info!(
                         feed_id = feed.id,
@@ -492,10 +548,7 @@ async fn process_feed_locked(
                 } else {
                 // 翻译流程：根据是否翻译摘要决定传入 description；若无可用 provider 返回 None
                 let translate_desc_flag = translation.translate_descriptions();
-                let has_original_desc = original_description
-                    .as_ref()
-                    .map(|s| !s.trim().is_empty())
-                    .unwrap_or(false);
+                let has_original_desc = article.description.is_some();
 
                 info!(
                     feed_id = feed.id,
@@ -505,23 +558,31 @@ async fn process_feed_locked(
                     "pre-translation decision"
                 );
 
-                let description_input = if translate_desc_flag {
-                    original_description.as_deref()
-                } else {
-                    None
-                };
+                let description_input = if translate_desc_flag { article.description.as_deref() } else { None };
+
+                // 开始进行翻译调用：记录 provider 与是否带描述
+                info!(
+                    feed_id = feed.id,
+                    url = %article.url,
+                    title = %original_title,
+                    include_description = description_input.is_some(),
+                    provider = %translation.current_provider(),
+                    "translation start"
+                );
 
                 match translation
                     .translate(&original_title, description_input)
                     .await
                 {
                     Ok(Some(translated)) => {
-                        // 成功翻译：替换标题/摘要并标记语言
+                        // 成功翻译：更新标题；仅在返回描述时覆盖原描述
                         article.title = translated.title;
-                        article.description = translated.description.or(original_description);
+                        if translated.description.is_some() {
+                            article.description = translated.description;
+                        }
                         article.language = Some(TRANSLATION_LANG.to_string());
 
-                        if translate_desc_flag && has_original_desc && article.description.is_none() {
+                        if translate_desc_flag && has_original_desc && description_input.is_some() && article.description.is_none() {
                             warn!(
                                 feed_id = feed.id,
                                 url = %article.url,
@@ -561,8 +622,9 @@ async fn process_feed_locked(
                         {
                             Ok(Some(translated)) => {
                                 article.title = translated.title;
-                                article.description =
-                                    translated.description.or(original_description);
+                                if translated.description.is_some() {
+                                    article.description = translated.description;
+                                }
                                 article.language = Some(TRANSLATION_LANG.to_string());
                             }
                             Ok(None) => {
@@ -651,12 +713,43 @@ async fn process_feed_locked(
                         break;
                     }
 
-                    if similarity >= DEEPSEEK_THRESHOLD {
-                        if let Some(client) = ollama.as_ref() {
-                            if deepseek_checks >= MAX_DEEPSEEK_CHECKS {
-                                break;
+                    if ai_dedup_enabled && similarity >= DEEPSEEK_THRESHOLD {
+                        // 根据配置选择模型客户端（不做自动校验）
+                        let mut selected_provider = None;
+                        let mut client_ollama = None;
+                        let mut client_deepseek = None;
+                        if let Some(provider_name) = ai_dedup_provider.as_deref() {
+                            match provider_name {
+                                "deepseek" => {
+                                    client_deepseek = translation.deepseek_client();
+                                    if client_deepseek.is_some() { selected_provider = Some("deepseek"); }
+                                }
+                                "ollama" => {
+                                    client_ollama = translation.ollama_client();
+                                    if client_ollama.is_some() { selected_provider = Some("ollama"); }
+                                }
+                                _ => {
+                                    // 不支持的 provider，直接跳过
+                                }
                             }
-                            deepseek_checks += 1;
+                        }
+
+                        if selected_provider.is_none() {
+                            info!(
+                                feed_id = feed.id,
+                                title = %article.title,
+                                similarity,
+                                ai_dedup_enabled,
+                                ai_dedup_provider = ai_dedup_provider.as_deref().unwrap_or(""),
+                                "llm dedup skipped (provider unavailable)"
+                            );
+                            continue;
+                        }
+
+                        if deepseek_checks >= MAX_DEEPSEEK_CHECKS {
+                            break;
+                        }
+                        deepseek_checks += 1;
 
                             let published_new = article.published_at.to_rfc3339();
                             let published_existing = candidate.summary.published_at.to_rfc3339();
@@ -683,13 +776,31 @@ async fn process_feed_locked(
                                 feed_id = feed.id,
                                 title = %article.title,
                                 existing_article_id = candidate.summary.article_id,
-                                "deepseek similarity check start"
+                                ai_dedup_enabled,
+                                ai_dedup_provider = selected_provider.unwrap_or(""),
+                                "llm dedup check start"
                             );
                             // Hard cap LLM check duration to avoid long hangs
                             let timeout_secs: u64 = 10;
                             match timeout(
                                 Duration::from_secs(timeout_secs),
-                                client.judge_similarity(&new_snippet, &existing_snippet),
+                                if selected_provider == Some("deepseek") {
+                                    if let Some(c) = client_deepseek.as_ref() {
+                                        c.judge_similarity(&new_snippet, &existing_snippet)
+                                    } else {
+                                        // 不该发生：selected_provider 已经确保存在
+                                        continue;
+                                    }
+                                } else if selected_provider == Some("ollama") {
+                                    if let Some(c) = client_ollama.as_ref() {
+                                        c.judge_similarity(&new_snippet, &existing_snippet)
+                                    } else {
+                                        continue;
+                                    }
+                                } else {
+                                    // 未知 provider
+                                    continue;
+                                },
                             )
                             .await
                             .map_err(|_| anyhow!("llm judge_similarity timed out in {}s", timeout_secs))
@@ -703,7 +814,8 @@ async fn process_feed_locked(
                                         existing_article_id = candidate.summary.article_id,
                                         elapsed_ms,
                                         is_duplicate = decision.is_duplicate,
-                                        "deepseek similarity check done"
+                                        ai_dedup_provider = selected_provider.unwrap_or(""),
+                                        "llm dedup check done"
                                     );
                                     if decision.is_duplicate {
                                         // LLM 判定重复：记录来源与理由（reason）
@@ -729,7 +841,8 @@ async fn process_feed_locked(
                                             existing_url = %candidate.summary.url,
                                             existing_source = %candidate.summary.source_domain,
                                             reason = decision.reason.as_deref().unwrap_or(""),
-                                            "skip article due to deepseek duplicate judgment"
+                                            ai_dedup_provider = selected_provider.unwrap_or(""),
+                                            "skip article due to llm duplicate judgment"
                                         );
                                         break;
                                     }
@@ -740,7 +853,8 @@ async fn process_feed_locked(
                                         error = ?err,
                                         feed_id = feed.id,
                                         elapsed_ms,
-                                        "deepseek similarity check failed"
+                                        ai_dedup_provider = selected_provider.unwrap_or(""),
+                                        "llm dedup check failed"
                                     );
                                 }
                             }

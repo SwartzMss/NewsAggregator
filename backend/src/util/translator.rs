@@ -693,6 +693,8 @@ impl TranslationEngine {
     }
 
     pub async fn translate(&self, title: &str, description: Option<&str>) -> Result<Option<TranslationResult>> {
+        // 描述归一化已在 fetcher 阶段完成，这里直接使用传入值
+
         let provider = {
             let state = self.state.read().map_err(|_| anyhow!("translator lock poisoned"))?;
             if provider_available(&state, state.provider) {
@@ -741,14 +743,15 @@ impl TranslationEngine {
                     .translate(title, "auto", "zh")
                     .await
                     .map_err(map_baidu_error)?;
+                // description 已在 translate() 入口做过 trim & empty 归一化，这里无需再次判空
                 let translated_description = match description {
-                    Some(text) if !text.trim().is_empty() => Some(
+                    Some(text) => Some(
                         client
                             .translate(text, "auto", "zh")
                             .await
                             .map_err(map_baidu_error)?,
                     ),
-                    _ => None,
+                    None => None,
                 };
 
                 let desc_in_len = description.map(|s| s.len()).unwrap_or(0);

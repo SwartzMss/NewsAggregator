@@ -145,6 +145,9 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
             "/settings/translation",
             get(api::settings::get_translation_settings)
                 .post(api::settings::update_translation_settings),
+            "/settings/ai_dedup",
+            get(api::settings::get_ai_dedup_settings)
+                .post(api::settings::update_ai_dedup_settings),
         )
         .route_layer(middleware::from_fn_with_state(
             state.clone(),

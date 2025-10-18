@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useEffect, useState } from "react";
+import React, { useCallback, useMemo, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   adminLogin,
@@ -6,13 +6,22 @@ import {
   UnauthorizedError,
   getTranslationSettings,
   updateTranslationSettings,
+  getAiDedupSettings,
+  updateAiDedupSettings,
 } from "../../lib/api";
-import { TranslationSettings, TranslationSettingsUpdate } from "../../types/api";
+import { TranslationSettings, TranslationSettingsUpdate, AiDedupSettings, AiDedupSettingsUpdate, AdminLoginResponse } from "../../types/api";
 import { FeedsPage } from "../Feeds";
 
 type AdminSession = {
   token: string;
   expiresAt: number;
+};
+
+type Section = {
+  key: string;
+  label: string;
+  description?: string;
+  render: () => React.ReactNode;
 };
 
 const SESSION_STORAGE_KEY = "news-admin-session";
@@ -90,7 +99,7 @@ export function AdminPage() {
   const loginMutation = useMutation({
     mutationFn: async (credentials: { username: string; password: string }) =>
       adminLogin(credentials.username, credentials.password),
-    onSuccess: (data) => {
+    onSuccess: (data: AdminLoginResponse) => {
       const next: AdminSession = {
         token: data.token,
         expiresAt: Date.now() + data.expires_in * 1000,
@@ -158,7 +167,7 @@ export function AdminPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("feeds");
 
-  const sections = useMemo(
+  const sections = useMemo<Section[]>(
     () => [
       {
         key: "feeds",
@@ -183,6 +192,14 @@ export function AdminPage() {
           />
         ),
       },
+      {
+        key: "ai-dedup",
+        label: "AI 去重",
+        description: "配置是否启用模型二次相似判定以及使用的提供商。",
+        render: () => (
+          <AiDedupSettingsPanel token={token} onUnauthorized={handleUnauthorized} />
+        ),
+      },
     ],
     [handleUnauthorized, token]
   );
@@ -191,14 +208,13 @@ export function AdminPage() {
     if (sections.length === 0) {
       return;
     }
-    if (!sections.some((section) => section.key === activeSection)) {
+    if (!sections.some((section: Section) => section.key === activeSection)) {
       setActiveSection(sections[0].key);
     }
   }, [sections, activeSection]);
 
   const activeSectionData = useMemo(
-    () =>
-      sections.find((section) => section.key === activeSection) ?? sections[0],
+    () => sections.find((section: Section) => section.key === activeSection) ?? sections[0],
     [sections, activeSection]
   );
 
@@ -1003,6 +1019,140 @@ function TranslationSettingsPanel({
           ) : null}
         </>
       )}
+    </div>
+  );
+}
+
+function AiDedupSettingsPanel({
+  token,
+  onUnauthorized,
+}: {
+  token: string;
+  onUnauthorized: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const settingsQuery = useQuery<AiDedupSettings, Error>({
+    queryKey: ["ai-dedup-settings", token],
+    queryFn: () => getAiDedupSettings(token),
+    enabled: Boolean(token),
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (settingsQuery.error instanceof UnauthorizedError) {
+      onUnauthorized();
+    }
+  }, [settingsQuery.error, onUnauthorized]);
+
+  const mutation = useMutation<AiDedupSettings, Error, AiDedupSettingsUpdate>({
+    mutationFn: (payload: AiDedupSettingsUpdate) => updateAiDedupSettings(token, payload),
+    onSuccess: (data: AiDedupSettings) => {
+      queryClient.setQueryData(["ai-dedup-settings", token], data);
+      queryClient.invalidateQueries({ queryKey: ["ai-dedup-settings", token] });
+    },
+    onError: (err: Error) => {
+      if (err instanceof UnauthorizedError) {
+        onUnauthorized();
+      }
+    },
+  });
+
+  const settings = settingsQuery.data;
+  const busy = mutation.isPending;
+
+  const toggleEnabled = () => {
+    if (!settings) return;
+    const next = !settings.enabled;
+    let provider = settings.provider || undefined;
+    if (next && !provider) {
+      // default provider selection when enabling and none chosen
+      provider = settings.deepseek_configured
+        ? "deepseek"
+        : settings.ollama_configured
+        ? "ollama"
+        : undefined;
+    }
+    mutation.mutate({ enabled: next, provider });
+  };
+
+  const changeProvider = (value: string) => {
+    if (!settings) return;
+    const provider = value || undefined;
+    mutation.mutate({ provider });
+  };
+
+  if (settingsQuery.isLoading) {
+    return <div className="text-sm text-slate-500">正在加载 AI 去重配置…</div>;
+  }
+  if (settingsQuery.isError) {
+    return (
+      <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+        {settingsQuery.error.message || "AI 去重配置加载失败"}
+      </div>
+    );
+  }
+  if (!settings) return null;
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div>
+            <p className="text-sm font-medium text-slate-700">启用 AI 去重</p>
+            <p className="text-xs text-slate-500">
+              开启后对高相似文章进行模型二次判定，减少重复内容入库。
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={settings.enabled}
+            onClick={toggleEnabled}
+            disabled={busy}
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition ${settings.enabled ? 'bg-primary' : 'bg-slate-300'} disabled:opacity-60`}
+          >
+            <span
+              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${settings.enabled ? 'translate-x-5' : 'translate-x-1'}`}
+            />
+          </button>
+        </div>
+        <div className="mt-2">
+          <p className="text-xs text-slate-500">
+            当前判定参数：threshold = {settings.threshold}, max_checks = {settings.max_checks}。
+            修改需代码调整，前端只读展示。
+          </p>
+        </div>
+      </div>
+      <div className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div>
+            <p className="text-sm font-medium text-slate-700">模型提供商</p>
+            <p className="text-xs text-slate-500">
+              启用时必须选择一个已配置的提供商；不做自动校验，后台按选择调用。
+            </p>
+          </div>
+          <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+            {settings.provider ? settings.provider : '未选择'}
+          </span>
+        </div>
+        <select
+          value={settings.provider || ''}
+          onChange={(e) => changeProvider(e.target.value)}
+          disabled={busy || !settings.enabled}
+          className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          <option value="">(未选择)</option>
+          <option value="deepseek" disabled={!settings.deepseek_configured}>Deepseek</option>
+          <option value="ollama" disabled={!settings.ollama_configured}>Ollama</option>
+        </select>
+        <p className="mt-3 text-xs text-slate-500">
+          {settings.enabled
+            ? settings.provider
+              ? '已启用，后台会在相似度触发区间调用该模型进行判定。'
+              : '已启用但未选择 provider，后台将跳过模型判定。'
+            : '未启用，后台不会进行模型二次判定。'}
+        </p>
+      </div>
     </div>
   );
 }

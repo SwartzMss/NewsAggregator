@@ -125,6 +125,22 @@ pub struct TranslationSettingsUpdate {
     pub translate_descriptions: Option<bool>,
 }
 
+#[derive(Debug, Serialize)]
+pub struct AiDedupSettingsOut {
+    pub enabled: bool,
+    pub provider: Option<String>, // deepseek | ollama when enabled
+    pub deepseek_configured: bool,
+    pub ollama_configured: bool,
+    pub threshold: f32,
+    pub max_checks: usize,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AiDedupSettingsUpdate {
+    pub enabled: Option<bool>,
+    pub provider: Option<String>,
+}
+
 impl Default for ArticleListQuery {
     fn default() -> Self {
         Self {

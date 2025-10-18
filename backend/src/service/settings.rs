@@ -4,7 +4,7 @@ use tracing::warn;
 
 use crate::{
     error::{AppError, AppResult},
-    model::{TranslationSettingsOut, TranslationSettingsUpdate},
+    model::{TranslationSettingsOut, TranslationSettingsUpdate, AiDedupSettingsOut, AiDedupSettingsUpdate},
     repo,
     util::translator::{TranslationEngine, TranslatorCredentialsUpdate, TranslatorProvider},
 };
@@ -142,4 +142,59 @@ pub async fn update_translation_settings(
     }
 
     get_translation_settings(translator).await
+}
+
+pub async fn get_ai_dedup_settings(
+    pool: &sqlx::PgPool,
+    translator: &Arc<TranslationEngine>,
+) -> AppResult<AiDedupSettingsOut> {
+    let enabled_raw = repo::settings::get_setting(pool, "ai_dedup.enabled").await?;
+    let provider_raw = repo::settings::get_setting(pool, "ai_dedup.provider").await?;
+    let enabled = matches!(enabled_raw.as_deref(), Some("true"));
+    let provider = if enabled { provider_raw } else { None };
+    let snapshot = translator.snapshot();
+    Ok(AiDedupSettingsOut {
+        enabled,
+        provider,
+        deepseek_configured: snapshot.deepseek_configured,
+        ollama_configured: snapshot.ollama_configured,
+        threshold: 0.6,
+        max_checks: 3,
+    })
+}
+
+pub async fn update_ai_dedup_settings(
+    pool: &sqlx::PgPool,
+    translator: &Arc<TranslationEngine>, // translator only for configured status
+    payload: AiDedupSettingsUpdate,
+) -> AppResult<AiDedupSettingsOut> {
+    // enabled update
+    if let Some(flag) = payload.enabled {
+        let value = if flag { "true" } else { "false" };
+        repo::settings::upsert_setting(pool, "ai_dedup.enabled", value).await?;
+        if !flag {
+            // keep provider stored but not returned; do not delete
+        }
+    }
+
+    // provider update (required if enabling)
+    if let Some(provider) = payload.provider.as_ref() {
+        let trimmed = provider.trim();
+        if trimmed.is_empty() {
+            return Err(AppError::BadRequest("AI 去重 provider 不能为空".into()));
+        }
+        if trimmed != "deepseek" && trimmed != "ollama" {
+            return Err(AppError::BadRequest("不支持的 AI 去重 provider".into()));
+        }
+        repo::settings::upsert_setting(pool, "ai_dedup.provider", trimmed).await?;
+    }
+
+    // validation: if enabled true but provider missing
+    let enabled_raw = repo::settings::get_setting(pool, "ai_dedup.enabled").await?;
+    let provider_raw = repo::settings::get_setting(pool, "ai_dedup.provider").await?;
+    if matches!(enabled_raw.as_deref(), Some("true")) && provider_raw.as_deref().map(str::is_empty).unwrap_or(true) {
+        return Err(AppError::BadRequest("开启 AI 去重 需要选择 provider".into()));
+    }
+
+    get_ai_dedup_settings(pool, translator).await
 }

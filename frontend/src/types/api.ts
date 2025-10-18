@@ -78,6 +78,20 @@ export type TranslationSettingsUpdate = {
   translate_descriptions?: boolean;
 };
 
+export type AiDedupSettings = {
+  enabled: boolean;
+  provider?: string | null;
+  deepseek_configured: boolean;
+  ollama_configured: boolean;
+  threshold: number;
+  max_checks: number;
+};
+
+export type AiDedupSettingsUpdate = {
+  enabled?: boolean;
+  provider?: string;
+};
+
 export type AdminLoginResponse = {
   token: string;
   expires_in: number;
