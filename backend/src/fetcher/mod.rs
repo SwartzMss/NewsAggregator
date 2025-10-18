@@ -28,6 +28,7 @@ use crate::{
         article_sources::{self, ArticleSourceRecord},
         articles::{self, ArticleRow, NewArticle},
         feeds::{self, DueFeedRow},
+        settings,
     },
     util::{
         deepseek::ArticleSnippet,
@@ -245,6 +246,7 @@ impl Fetcher {
                 warn!(error = ?err, "fetcher iteration failed");
             }
         }
+
     }
 
     async fn run_once(
@@ -348,6 +350,7 @@ async fn process_feed(
                 break;
             }
             Err(err) => {
+                let err_for_log = err.to_string();
                 result = Err(err);
                 if is_last {
                     // 最后一次失败：打印错误并结束，不再重试
@@ -355,7 +358,7 @@ async fn process_feed(
                         feed_id = feed.id,
                         url = %feed.url,
                         attempt = attempt + 1,
-                        error = ?err,
+                        error = %err_for_log,
                         "feed fetch failed, all retry attempts exhausted"
                     );
                     break;
@@ -365,7 +368,7 @@ async fn process_feed(
                         feed_id = feed.id,
                         url = %feed.url,
                         attempt = attempt + 1,
-                        error = ?err,
+                        error = %err_for_log,
                         "feed fetch failed, retrying shortly"
                     );
                     if !retry_delay.is_zero() {
@@ -468,11 +471,11 @@ async fn process_feed_locked(
 
     let recent_articles = articles::list_recent_articles(&pool, RECENT_ARTICLE_LIMIT).await?;
     // 读取 AI 去重设置（简单每次请求一次；后续可缓存优化）
-    let ai_dedup_enabled = repo::settings::get_setting(&pool, "ai_dedup.enabled")
+    let ai_dedup_enabled = settings::get_setting(&pool, "ai_dedup.enabled")
         .await?
         .map(|v| v == "true")
         .unwrap_or(false);
-    let ai_dedup_provider = repo::settings::get_setting(&pool, "ai_dedup.provider").await?;
+    let ai_dedup_provider = settings::get_setting(&pool, "ai_dedup.provider").await?;
     // 构造历史候选集合（近期文章做近似重复检测）
     let mut historical_candidates = Vec::new();
     for row in recent_articles {
@@ -512,9 +515,6 @@ async fn process_feed_locked(
     let entries = std::mem::take(&mut parsed_feed.entries);
     let mut articles = Vec::new();
     let mut seen_signatures: Vec<(BTreeSet<String>, String)> = Vec::new();
-
-    // Use Ollama client for LLM-based duplicate adjudication
-    let ollama = translation.ollama_client();
 
     for entry in &entries {
         if let Some(mut article) = convert_entry(feed, &entry) {
@@ -558,20 +558,20 @@ async fn process_feed_locked(
                     "pre-translation decision"
                 );
 
-                let description_input = if translate_desc_flag { article.description.as_deref() } else { None };
+                let desc_owned = if translate_desc_flag { article.description.clone() } else { None };
 
                 // 开始进行翻译调用：记录 provider 与是否带描述
                 info!(
                     feed_id = feed.id,
                     url = %article.url,
                     title = %original_title,
-                    include_description = description_input.is_some(),
-                    provider = %translation.current_provider(),
+                    include_description = desc_owned.is_some(),
+                    provider = ?translation.current_provider(),
                     "translation start"
                 );
 
                 match translation
-                    .translate(&original_title, description_input)
+                    .translate(&original_title, desc_owned.as_deref())
                     .await
                 {
                     Ok(Some(translated)) => {
@@ -582,7 +582,7 @@ async fn process_feed_locked(
                         }
                         article.language = Some(TRANSLATION_LANG.to_string());
 
-                        if translate_desc_flag && has_original_desc && description_input.is_some() && article.description.is_none() {
+                        if translate_desc_flag && has_original_desc && desc_owned.is_some() && article.description.is_none() {
                             warn!(
                                 feed_id = feed.id,
                                 url = %article.url,
@@ -593,7 +593,6 @@ async fn process_feed_locked(
                     Ok(None) => {
                         let provider = translation.current_provider().as_str();
                         let provider_available = match provider {
-                            "baidu" => translation.is_baidu_available(),
                             "deepseek" => translation.is_deepseek_available(),
                             "ollama" => translation.ollama_client().is_some(),
                             _ => false,
@@ -617,7 +616,7 @@ async fn process_feed_locked(
                         // 一次失败重试（短暂延迟后再试一次）
                         sleep(Duration::from_millis(300)).await;
                         match translation
-                            .translate(&original_title, description_input)
+                            .translate(&original_title, desc_owned.as_deref())
                             .await
                         {
                             Ok(Some(translated)) => {
@@ -645,9 +644,8 @@ async fn process_feed_locked(
                         }
                     }
                 }
-                }
             }
-
+            
             let (normalized_title, tokens) = prepare_title_signature(&article.title);
 
             if tokens.is_empty() {
@@ -782,26 +780,24 @@ async fn process_feed_locked(
                             );
                             // Hard cap LLM check duration to avoid long hangs
                             let timeout_secs: u64 = 10;
-                            match timeout(
-                                Duration::from_secs(timeout_secs),
+                            let fut = async {
                                 if selected_provider == Some("deepseek") {
                                     if let Some(c) = client_deepseek.as_ref() {
-                                        c.judge_similarity(&new_snippet, &existing_snippet)
+                                        c.judge_similarity(&new_snippet, &existing_snippet).await
                                     } else {
-                                        // 不该发生：selected_provider 已经确保存在
-                                        continue;
+                                        Err(anyhow!("deepseek provider unavailable"))
                                     }
                                 } else if selected_provider == Some("ollama") {
                                     if let Some(c) = client_ollama.as_ref() {
-                                        c.judge_similarity(&new_snippet, &existing_snippet)
+                                        c.judge_similarity(&new_snippet, &existing_snippet).await
                                     } else {
-                                        continue;
+                                        Err(anyhow!("ollama provider unavailable"))
                                     }
                                 } else {
-                                    // 未知 provider
-                                    continue;
-                                },
-                            )
+                                    Err(anyhow!("unknown provider"))
+                                }
+                            };
+                            match timeout(Duration::from_secs(timeout_secs), fut)
                             .await
                             .map_err(|_| anyhow!("llm judge_similarity timed out in {}s", timeout_secs))
                             .and_then(|r| r.map_err(anyhow::Error::from))
@@ -881,9 +877,11 @@ async fn process_feed_locked(
                 "pre-insert article snapshot"
             );
 
-            seen_signatures.push((tokens.clone(), normalized_title.clone()));
+            let (normalized_title2, tokens2) = prepare_title_signature(&article.title);
+            seen_signatures.push((tokens2, normalized_title2));
             articles.push(article);
         }
+        // close the for-entry loop
     }
 
     let article_count = articles.len();

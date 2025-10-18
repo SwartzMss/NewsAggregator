@@ -1,6 +1,5 @@
 //! Shared helpers.
 
-pub mod baidu;
 pub mod deepseek;
 pub mod ollama;
 pub mod title;

@@ -53,13 +53,9 @@ export type FeedTestResult = {
 export type TranslationSettings = {
   provider: string;
   translation_enabled: boolean;
-  baidu_configured: boolean;
   deepseek_configured: boolean;
   ollama_configured: boolean;
-  baidu_app_id_masked?: string | null;
-  baidu_secret_key_masked?: string | null;
   deepseek_api_key_masked?: string | null;
-  baidu_error?: string | null;
   deepseek_error?: string | null;
   ollama_error?: string | null;
   ollama_base_url?: string | null;
@@ -70,8 +66,6 @@ export type TranslationSettings = {
 export type TranslationSettingsUpdate = {
   provider?: string;
   translation_enabled?: boolean;
-  baidu_app_id?: string;
-  baidu_secret_key?: string;
   deepseek_api_key?: string;
   ollama_base_url?: string;
   ollama_model?: string;

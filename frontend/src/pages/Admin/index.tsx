@@ -512,8 +512,6 @@ function TranslationSettingsPanel({
   onUnauthorized: () => void;
 }) {
   const queryClient = useQueryClient();
-  const [baiduAppId, setBaiduAppId] = useState("");
-  const [baiduSecret, setBaiduSecret] = useState("");
   const [deepseekKey, setDeepseekKey] = useState("");
   const [ollamaBaseUrlDraft, setOllamaBaseUrlDraft] = useState<string | null>(null);
   const [ollamaModelDraft, setOllamaModelDraft] = useState<string | null>(null);
@@ -538,8 +536,6 @@ function TranslationSettingsPanel({
 
   useEffect(() => {
     setFeedback(null);
-    setBaiduAppId("");
-    setBaiduSecret("");
     setDeepseekKey("");
     setOllamaBaseUrlDraft(null);
     setOllamaModelDraft(null);
@@ -555,15 +551,11 @@ function TranslationSettingsPanel({
     onSuccess: (data) => {
       queryClient.setQueryData(["translation-settings", token], data);
       queryClient.invalidateQueries({ queryKey: ["translation-settings", token] });
-      const baiduPending =
-        !data.baidu_configured &&
-        Boolean(data.baidu_app_id_masked) &&
-        Boolean(data.baidu_secret_key_masked);
       const deepseekPending =
         !data.deepseek_configured && Boolean(data.deepseek_api_key_masked);
       const ollamaPending =
         !data.ollama_configured && Boolean(data.ollama_base_url?.trim());
-      if (baiduPending || deepseekPending || ollamaPending) {
+      if (deepseekPending || ollamaPending) {
         setFeedback("配置已保存，正在验证凭据…");
       } else {
         setFeedback("翻译配置已更新");
@@ -571,8 +563,6 @@ function TranslationSettingsPanel({
       setDirtyAppId(false);
       setDirtySecret(false);
       setDirtyDeepseek(false);
-      setBaiduAppId("");
-      setBaiduSecret("");
       setDeepseekKey("");
       setOllamaBaseUrlDraft(null);
       setOllamaModelDraft(null);
@@ -596,7 +586,6 @@ function TranslationSettingsPanel({
     if (!settings) return [] as string[];
     const list: string[] = [];
     if (settings.deepseek_configured) list.push("deepseek");
-    if (settings.baidu_configured) list.push("baidu");
     if (settings.ollama_configured) list.push("ollama");
     return list;
   }, [settings]);
@@ -605,14 +594,10 @@ function TranslationSettingsPanel({
     if (provider === "ollama") return true; // 强制开启
     return localTranslate ?? settings?.translate_descriptions ?? false;
   }, [provider, localTranslate, settings?.translate_descriptions]);
-  const hasBaiduCredentials =
-    Boolean(settings?.baidu_app_id_masked) && Boolean(settings?.baidu_secret_key_masked);
   const hasDeepseekCredentials = Boolean(settings?.deepseek_api_key_masked);
   const currentOllamaBaseUrl = settings?.ollama_base_url ?? "";
   const currentOllamaModel = settings?.ollama_model ?? "";
   const hasOllamaConfig = Boolean(currentOllamaBaseUrl.trim());
-  const pendingBaiduVerification =
-    Boolean(settings) && hasBaiduCredentials && !settings?.baidu_configured && !settings?.baidu_error;
   const pendingDeepseekVerification =
     Boolean(settings) && hasDeepseekCredentials && !settings?.deepseek_configured && !settings?.deepseek_error;
   const pendingOllamaVerification =
@@ -622,14 +607,13 @@ function TranslationSettingsPanel({
 
   useEffect(() => {
     if (!token) return;
-    if (!pendingBaiduVerification && !pendingDeepseekVerification && !pendingOllamaVerification)
+    if (!pendingDeepseekVerification && !pendingOllamaVerification)
       return;
     const timer = window.setInterval(() => {
       queryClient.invalidateQueries({ queryKey: ["translation-settings", token] });
     }, 4000);
     return () => window.clearInterval(timer);
   }, [
-    pendingBaiduVerification,
     pendingDeepseekVerification,
     pendingOllamaVerification,
     queryClient,
@@ -637,20 +621,17 @@ function TranslationSettingsPanel({
   ]);
 
   const formatLabel = (value: string) => {
-    if (value === "baidu") return "百度翻译";
     if (value === "ollama") return "Ollama 本地";
     return "Deepseek";
   };
   const available = (value: string) => {
     if (!settings) return false;
-    if (value === "baidu") return settings.baidu_configured;
     if (value === "deepseek") return settings.deepseek_configured;
     if (value === "ollama") return settings.ollama_configured;
     return false;
   };
   const providerError = (value: string) => {
     if (!settings) return null;
-    if (value === "baidu") return settings.baidu_error ?? null;
     if (value === "deepseek") return settings.deepseek_error ?? null;
     if (value === "ollama") return settings.ollama_error ?? null;
     return null;
@@ -660,8 +641,7 @@ function TranslationSettingsPanel({
     if (available(value)) return "";
     const errorMessage = providerError(value);
     if (errorMessage) return "（验证失败）";
-    const hasCredential =
-      value === "baidu" ? hasBaiduCredentials : hasDeepseekCredentials;
+    const hasCredential = hasDeepseekCredentials;
     if (value === "ollama") {
       return hasOllamaConfig ? "（待验证）" : "（未配置）";
     }
@@ -670,9 +650,6 @@ function TranslationSettingsPanel({
   const statusHints: string[] = [];
   if (pendingDeepseekVerification) {
     statusHints.push("Deepseek 凭据验证中…");
-  }
-  if (pendingBaiduVerification) {
-    statusHints.push("百度翻译凭据验证中…");
   }
   if (pendingOllamaVerification) {
     statusHints.push("Ollama 连通性验证中…");
@@ -864,74 +841,7 @@ function TranslationSettingsPanel({
               </div>
             </section>
 
-            <section className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-slate-700">百度翻译</p>
-                  <p className="text-xs text-slate-500">
-                    绑定凭据后可作为冗余的翻译备选方案。
-                  </p>
-                </div>
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    settings?.baidu_configured
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-slate-200 text-slate-600"
-                  }`}
-                >
-                  {settings?.baidu_configured ? "可用" : "未配置"}
-                </span>
-              </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-slate-500" htmlFor="translation-baidu-app-id">
-                    App ID
-                  </label>
-                  <input
-                    id="translation-baidu-app-id"
-                    value={dirtyAppId ? baiduAppId : ""}
-                    onChange={(event) => {
-                      setBaiduAppId(event.target.value);
-                      setDirtyAppId(true);
-                    }}
-                    onBlur={() => {
-                      if (!dirtyAppId) return;
-                      autoUpdate({ baidu_app_id: baiduAppId });
-                    }}
-                    placeholder={settings?.baidu_app_id_masked ?? "请输入 App ID"}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-xs shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-slate-500" htmlFor="translation-baidu-secret">
-                    Secret Key
-                  </label>
-                  <input
-                    id="translation-baidu-secret"
-                    value={dirtySecret ? baiduSecret : ""}
-                    onChange={(event) => {
-                      setBaiduSecret(event.target.value);
-                      setDirtySecret(true);
-                    }}
-                    onBlur={() => {
-                      if (!dirtySecret) return;
-                      autoUpdate({ baidu_secret_key: baiduSecret });
-                    }}
-                    placeholder={
-                      settings?.baidu_secret_key_masked ?? "请输入 Secret Key"
-                    }
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-xs shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
-                </div>
-              </div>
-              {settings?.baidu_error ? (
-                <p className="mt-3 text-xs text-red-500">{settings.baidu_error}</p>
-              ) : pendingBaiduVerification ? (
-                <p className="mt-3 text-xs text-slate-500">正在验证 API 凭据…</p>
-              ) : !hasBaiduCredentials && (settings?.baidu_app_id_masked || settings?.baidu_secret_key_masked) ? (
-                <p className="mt-3 text-xs text-orange-500">请同时填写 App ID 与 Secret Key。</p>
-              ) : null}
-            </section>
+            {/* 百度翻译配置已移除 */}
             <section className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm lg:col-span-2">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>

@@ -134,21 +134,7 @@ impl Default for DeepseekConfig {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
-#[serde(default)]
-pub struct BaiduTranslatorConfig {
-    pub app_id: Option<String>,
-    pub secret_key: Option<String>,
-}
-
-impl Default for BaiduTranslatorConfig {
-    fn default() -> Self {
-        Self {
-            app_id: None,
-            secret_key: None,
-        }
-    }
-}
+// Baidu translator support removed
 
 
 #[derive(Debug, Clone, Deserialize)]
@@ -225,12 +211,7 @@ impl AppConfig {
     }
 
     /// 从指定的文件路径显式加载配置。
-    pub fn load_from_path(path: &Path) -> anyhow::Result<Self> {
-        if !path.exists() {
-            return Err(anyhow!("config file {:?} not found", path));
-        }
-        Self::load_from_file(path)
-    }
+    // 删除未用到的 API（可从 Git 历史恢复）
 
     fn load_from_file(path: &Path) -> anyhow::Result<Self> {
         let contents = fs::read_to_string(path)
@@ -301,16 +282,7 @@ impl AppConfig {
 }
 
 // 规范化代理地址：空字符串或全空白会被转换为 None。
-fn normalize_proxy(value: Option<String>) -> Option<String> {
-    value.and_then(|v| {
-        let trimmed = v.trim();
-        if trimmed.is_empty() {
-            None
-        } else {
-            Some(trimmed.to_string())
-        }
-    })
-}
+// 删除未使用的辅助函数（可从 Git 历史恢复）
 
 
 

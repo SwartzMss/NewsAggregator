@@ -16,13 +16,9 @@ pub async fn get_translation_settings(
     Ok(TranslationSettingsOut {
         provider: snapshot.provider.as_str().to_string(),
         translation_enabled: snapshot.translation_enabled,
-        baidu_configured: snapshot.baidu_configured,
         deepseek_configured: snapshot.deepseek_configured,
         ollama_configured: snapshot.ollama_configured,
-        baidu_app_id_masked: snapshot.baidu_app_id_masked,
-        baidu_secret_key_masked: snapshot.baidu_secret_key_masked,
         deepseek_api_key_masked: snapshot.deepseek_api_key_masked,
-        baidu_error: snapshot.baidu_error,
         deepseek_error: snapshot.deepseek_error,
         ollama_error: snapshot.ollama_error,
         ollama_base_url: snapshot.ollama_base_url,
@@ -49,25 +45,7 @@ pub async fn update_translation_settings(
         update.provider = Some(provider);
     }
 
-    if let Some(app_id) = payload.baidu_app_id {
-        if app_id.trim().is_empty() {
-            repo::settings::delete_setting(pool, "translation.baidu_app_id").await?;
-            update.baidu_app_id = Some(String::new());
-        } else {
-            repo::settings::upsert_setting(pool, "translation.baidu_app_id", &app_id).await?;
-            update.baidu_app_id = Some(app_id);
-        }
-    }
-
-    if let Some(secret) = payload.baidu_secret_key {
-        if secret.trim().is_empty() {
-            repo::settings::delete_setting(pool, "translation.baidu_secret_key").await?;
-            update.baidu_secret_key = Some(String::new());
-        } else {
-            repo::settings::upsert_setting(pool, "translation.baidu_secret_key", &secret).await?;
-            update.baidu_secret_key = Some(secret);
-        }
-    }
+    // Baidu support removed
 
     if let Some(api_key) = payload.deepseek_api_key {
         if api_key.trim().is_empty() {
@@ -119,9 +97,7 @@ pub async fn update_translation_settings(
                 error = %err,
                 "translator provider unavailable when updating credentials"
             );
-            let user_message = if message.contains("Baidu") {
-                "百度翻译暂不可用，请确认凭据有效并稍后重试"
-            } else if message.contains("Deepseek") {
+            let user_message = if message.contains("Deepseek") {
                 "Deepseek 翻译暂不可用，请检查 API Key 或稍后重试"
             } else if message.contains("Ollama") {
                 "Ollama 翻译暂不可用，请确认服务地址与模型名称"

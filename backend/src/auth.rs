@@ -113,9 +113,6 @@ fn extract_bearer(headers: &HeaderMap) -> Option<String> {
 #[derive(Clone, Copy, Debug)]
 pub struct AdminIdentity;
 
-pub fn unauthorized_error() -> AppError {
-    AppError::Unauthorized("请重新登录后再试".to_string())
-}
 
 pub fn invalid_credentials_error() -> AppError {
     AppError::Unauthorized("用户名或密码错误".to_string())
