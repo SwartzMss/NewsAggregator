@@ -558,7 +558,7 @@ function TranslationSettingsPanel({
       if (deepseekPending || ollamaPending) {
         setFeedback("配置已保存，正在验证凭据…");
       } else {
-        setFeedback("翻译配置已更新");
+        setFeedback("大模型配置已更新");
       }
       setDirtyAppId(false);
       setDirtySecret(false);
@@ -572,7 +572,7 @@ function TranslationSettingsPanel({
       if (err instanceof UnauthorizedError) {
         onUnauthorized();
       } else {
-        setFeedback(err.message || "翻译配置更新失败");
+        setFeedback(err.message || "大模型配置更新失败");
       }
       setLocalTranslate(null);
     },
@@ -660,7 +660,7 @@ function TranslationSettingsPanel({
     );
   }
   const statusMessage = busy
-    ? "正在更新翻译配置…"
+    ? "正在更新大模型配置…"
     : feedback ?? (statusHints.length > 0 ? statusHints.join(" ") : null);
 
   const autoUpdate = (payload: TranslationSettingsUpdate) => {
@@ -680,18 +680,18 @@ function TranslationSettingsPanel({
   return (
     <div className="space-y-5">
       {settingsQuery.isLoading ? (
-        <div className="text-sm text-slate-500">正在加载翻译配置…</div>
+        <div className="text-sm text-slate-500">正在加载大模型配置…</div>
       ) : settingsQuery.isError ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-          {settingsQuery.error.message || "翻译配置加载失败"}
+          {settingsQuery.error.message || "大模型配置加载失败"}
         </div>
       ) : (
         <>
           <div className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
               <div>
-                <p className="text-sm font-medium text-slate-700">启用翻译功能</p>
-                <p className="text-xs text-slate-500">关闭后不进行任何翻译，但仍可配置各服务的凭据。</p>
+                <p className="text-sm font-medium text-slate-700">启用大模型翻译</p>
+                <p className="text-xs text-slate-500">关闭后不使用大模型翻译，但仍可配置各服务的参数。</p>
               </div>
               <button
                 type="button"
@@ -713,10 +713,8 @@ function TranslationSettingsPanel({
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-slate-700">默认翻译服务</p>
-                <p className="text-xs text-slate-500">
-                  选择后台操作默认使用的翻译服务提供商。
-                </p>
+                <p className="text-sm font-medium text-slate-700">默认大模型服务</p>
+                <p className="text-xs text-slate-500">选择默认使用的大模型服务提供商。</p>
               </div>
               <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
                 当前：{provider ? formatLabel(provider) : "未选择"}
@@ -738,9 +736,7 @@ function TranslationSettingsPanel({
               className="mt-3 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {options.length === 0 && (
-                <option value="" disabled>
-                  暂无已验证的翻译服务
-                </option>
+                <option value="" disabled>暂无已验证的大模型服务</option>
               )}
               {options.map((option) => {
                 const disabled = !available(option);
@@ -763,10 +759,8 @@ function TranslationSettingsPanel({
           <section className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-slate-700">翻译内容范围</p>
-                <p className="text-xs text-slate-500">
-                  默认仅翻译标题，开启后会同步翻译摘要。
-                </p>
+                <p className="text-sm font-medium text-slate-700">翻译范围</p>
+                <p className="text-xs text-slate-500">默认仅翻译标题，开启后同步翻译摘要。</p>
               </div>
               <button
                 type="button"

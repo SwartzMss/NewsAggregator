@@ -18,3 +18,4 @@
 2025-10-19T00:24:05.196019757+08:00  INFO backend::util::translator: src/util/translator.rs:117: verifying translator connectivity phase="start" provider="ollama"
 2025-10-19T00:24:20.226916482+08:00  INFO backend::util::translator: src/util/translator.rs:127: verification completed phase="end" provider="ollama" elapsed_ms=15389
 2025-10-19T00:24:20.340774548+08:00  INFO backend::util::translator: src/util/translator.rs:127: verification completed phase="end" provider="ollama" elapsed_ms=13750
+2025-10-19T00:29:15.762388298+08:00  INFO backend::fetcher: src/fetcher/mod.rs:260: no feeds eligible this round
