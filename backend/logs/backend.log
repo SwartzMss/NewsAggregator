@@ -10,3 +10,11 @@
 2025-10-19T00:10:35.601310017+08:00  INFO backend::util::translator: src/util/translator.rs:181: verification completed phase="end" provider="ollama" elapsed_ms=13139
 2025-10-19T00:11:37.065883185+08:00  INFO backend::service::feeds: src/service/feeds.rs:180: feed and associated content deleted feed_id=77
 2025-10-19T00:15:29.921802375+08:00  INFO backend::fetcher: src/fetcher/mod.rs:260: no feeds eligible this round
+2025-10-19T00:24:03.395887324+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T00:24:03.442996547+08:00  INFO backend::app: src/app.rs:78: loaded translator provider from database: ollama
+2025-10-19T00:24:03.445016930+08:00  INFO backend::util::translator: src/util/translator.rs:81: verifying translator credentials phase="start" provider="deepseek"
+2025-10-19T00:24:03.445038054+08:00  INFO backend::util::translator: src/util/translator.rs:117: verifying translator connectivity phase="start" provider="ollama"
+2025-10-19T00:24:05.196001540+08:00  INFO backend::util::translator: src/util/translator.rs:91: verification completed phase="end" provider="deepseek" elapsed_ms=1753
+2025-10-19T00:24:05.196019757+08:00  INFO backend::util::translator: src/util/translator.rs:117: verifying translator connectivity phase="start" provider="ollama"
+2025-10-19T00:24:20.226916482+08:00  INFO backend::util::translator: src/util/translator.rs:127: verification completed phase="end" provider="ollama" elapsed_ms=15389
+2025-10-19T00:24:20.340774548+08:00  INFO backend::util::translator: src/util/translator.rs:127: verification completed phase="end" provider="ollama" elapsed_ms=13750

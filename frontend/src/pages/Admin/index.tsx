@@ -183,8 +183,8 @@ export function AdminPage() {
       },
       {
         key: "translation",
-        label: "翻译服务",
-        description: "配置翻译提供商并查看当前额度状态。",
+        label: "大模型配置",
+        description: "配置 Deepseek 与 Ollama 的参数和开关。",
         render: () => (
           <TranslationSettingsPanel
             token={token}
