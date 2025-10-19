@@ -1084,7 +1084,7 @@ function AiDedupSettingsPanel({
         <select
           value={settings.provider || ''}
           onChange={(e) => changeProvider(e.target.value)}
-          disabled={busy || !settings.enabled}
+          disabled={busy}
           className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-70"
         >
           <option value="">(未选择)</option>
