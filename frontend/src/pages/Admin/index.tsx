@@ -804,9 +804,7 @@ function TranslationSettingsPanel({
     return "（未配置）";
   };
   const statusHints: string[] = [];
-  if (pendingDeepseekVerification) {
-    statusHints.push("Deepseek 凭据验证中…");
-  }
+  // Deepseek 验证提示已移除（大模型配置面板内手动测试）
   if (pendingOllamaVerification) {
     statusHints.push("Ollama 连通性验证中…");
   }
@@ -875,51 +873,7 @@ function TranslationSettingsPanel({
           </section>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <section className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-slate-700">Deepseek</p>
-                  <p className="text-xs text-slate-500">
-                    使用语言模型快速完成中英文互译。
-                  </p>
-                </div>
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    settings?.deepseek_configured
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-slate-200 text-slate-600"
-                  }`}
-                >
-                  {settings?.deepseek_configured ? "可用" : "未配置"}
-                </span>
-              </div>
-              <div className="mt-4 space-y-2">
-                <label className="text-xs font-medium text-slate-500" htmlFor="translation-deepseek-key">
-                  Deepseek API Key
-                </label>
-                <input
-                  id="translation-deepseek-key"
-                  value={dirtyDeepseek ? deepseekKey : ""}
-                  onChange={(event) => {
-                    setDeepseekKey(event.target.value);
-                    setDirtyDeepseek(true);
-                  }}
-                  onBlur={() => {
-                    if (!dirtyDeepseek) return;
-                    autoUpdate({ deepseek_api_key: deepseekKey });
-                  }}
-                  placeholder={
-                    settings?.deepseek_api_key_masked ?? "请输入 Deepseek API Key"
-                  }
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-xs shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-                {settings?.deepseek_error ? (
-                  <p className="text-xs text-red-500">{settings.deepseek_error}</p>
-                ) : pendingDeepseekVerification ? (
-                  <p className="text-xs text-slate-500">正在验证 API 凭据…</p>
-                ) : null}
-              </div>
-            </section>
+            {/* Deepseek 配置移至“⼤模型配置”面板 */}
 
             {/* 百度翻译配置已移除 */}
             <section className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm lg:col-span-2">
