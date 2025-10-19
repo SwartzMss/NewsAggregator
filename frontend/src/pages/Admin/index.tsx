@@ -520,8 +520,10 @@ function ModelSettingsPanel({ token, onUnauthorized }: { token: string; onUnauth
   const [deepseekKey, setDeepseekKey] = useState("");
   const [ollamaUrl, setOllamaUrl] = useState<string | null>(null);
   const [ollamaModel, setOllamaModel] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [dsBusy, setDsBusy] = useState(false);
+  const [olBusy, setOlBusy] = useState(false);
+  const [dsMsg, setDsMsg] = useState<string | null>(null);
+  const [olMsg, setOlMsg] = useState<string | null>(null);
 
   const q = useQuery({
     queryKey: ["model-settings", token],
@@ -534,7 +536,8 @@ function ModelSettingsPanel({ token, onUnauthorized }: { token: string; onUnauth
   }, [q.error, onUnauthorized]);
 
   useEffect(() => {
-    setFeedback(null);
+    setDsMsg(null);
+    setOlMsg(null);
     setDeepseekKey("");
     setOllamaUrl(null);
     setOllamaModel(null);
@@ -545,29 +548,56 @@ function ModelSettingsPanel({ token, onUnauthorized }: { token: string; onUnauth
   const urlValue = ollamaUrl ?? currentOllamaUrl;
   const modelValue = ollamaModel ?? currentOllamaModel;
 
-  const save = async (payload: { deepseek_api_key?: string; ollama_base_url?: string; ollama_model?: string }) => {
-    setBusy(true);
+  const saveDeepseek = async (apiKey: string) => {
+    setDsBusy(true);
     try {
-      const data = await updateModelSettings(token, payload);
+      const data = await updateModelSettings(token, { deepseek_api_key: apiKey });
       qc.setQueryData(["model-settings", token], data);
       qc.invalidateQueries({ queryKey: ["model-settings", token] });
-      setFeedback("模型参数已保存");
+      setDsMsg("Deepseek 配置已保存");
     } catch (e) {
-      setFeedback((e as Error).message || "保存失败");
+      setDsMsg((e as Error).message || "保存失败");
     } finally {
-      setBusy(false);
+      setDsBusy(false);
+    }
+  };
+  const saveOllamaBase = async (baseUrl: string) => {
+    setOlBusy(true);
+    try {
+      const data = await updateModelSettings(token, { ollama_base_url: baseUrl });
+      qc.setQueryData(["model-settings", token], data);
+      qc.invalidateQueries({ queryKey: ["model-settings", token] });
+      setOlMsg("Ollama 服务地址已保存");
+    } catch (e) {
+      setOlMsg((e as Error).message || "保存失败");
+    } finally {
+      setOlBusy(false);
+    }
+  };
+  const saveOllamaModel = async (model: string) => {
+    setOlBusy(true);
+    try {
+      const data = await updateModelSettings(token, { ollama_model: model });
+      qc.setQueryData(["model-settings", token], data);
+      qc.invalidateQueries({ queryKey: ["model-settings", token] });
+      setOlMsg("Ollama 模型名称已保存");
+    } catch (e) {
+      setOlMsg((e as Error).message || "保存失败");
+    } finally {
+      setOlBusy(false);
     }
   };
 
   const test = async (provider: "deepseek" | "ollama") => {
-    setBusy(true);
+    if (provider === "deepseek") setDsBusy(true); else setOlBusy(true);
     try {
       await testModelConnectivity(token, provider);
-      setFeedback(`${provider} 测试通过`);
+      if (provider === "deepseek") setDsMsg("Deepseek 测试通过"); else setOlMsg("Ollama 测试通过");
     } catch (e) {
-      setFeedback((e as Error).message || `${provider} 测试失败`);
+      const msg = (e as Error).message || `${provider} 测试失败`;
+      if (provider === "deepseek") setDsMsg(msg); else setOlMsg(msg);
     } finally {
-      setBusy(false);
+      if (provider === "deepseek") setDsBusy(false); else setOlBusy(false);
     }
   };
 
@@ -581,12 +611,6 @@ function ModelSettingsPanel({ token, onUnauthorized }: { token: string; onUnauth
         </div>
       ) : (
         <>
-          {feedback && (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 shadow-sm">
-              {feedback}
-            </div>
-          )}
-
           <section className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm">
             <div className="flex items-center justify-between gap-3 mb-3">
               <div>
@@ -595,10 +619,11 @@ function ModelSettingsPanel({ token, onUnauthorized }: { token: string; onUnauth
               </div>
               <button
                 className="rounded-md bg-primary px-3 py-1.5 text-xs text-white disabled:opacity-60"
-                disabled={busy}
+                disabled={dsBusy}
                 onClick={() => test("deepseek")}
               >测试连接</button>
             </div>
+            {dsMsg && <p className="mb-2 text-xs text-slate-600">{dsMsg}</p>}
             <input
               className="w-full rounded-md border border-slate-300 px-3 py-2 text-xs shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
               placeholder={q.data?.deepseek_api_key_masked ?? "请输入 Deepseek API Key"}
@@ -606,7 +631,7 @@ function ModelSettingsPanel({ token, onUnauthorized }: { token: string; onUnauth
               onChange={(e) => setDeepseekKey(e.target.value)}
               onBlur={() => {
                 if (!deepseekKey) return;
-                save({ deepseek_api_key: deepseekKey });
+                saveDeepseek(deepseekKey);
                 setDeepseekKey("");
               }}
             />
@@ -620,10 +645,11 @@ function ModelSettingsPanel({ token, onUnauthorized }: { token: string; onUnauth
               </div>
               <button
                 className="rounded-md bg-primary px-3 py-1.5 text-xs text-white disabled:opacity-60"
-                disabled={busy}
+                disabled={olBusy}
                 onClick={() => test("ollama")}
               >测试连接</button>
             </div>
+            {olMsg && <p className="mb-2 text-xs text-slate-600">{olMsg}</p>}
             <div className="grid gap-3 sm:grid-cols-2">
               <input
                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-xs shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -635,7 +661,7 @@ function ModelSettingsPanel({ token, onUnauthorized }: { token: string; onUnauth
                   const trimmed = raw.trim();
                   if (trimmed === currentOllamaUrl.trim()) { setOllamaUrl(null); return; }
                   setOllamaUrl(trimmed);
-                  save({ ollama_base_url: trimmed });
+                  saveOllamaBase(trimmed);
                 }}
               />
               <input
@@ -648,7 +674,7 @@ function ModelSettingsPanel({ token, onUnauthorized }: { token: string; onUnauth
                   const trimmed = raw.trim();
                   if (trimmed === currentOllamaModel.trim()) { setOllamaModel(null); return; }
                   setOllamaModel(trimmed);
-                  save({ ollama_model: trimmed });
+                  saveOllamaModel(trimmed);
                 }}
               />
             </div>
