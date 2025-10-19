@@ -1023,6 +1023,11 @@ function AiDedupSettingsPanel({
         : settings.ollama_configured
         ? "ollama"
         : undefined;
+      // if still none available, guide user to model settings instead of failing the request
+      if (!provider) {
+        onGotoModelSettings();
+        return;
+      }
     }
     mutation.mutate({ enabled: next, provider });
   };
