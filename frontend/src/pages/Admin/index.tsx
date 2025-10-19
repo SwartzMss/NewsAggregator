@@ -6,6 +6,9 @@ import {
   UnauthorizedError,
   getTranslationSettings,
   updateTranslationSettings,
+  getModelSettings,
+  updateModelSettings,
+  testModelConnectivity,
   getAiDedupSettings,
   updateAiDedupSettings,
 } from "../../lib/api";
@@ -182,9 +185,17 @@ export function AdminPage() {
         ),
       },
       {
-        key: "translation",
+        key: "model-config",
         label: "大模型配置",
-        description: "配置 Deepseek 与 Ollama 的参数和开关。",
+        description: "配置 Deepseek / Ollama 参数，并手动测试可用性。",
+        render: () => (
+          <ModelSettingsPanel token={token} onUnauthorized={handleUnauthorized} />
+        ),
+      },
+      {
+        key: "translation",
+        label: "翻译配置",
+        description: "启用/关闭翻译、默认服务与内容范围。",
         render: () => (
           <TranslationSettingsPanel
             token={token}
@@ -504,6 +515,149 @@ export function AdminPage() {
   );
 }
 
+function ModelSettingsPanel({ token, onUnauthorized }: { token: string; onUnauthorized: () => void }) {
+  const qc = useQueryClient();
+  const [deepseekKey, setDeepseekKey] = useState("");
+  const [ollamaUrl, setOllamaUrl] = useState<string | null>(null);
+  const [ollamaModel, setOllamaModel] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  const q = useQuery({
+    queryKey: ["model-settings", token],
+    queryFn: () => getModelSettings(token),
+    enabled: !!token,
+    retry: false,
+  });
+  useEffect(() => {
+    if (q.error instanceof UnauthorizedError) onUnauthorized();
+  }, [q.error, onUnauthorized]);
+
+  useEffect(() => {
+    setFeedback(null);
+    setDeepseekKey("");
+    setOllamaUrl(null);
+    setOllamaModel(null);
+  }, [q.data]);
+
+  const currentOllamaUrl = q.data?.ollama_base_url ?? "";
+  const currentOllamaModel = q.data?.ollama_model ?? "";
+  const urlValue = ollamaUrl ?? currentOllamaUrl;
+  const modelValue = ollamaModel ?? currentOllamaModel;
+
+  const save = async (payload: { deepseek_api_key?: string; ollama_base_url?: string; ollama_model?: string }) => {
+    setBusy(true);
+    try {
+      const data = await updateModelSettings(token, payload);
+      qc.setQueryData(["model-settings", token], data);
+      qc.invalidateQueries({ queryKey: ["model-settings", token] });
+      setFeedback("模型参数已保存");
+    } catch (e) {
+      setFeedback((e as Error).message || "保存失败");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const test = async (provider: "deepseek" | "ollama") => {
+    setBusy(true);
+    try {
+      await testModelConnectivity(token, provider);
+      setFeedback(`${provider} 测试通过`);
+    } catch (e) {
+      setFeedback((e as Error).message || `${provider} 测试失败`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      {q.isLoading ? (
+        <div className="text-sm text-slate-500">正在加载大模型配置…</div>
+      ) : q.isError ? (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+          {(q.error as Error).message || "大模型配置加载失败"}
+        </div>
+      ) : (
+        <>
+          {feedback && (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 shadow-sm">
+              {feedback}
+            </div>
+          )}
+
+          <section className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <p className="text-sm font-medium text-slate-700">Deepseek</p>
+                <p className="text-xs text-slate-500">填写 API Key 后点击测试。</p>
+              </div>
+              <button
+                className="rounded-md bg-primary px-3 py-1.5 text-xs text-white disabled:opacity-60"
+                disabled={busy}
+                onClick={() => test("deepseek")}
+              >测试连接</button>
+            </div>
+            <input
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-xs shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+              placeholder={q.data?.deepseek_api_key_masked ?? "请输入 Deepseek API Key"}
+              value={deepseekKey}
+              onChange={(e) => setDeepseekKey(e.target.value)}
+              onBlur={() => {
+                if (!deepseekKey) return;
+                save({ deepseek_api_key: deepseekKey });
+                setDeepseekKey("");
+              }}
+            />
+          </section>
+
+          <section className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <p className="text-sm font-medium text-slate-700">Ollama 本地</p>
+                <p className="text-xs text-slate-500">设置本地服务地址与模型名称后点击测试。</p>
+              </div>
+              <button
+                className="rounded-md bg-primary px-3 py-1.5 text-xs text-white disabled:opacity-60"
+                disabled={busy}
+                onClick={() => test("ollama")}
+              >测试连接</button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <input
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-xs shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="http://127.0.0.1:11434"
+                value={urlValue}
+                onChange={(e) => setOllamaUrl(e.target.value)}
+                onBlur={() => {
+                  const raw = ollamaUrl ?? currentOllamaUrl;
+                  const trimmed = raw.trim();
+                  if (trimmed === currentOllamaUrl.trim()) { setOllamaUrl(null); return; }
+                  setOllamaUrl(trimmed);
+                  save({ ollama_base_url: trimmed });
+                }}
+              />
+              <input
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-xs shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="qwen2.5:3b"
+                value={modelValue}
+                onChange={(e) => setOllamaModel(e.target.value)}
+                onBlur={() => {
+                  const raw = ollamaModel ?? currentOllamaModel;
+                  const trimmed = raw.trim();
+                  if (trimmed === currentOllamaModel.trim()) { setOllamaModel(null); return; }
+                  setOllamaModel(trimmed);
+                  save({ ollama_model: trimmed });
+                }}
+              />
+            </div>
+          </section>
+        </>
+      )}
+    </div>
+  );
+}
 function TranslationSettingsPanel({
   token,
   onUnauthorized,

@@ -4,7 +4,10 @@ use tracing::warn;
 
 use crate::{
     error::{AppError, AppResult},
-    model::{TranslationSettingsOut, TranslationSettingsUpdate, AiDedupSettingsOut, AiDedupSettingsUpdate},
+    model::{
+        TranslationSettingsOut, TranslationSettingsUpdate, AiDedupSettingsOut, AiDedupSettingsUpdate,
+        ModelSettingsOut, ModelSettingsUpdate,
+    },
     repo,
     util::translator::{TranslationEngine, TranslatorCredentialsUpdate, TranslatorProvider},
 };
@@ -118,6 +121,72 @@ pub async fn update_translation_settings(
     }
 
     get_translation_settings(translator).await
+}
+
+pub async fn get_model_settings(translator: &Arc<TranslationEngine>) -> AppResult<ModelSettingsOut> {
+    let snapshot = translator.snapshot();
+    Ok(ModelSettingsOut {
+        deepseek_api_key_masked: snapshot.deepseek_api_key_masked,
+        ollama_base_url: snapshot.ollama_base_url,
+        ollama_model: snapshot.ollama_model,
+    })
+}
+
+pub async fn update_model_settings(
+    pool: &sqlx::PgPool,
+    translator: &Arc<TranslationEngine>,
+    payload: ModelSettingsUpdate,
+) -> AppResult<ModelSettingsOut> {
+    let mut update = TranslatorCredentialsUpdate::default();
+    if let Some(api_key) = payload.deepseek_api_key {
+        if api_key.trim().is_empty() {
+            repo::settings::delete_setting(pool, "translation.deepseek_api_key").await?;
+            update.deepseek_api_key = Some(String::new());
+        } else {
+            repo::settings::upsert_setting(pool, "translation.deepseek_api_key", &api_key).await?;
+            update.deepseek_api_key = Some(api_key);
+        }
+    }
+    if let Some(base_url) = payload.ollama_base_url {
+        let trimmed = base_url.trim();
+        if trimmed.is_empty() {
+            repo::settings::delete_setting(pool, "translation.ollama_base_url").await?;
+            update.ollama_base_url = Some(String::new());
+        } else {
+            repo::settings::upsert_setting(pool, "translation.ollama_base_url", trimmed).await?;
+            update.ollama_base_url = Some(trimmed.to_string());
+        }
+    }
+    if let Some(model) = payload.ollama_model {
+        let trimmed = model.trim();
+        if trimmed.is_empty() {
+            repo::settings::delete_setting(pool, "translation.ollama_model").await?;
+            update.ollama_model = Some(String::new());
+        } else {
+            repo::settings::upsert_setting(pool, "translation.ollama_model", trimmed).await?;
+            update.ollama_model = Some(trimmed.to_string());
+        }
+    }
+
+    translator
+        .update_credentials(update)
+        .map_err(|e| AppError::BadRequest(e.to_string()))?;
+    get_model_settings(translator).await
+}
+
+pub async fn test_model_connectivity(
+    translator: &Arc<TranslationEngine>,
+    provider: &str,
+) -> AppResult<()> {
+    let p = provider
+        .trim()
+        .parse::<TranslatorProvider>()
+        .map_err(|_| AppError::BadRequest("不支持的 provider".into()))?;
+    translator
+        .test_connectivity(p)
+        .await
+        .map_err(AppError::Internal)?;
+    Ok(())
 }
 
 pub async fn get_ai_dedup_settings(

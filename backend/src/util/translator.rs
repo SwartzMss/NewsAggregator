@@ -34,9 +34,10 @@ fn clear_verification(state: &mut TranslationState, provider: TranslatorProvider
 }
 
 fn provider_available(state: &TranslationState, provider: TranslatorProvider) -> bool {
+    // 不再依赖自动验证标记，仅以是否存在可用客户端判定“可用”
     match provider {
-        TranslatorProvider::Deepseek => state.deepseek_client.is_some() && state.deepseek_verified,
-        TranslatorProvider::Ollama => state.ollama_client.is_some() && state.ollama_verified,
+        TranslatorProvider::Deepseek => state.deepseek_client.is_some(),
+        TranslatorProvider::Ollama => state.ollama_client.is_some(),
     }
 }
 
@@ -294,7 +295,7 @@ impl TranslationEngine {
             timeout_secs: 30,
         }));
 
-        // attempt to build clients
+        // attempt to build clients (不自动验证)
         state.deepseek_client = build_deepseek_client(http_client, &base_deepseek, &state)?;
         // 初始不构建 Ollama 客户端，待 settings 注入后再构建
         state.ollama_client = None;
@@ -317,8 +318,8 @@ impl TranslationEngine {
             base_ollama,
         };
 
-        engine.spawn_verification_tasks(verify_deepseek, verify_ollama);
-
+        // 不自动发起验证任务；改为前端手动触发
+        
         Ok(engine)
     }
 
@@ -559,8 +560,40 @@ impl TranslationEngine {
         }
 
         drop(state);
-        self.spawn_verification_tasks(deepseek_changed, ollama_changed);
+        // 不自动发起验证任务；由前端按钮触发专门的测试接口
 
+        Ok(())
+    }
+
+    // 手动测试指定 provider 连通性（不改变 provider，仅做一次实际调用验证）
+    pub async fn test_connectivity(&self, provider: TranslatorProvider) -> Result<()> {
+        let sample = "NewsAggregator connectivity ping";
+        match provider {
+            TranslatorProvider::Deepseek => {
+                let (client, verified) = {
+                    let state = self
+                        .state
+                        .read()
+                        .map_err(|_| anyhow!("translator lock poisoned"))?;
+                    (state.deepseek_client.clone(), state.deepseek_verified)
+                };
+                let client = client.ok_or_else(|| anyhow!("Deepseek 未配置"))?;
+                let _ = client.translate_news(sample, None).await?;
+                let _ = verified; // 不依赖 verified
+            }
+            TranslatorProvider::Ollama => {
+                let (client, verified) = {
+                    let state = self
+                        .state
+                        .read()
+                        .map_err(|_| anyhow!("translator lock poisoned"))?;
+                    (state.ollama_client.clone(), state.ollama_verified)
+                };
+                let client = client.ok_or_else(|| anyhow!("Ollama 未配置"))?;
+                let _ = client.translate_news(sample, None).await?;
+                let _ = verified;
+            }
+        }
         Ok(())
     }
 

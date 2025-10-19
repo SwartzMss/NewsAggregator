@@ -101,6 +101,20 @@ pub struct TranslationSettingsOut {
     pub translate_descriptions: bool,
 }
 
+#[derive(Debug, Serialize)]
+pub struct ModelSettingsOut {
+    pub deepseek_api_key_masked: Option<String>,
+    pub ollama_base_url: Option<String>,
+    pub ollama_model: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ModelSettingsUpdate {
+    pub deepseek_api_key: Option<String>,
+    pub ollama_base_url: Option<String>,
+    pub ollama_model: Option<String>,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct TranslationSettingsUpdate {
     #[serde(default)]

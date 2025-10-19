@@ -141,6 +141,15 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
                 .post(api::settings::update_translation_settings),
         )
         .route(
+            "/settings/models",
+            get(api::settings::get_model_settings)
+                .post(api::settings::update_model_settings),
+        )
+        .route(
+            "/settings/models/test",
+            post(api::settings::test_model_connectivity),
+        )
+        .route(
             "/settings/ai_dedup",
             get(api::settings::get_ai_dedup_settings)
                 .post(api::settings::update_ai_dedup_settings),
