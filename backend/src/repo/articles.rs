@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use sqlx::{postgres::PgQueryResult, PgPool, Postgres, Row, Transaction};
+use tracing::warn;
 
 #[derive(Debug, sqlx::FromRow)]
 pub struct ArticleRow {
@@ -94,8 +95,16 @@ pub async fn insert_articles(
     let mut inserted = Vec::new();
 
     let mut tx = pool.begin().await?;
+    // 防止因并发唯一键冲突等待导致卡住：限制锁等待与语句执行时间
+    // 注意：不影响同事务内其它操作
+    let _ = sqlx::query("SET LOCAL lock_timeout = '5s'")
+        .execute(&mut *tx)
+        .await;
+    let _ = sqlx::query("SET LOCAL statement_timeout = '10s'")
+        .execute(&mut *tx)
+        .await;
     for article in articles {
-        let row = sqlx::query(
+        let row_res = sqlx::query(
             r#"
             INSERT INTO news.articles (
                 feed_id,
@@ -123,7 +132,19 @@ pub async fn insert_articles(
         .bind(&article.source_domain)
         .bind(article.published_at)
         .fetch_optional(&mut *tx)
-        .await?;
+        .await;
+        let row = match row_res {
+            Ok(v) => v,
+            Err(err) => {
+                // 超时或锁等待失败等错误：跳过本条，继续后续，避免整批卡死
+                warn!(
+                    error = ?err,
+                    url = %article.url,
+                    "insert skipped due to database error"
+                );
+                continue;
+            }
+        };
 
         if let Some(row) = row {
             let article_id: i64 = row.get("id");

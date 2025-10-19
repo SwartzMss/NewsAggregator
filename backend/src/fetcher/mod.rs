@@ -115,7 +115,7 @@ const STRICT_DUP_THRESHOLD: f32 = 0.9;
 // 触发 LLM 深度相似度判定的较宽松阈值：>= 0.6 进入 Deepseek 检查
 const DEEPSEEK_THRESHOLD: f32 = 0.6;
 // 最近历史文章数量上限：控制比较规模与性能
-const RECENT_ARTICLE_LIMIT: i64 = 200;
+const RECENT_ARTICLE_LIMIT: i64 = 100;
 // 对单篇新文章进行 LLM 相似度检查的最大次数（防止成本与延迟爆炸）
 const MAX_DEEPSEEK_CHECKS: usize = 3;
 
@@ -537,6 +537,9 @@ async fn process_feed_locked(
                 "title translation decision"
             );
 
+            // 进入条目处理主流程，便于定位卡点
+            info!(feed_id = feed.id, url = %article.url, "begin entry processing");
+
             if need_translate {
                 if !translation.translation_enabled() {
                     info!(
@@ -645,47 +648,67 @@ async fn process_feed_locked(
                     }
                 }
             }
-            
-            let (normalized_title, tokens) = prepare_title_signature(&article.title);
-
-            if tokens.is_empty() {
-                continue;
             }
+            // 为单条条目处理添加硬超时，防止个别条目卡住影响整批
+            let entry_timeout = Duration::from_secs(2);
+            let entry_url_clone = article.url.clone();
+            let result = timeout(entry_timeout, async {
+                // 标记准备开始做标题签名，以区别于签名计算内部耗时
+                info!(feed_id = feed.id, url = %article.url, "preparing title signature");
+                let (normalized_title, tokens) = prepare_title_signature(&article.title);
+                info!(feed_id = feed.id, url = %article.url, "prepared title signature");
 
-            let mut is_duplicate = false;
-            for (existing_tokens, existing_title) in &seen_signatures {
-                // 同一批次内部去重：严格 Jaccard + 归一化标题匹配
-                let similarity = jaccard_similarity(&tokens, existing_tokens);
-                if similarity >= STRICT_DUP_THRESHOLD {
-                    is_duplicate = true;
-                    info!(
-                        feed_id = feed.id,
-                        similarity,
-                        title = %article.title,
-                        "skip article due to high intra-feed title similarity"
-                    );
-                    break;
+                if tokens.is_empty() {
+                    info!(feed_id = feed.id, url = %article.url, "skip entry: empty tokens after normalization");
+                    return Ok::<bool, ()>(true); // treat as handled (skipped)
                 }
 
-                if normalized_title == *existing_title {
-                    is_duplicate = true;
-                    info!(
-                        feed_id = feed.id,
-                        title = %article.title,
-                        "skip article due to identical normalized title"
-                    );
-                    break;
+                let mut is_duplicate = false;
+                for (existing_tokens, existing_title) in &seen_signatures {
+                    // 同一批次内部去重：严格 Jaccard + 归一化标题匹配
+                    let similarity = jaccard_similarity(&tokens, existing_tokens);
+                    if similarity >= STRICT_DUP_THRESHOLD {
+                        is_duplicate = true;
+                        info!(
+                            feed_id = feed.id,
+                            similarity,
+                            title = %article.title,
+                            "skip article due to high intra-feed title similarity"
+                        );
+                        break;
+                    }
+
+                    if normalized_title == *existing_title {
+                        is_duplicate = true;
+                        info!(
+                            feed_id = feed.id,
+                            title = %article.title,
+                            "skip article due to identical normalized title"
+                        );
+                        break;
+                    }
                 }
-            }
 
-            if is_duplicate {
-                continue;
-            }
+                if is_duplicate {
+                    return Ok(true);
+                }
 
-            if !historical_candidates.is_empty() {
-                let mut deepseek_checks = 0usize;
-                for candidate in &historical_candidates {
-                    let similarity = jaccard_similarity(&tokens, &candidate.tokens);
+                // 批内比较结束
+                info!(feed_id = feed.id, url = %article.url, checked = seen_signatures.len(), "intra-batch compare done");
+
+                // 让出调度，避免长时间计算阻塞日志刷新
+                tokio::task::yield_now().await;
+
+                if !historical_candidates.is_empty() {
+                    info!(feed_id = feed.id, url = %article.url, candidates = historical_candidates.len(), "start historical dedup compare");
+                    let mut deepseek_checks = 0usize;
+                    let mut candidate_counter = 0usize;
+                    for candidate in &historical_candidates {
+                        candidate_counter += 1;
+                        let similarity = jaccard_similarity(&tokens, &candidate.tokens);
+                        if candidate_counter % 25 == 0 {
+                            info!(feed_id = feed.id, url = %article.url, checked = candidate_counter, similarity_hint = similarity, "dedup progress");
+                        }
                     if similarity >= STRICT_DUP_THRESHOLD {
                         // 与历史文章严格匹配：直接标记来源并跳过
                         record_article_source(
@@ -856,37 +879,59 @@ async fn process_feed_locked(
                             }
                         }
                     }
+                } else {
+                    info!(feed_id = feed.id, url = %article.url, "no historical candidates; skipping hist compare");
                 }
 
                 if is_duplicate {
+                    return Ok(true);
+                }
+                Ok(false)
+            }).await;
+            match result {
+                Ok(Ok(skipped)) => {
+                    if skipped { continue; }
+                }
+                Ok(Err(_)) => {
+                    warn!(feed_id = feed.id, url = %entry_url_clone, "entry processing aborted");
+                    continue;
+                }
+                Err(_) => {
+                    warn!(feed_id = feed.id, url = %entry_url_clone, "entry processing timed out; skip");
                     continue;
                 }
             }
 
+            info!(feed_id = feed.id, url = %article.url, "entry processing completed; proceeding to persist");
+
             // 入库前的数据快照（仅日志，不修改数据）
-            let preview_desc = article
+            // 安全截断描述，按字符边界避免 UTF-8 切片 panic
+            let preview_desc_owned: String = article
                 .description
                 .as_deref()
-                .map(|s| if s.len() > 80 { &s[..80] } else { s })
-                .unwrap_or("");
+                .map(|s| s.chars().take(80).collect::<String>())
+                .unwrap_or_default();
             info!(
                 feed_id = feed.id,
                 url = %article.url,
                 language = %article.language.as_deref().unwrap_or(""),
-                preview_desc = preview_desc,
+                preview_desc = %preview_desc_owned,
                 "pre-insert article snapshot"
             );
 
             let (normalized_title2, tokens2) = prepare_title_signature(&article.title);
             seen_signatures.push((tokens2, normalized_title2));
             articles.push(article);
+            info!(feed_id = feed.id, url = %articles.last().unwrap().url, "entry dedup finished");
         }
         // close the for-entry loop
     }
 
     let article_count = articles.len();
     if article_count > 0 {
+        info!(feed_id = feed.id, count = article_count, "about to insert parsed articles");
         let inserted = articles::insert_articles(&pool, articles).await?;
+        info!(feed_id = feed.id, inserted = inserted.len(), "articles insert finished");
         for (article_id, article) in &inserted {
             // primary 决策：来源于当前 feed 的主插入
             record_article_source(&pool, feed, article, *article_id, Some("primary"), None).await;
@@ -897,6 +942,7 @@ async fn process_feed_locked(
             .map(str::trim)
             .filter(|value| !value.is_empty())
         {
+            info!(feed_id = feed.id, "applying feed filter condition");
             match articles::apply_filter_condition(&pool, feed.id, condition).await {
                 Ok(deleted) => {
                     if deleted > 0 {
@@ -905,6 +951,7 @@ async fn process_feed_locked(
                             deleted, "filtered articles using feed condition"
                         );
                     }
+                    info!(feed_id = feed.id, "feed filter condition applied");
                 }
                 Err(err) => {
                     warn!(
@@ -928,6 +975,7 @@ async fn process_feed_locked(
 
     let site_url = parsed_feed.links.first().map(|link| link.href.clone());
 
+    info!(feed_id = feed.id, "marking feed success");
     feeds::mark_success(
         &pool,
         feed.id,

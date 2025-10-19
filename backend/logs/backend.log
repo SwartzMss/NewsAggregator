@@ -168,3 +168,653 @@
 2025-10-19T19:17:39.512680316+08:00  INFO backend::fetcher: src/fetcher/mod.rs:260: no feeds eligible this round
 2025-10-19T19:20:09.401537446+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
 2025-10-19T19:20:09.436002724+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T19:36:09.657080803+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T19:36:09.680296628+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T19:41:09.684117486+08:00  INFO backend::fetcher: src/fetcher/mod.rs:260: no feeds eligible this round
+2025-10-19T19:46:12.707094657+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T19:46:12.730286043+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T19:49:53.690985652+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T19:49:53.713419704+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T19:52:02.578410417+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T19:52:02.603246775+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T19:54:42.522322719+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T19:54:42.545411224+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T19:55:35.675133976+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T19:55:35.697119464+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T19:58:28.434637652+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T19:58:28.458951243+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T20:02:53.670617735+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T20:02:53.694252939+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T20:04:34.797612319+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T20:04:34.819393176+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T20:05:48.332285853+08:00  WARN backend::service::feeds: src/service/feeds.rs:215: feed test request failed error=error sending request for url (https://36kr.com/feed) url="https://36kr.com/feed" chain=error sending request for url (https://36kr.com/feed) -> client error (SendRequest) -> connection error -> peer closed connection without sending TLS close_notify: https://docs.rs/rustls/latest/rustls/manual/_03_howto/index.html#unexpected-eof
+2025-10-19T20:06:18.847831918+08:00  INFO backend::service::feeds: src/service/feeds.rs:85: feed saved feed_id=78 url="https://36kr.com/feed" enabled=true source_domain=36kr.com derived_source_domain=false
+2025-10-19T20:06:18.849659262+08:00  INFO backend::service::feeds: src/service/feeds.rs:118: applied filter condition immediately after update feed_id=78 deleted=0
+2025-10-19T20:06:20.677220411+08:00  INFO backend::fetcher: src/fetcher/mod.rs:439: feed http fetch succeeded feed_id=78 status=200 url=https://36kr.com/feed
+2025-10-19T20:06:22.927193659+08:00  INFO backend::fetcher: src/fetcher/mod.rs:457: feed xml parsed feed_id="a358b4dd2efd07271204fdf9fe596cdd" status=200 entry_count=30 bytes_len=134100
+2025-10-19T20:06:22.935262665+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=78 url=https://36kr.com/p/3512964102970499?f=rss need_translate=false title=暧昧但不确立关系，年轻女孩们困在situationship里
+2025-10-19T20:06:22.935299745+08:00  INFO backend::fetcher: src/fetcher/mod.rs:872: pre-insert article snapshot feed_id=78 url=https://36kr.com/p/3512964102970499?f=rss language= preview_desc="<p class=\"image-wrapper\"><img data-img-size-val=\"900,1030\" src=\"https://img.36kr"
+2025-10-19T20:06:22.935974231+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=78 url=https://36kr.com/p/3512963909246089?f=rss need_translate=false title=卖价过万的「大头娃娃」，成了「痛系」年轻人的新型奢侈品
+2025-10-19T20:06:22.936008900+08:00  INFO backend::fetcher: src/fetcher/mod.rs:872: pre-insert article snapshot feed_id=78 url=https://36kr.com/p/3512963909246089?f=rss language= preview_desc="<p class=\"image-wrapper\"><img data-img-size-val=\"900,1030\" src=\"https://img.36kr"
+2025-10-19T20:06:22.936030103+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=78 url=https://36kr.com/p/3514451621075848?f=rss need_translate=false title=一位北京女CEO要敲钟了！
+2025-10-19T20:07:58.818423711+08:00  INFO backend::service::feeds: src/service/feeds.rs:180: feed and associated content deleted feed_id=78
+2025-10-19T20:08:11.048897348+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T20:08:11.073237457+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T20:08:42.901860772+08:00  INFO backend::service::feeds: src/service/feeds.rs:85: feed saved feed_id=79 url="https://feeds.bloomberg.com/markets/news.rss" enabled=true source_domain=feeds.bloomberg.com derived_source_domain=false
+2025-10-19T20:08:42.902884678+08:00  INFO backend::service::feeds: src/service/feeds.rs:118: applied filter condition immediately after update feed_id=79 deleted=0
+2025-10-19T20:08:43.648148408+08:00  INFO backend::fetcher: src/fetcher/mod.rs:439: feed http fetch succeeded feed_id=79 status=200 url=https://feeds.bloomberg.com/markets/news.rss
+2025-10-19T20:08:43.677185826+08:00  INFO backend::fetcher: src/fetcher/mod.rs:457: feed xml parsed feed_id="c57322914c6d98de4fe78add33b827c8" status=200 entry_count=30 bytes_len=34926
+2025-10-19T20:08:43.683260524+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/dark-ship-appears-to-transfer-sanctioned-russia-lng-off-malaysia need_translate=true title=Dark Ships Try Sanctioned Russian LNG Transfer Near Malaysia
+2025-10-19T20:08:43.683297191+08:00  INFO backend::fetcher: src/fetcher/mod.rs:553: pre-translation decision feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/dark-ship-appears-to-transfer-sanctioned-russia-lng-off-malaysia translate_descriptions=true has_original_description=true
+2025-10-19T20:08:43.683307696+08:00  INFO backend::fetcher: src/fetcher/mod.rs:564: translation start feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/dark-ship-appears-to-transfer-sanctioned-russia-lng-off-malaysia title=Dark Ships Try Sanctioned Russian LNG Transfer Near Malaysia include_description=true provider=Ollama
+2025-10-19T20:08:43.684040530+08:00  INFO backend::fetcher: src/fetcher/mod.rs:600: translation skipped (provider unavailable) feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/dark-ship-appears-to-transfer-sanctioned-russia-lng-off-malaysia provider="ollama" provider_available=true
+2025-10-19T20:08:43.684086187+08:00  INFO backend::fetcher: src/fetcher/mod.rs:872: pre-insert article snapshot feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/dark-ship-appears-to-transfer-sanctioned-russia-lng-off-malaysia language= preview_desc="A dark tanker carrying liquefied natural gas from a US-sanctioned Russian export"
+2025-10-19T20:08:43.684117097+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-18/chinese-export-boom-can-t-stop-economy-s-slowdown need_translate=true title=Chinese Export Boom Can’t Stop Economy’s Slowdown
+2025-10-19T20:08:43.684125683+08:00  INFO backend::fetcher: src/fetcher/mod.rs:553: pre-translation decision feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-18/chinese-export-boom-can-t-stop-economy-s-slowdown translate_descriptions=true has_original_description=true
+2025-10-19T20:08:43.684132652+08:00  INFO backend::fetcher: src/fetcher/mod.rs:564: translation start feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-18/chinese-export-boom-can-t-stop-economy-s-slowdown title=Chinese Export Boom Can’t Stop Economy’s Slowdown include_description=true provider=Ollama
+2025-10-19T20:08:43.684140834+08:00  INFO backend::fetcher: src/fetcher/mod.rs:600: translation skipped (provider unavailable) feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-18/chinese-export-boom-can-t-stop-economy-s-slowdown provider="ollama" provider_available=true
+2025-10-19T20:08:43.684155481+08:00  INFO backend::fetcher: src/fetcher/mod.rs:872: pre-insert article snapshot feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-18/chinese-export-boom-can-t-stop-economy-s-slowdown language= preview_desc="China’s economy probably grew at the slowest in a year during the third quarte"
+2025-10-19T20:08:43.684169521+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/singapore-law-firm-to-sue-switzerland-over-asia-losses-on-at1s need_translate=true title=Singapore Law Firm to Sue Switzerland Over Asia Losses on AT1s
+2025-10-19T20:08:43.684200229+08:00  INFO backend::fetcher: src/fetcher/mod.rs:553: pre-translation decision feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/singapore-law-firm-to-sue-switzerland-over-asia-losses-on-at1s translate_descriptions=true has_original_description=true
+2025-10-19T20:08:43.684209926+08:00  INFO backend::fetcher: src/fetcher/mod.rs:564: translation start feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/singapore-law-firm-to-sue-switzerland-over-asia-losses-on-at1s title=Singapore Law Firm to Sue Switzerland Over Asia Losses on AT1s include_description=true provider=Ollama
+2025-10-19T20:08:43.684217805+08:00  INFO backend::fetcher: src/fetcher/mod.rs:600: translation skipped (provider unavailable) feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/singapore-law-firm-to-sue-switzerland-over-asia-losses-on-at1s provider="ollama" provider_available=true
+2025-10-19T20:08:43.684232754+08:00  INFO backend::fetcher: src/fetcher/mod.rs:872: pre-insert article snapshot feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/singapore-law-firm-to-sue-switzerland-over-asia-losses-on-at1s language= preview_desc="One of Singapore’s biggest law firms is set to file claims against the Swiss g"
+2025-10-19T20:08:43.684248613+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/australia-prime-minister-to-meet-trump-with-rare-earths-in-focus need_translate=true title=Australia Prime Minister to Meet Trump With Rare Earths in Focus
+2025-10-19T20:08:43.684255886+08:00  INFO backend::fetcher: src/fetcher/mod.rs:553: pre-translation decision feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/australia-prime-minister-to-meet-trump-with-rare-earths-in-focus translate_descriptions=true has_original_description=true
+2025-10-19T20:08:43.684262856+08:00  INFO backend::fetcher: src/fetcher/mod.rs:564: translation start feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/australia-prime-minister-to-meet-trump-with-rare-earths-in-focus title=Australia Prime Minister to Meet Trump With Rare Earths in Focus include_description=true provider=Ollama
+2025-10-19T20:08:43.684274169+08:00  INFO backend::fetcher: src/fetcher/mod.rs:600: translation skipped (provider unavailable) feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/australia-prime-minister-to-meet-trump-with-rare-earths-in-focus provider="ollama" provider_available=true
+2025-10-19T20:08:43.684287300+08:00  INFO backend::fetcher: src/fetcher/mod.rs:872: pre-insert article snapshot feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/australia-prime-minister-to-meet-trump-with-rare-earths-in-focus language= preview_desc="Australian Prime Minister Anthony Albanese is expected to meet US President Dona"
+2025-10-19T20:08:43.684326998+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/bubble-debate-drives-korean-retail-investors-to-risky-vix-bets need_translate=true title=Bubble Debate Drives Korean Retail Investors to Risky VIX Bets
+2025-10-19T20:08:43.684358412+08:00  INFO backend::fetcher: src/fetcher/mod.rs:553: pre-translation decision feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/bubble-debate-drives-korean-retail-investors-to-risky-vix-bets translate_descriptions=true has_original_description=true
+2025-10-19T20:08:43.684367503+08:00  INFO backend::fetcher: src/fetcher/mod.rs:564: translation start feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/bubble-debate-drives-korean-retail-investors-to-risky-vix-bets title=Bubble Debate Drives Korean Retail Investors to Risky VIX Bets include_description=true provider=Ollama
+2025-10-19T20:08:43.684375584+08:00  INFO backend::fetcher: src/fetcher/mod.rs:600: translation skipped (provider unavailable) feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/bubble-debate-drives-korean-retail-investors-to-risky-vix-bets provider="ollama" provider_available=true
+2025-10-19T20:08:43.684413564+08:00  INFO backend::fetcher: src/fetcher/mod.rs:872: pre-insert article snapshot feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/bubble-debate-drives-korean-retail-investors-to-risky-vix-bets language= preview_desc="Investors in South Korea looking to hedge their big US stock holdings or play th"
+2025-10-19T20:08:43.684453766+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/a-trader-s-guide-to-china-s-biggest-political-meeting-of-2025 need_translate=true title=A Trader’s Guide to China’s Biggest Political Meeting of 2025
+2025-10-19T20:08:43.684485080+08:00  INFO backend::fetcher: src/fetcher/mod.rs:553: pre-translation decision feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/a-trader-s-guide-to-china-s-biggest-political-meeting-of-2025 translate_descriptions=true has_original_description=true
+2025-10-19T20:08:43.684495989+08:00  INFO backend::fetcher: src/fetcher/mod.rs:564: translation start feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/a-trader-s-guide-to-china-s-biggest-political-meeting-of-2025 title=A Trader’s Guide to China’s Biggest Political Meeting of 2025 include_description=true provider=Ollama
+2025-10-19T20:08:43.684504575+08:00  INFO backend::fetcher: src/fetcher/mod.rs:600: translation skipped (provider unavailable) feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/a-trader-s-guide-to-china-s-biggest-political-meeting-of-2025 provider="ollama" provider_available=true
+2025-10-19T20:08:43.684522353+08:00  INFO backend::fetcher: src/fetcher/mod.rs:872: pre-insert article snapshot feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-19/a-trader-s-guide-to-china-s-biggest-political-meeting-of-2025 language= preview_desc="A pivotal political gathering in Beijing this week could deliver fresh policy me"
+2025-10-19T20:08:43.684561343+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=79 url=https://www.bloomberg.com/news/videos/2025-10-18/protesters-oppose-trump-in-no-kings-event-in-nyc need_translate=true title=Protesters Oppose Trump in ‘No Kings’ Event in NYC
+2025-10-19T20:08:43.684603060+08:00  INFO backend::fetcher: src/fetcher/mod.rs:553: pre-translation decision feed_id=79 url=https://www.bloomberg.com/news/videos/2025-10-18/protesters-oppose-trump-in-no-kings-event-in-nyc translate_descriptions=true has_original_description=true
+2025-10-19T20:08:43.684636394+08:00  INFO backend::fetcher: src/fetcher/mod.rs:564: translation start feed_id=79 url=https://www.bloomberg.com/news/videos/2025-10-18/protesters-oppose-trump-in-no-kings-event-in-nyc title=Protesters Oppose Trump in ‘No Kings’ Event in NYC include_description=true provider=Ollama
+2025-10-19T20:08:43.684646899+08:00  INFO backend::fetcher: src/fetcher/mod.rs:600: translation skipped (provider unavailable) feed_id=79 url=https://www.bloomberg.com/news/videos/2025-10-18/protesters-oppose-trump-in-no-kings-event-in-nyc provider="ollama" provider_available=true
+2025-10-19T20:08:43.684664273+08:00  INFO backend::fetcher: src/fetcher/mod.rs:872: pre-insert article snapshot feed_id=79 url=https://www.bloomberg.com/news/videos/2025-10-18/protesters-oppose-trump-in-no-kings-event-in-nyc language= preview_desc="Demonstrators across the US turned out for what organizers said would be more th"
+2025-10-19T20:08:43.684702051+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-17/global-finance-chiefs-urged-to-keep-calm-as-trade-war-escalates need_translate=true title=Global Finance Chiefs Wait on Trump and Xi as Trade War Simmers
+2025-10-19T20:08:43.684712455+08:00  INFO backend::fetcher: src/fetcher/mod.rs:553: pre-translation decision feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-17/global-finance-chiefs-urged-to-keep-calm-as-trade-war-escalates translate_descriptions=true has_original_description=true
+2025-10-19T20:08:43.684721748+08:00  INFO backend::fetcher: src/fetcher/mod.rs:564: translation start feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-17/global-finance-chiefs-urged-to-keep-calm-as-trade-war-escalates title=Global Finance Chiefs Wait on Trump and Xi as Trade War Simmers include_description=true provider=Ollama
+2025-10-19T20:08:43.684731546+08:00  INFO backend::fetcher: src/fetcher/mod.rs:600: translation skipped (provider unavailable) feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-17/global-finance-chiefs-urged-to-keep-calm-as-trade-war-escalates provider="ollama" provider_available=true
+2025-10-19T20:08:43.684750839+08:00  INFO backend::fetcher: src/fetcher/mod.rs:872: pre-insert article snapshot feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-17/global-finance-chiefs-urged-to-keep-calm-as-trade-war-escalates language= preview_desc="After a week of talks dominated by trade spats and geopolitical distrust, financ"
+2025-10-19T20:08:43.684788416+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-17/subprime-lender-primalend-s-unpaid-creditors-eye-bankruptcy-push need_translate=true title=Subprime Lender PrimaLend’s Creditors Eye Bankruptcy Push
+2025-10-19T20:08:43.684819426+08:00  INFO backend::fetcher: src/fetcher/mod.rs:553: pre-translation decision feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-17/subprime-lender-primalend-s-unpaid-creditors-eye-bankruptcy-push translate_descriptions=true has_original_description=true
+2025-10-19T20:08:43.684829022+08:00  INFO backend::fetcher: src/fetcher/mod.rs:564: translation start feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-17/subprime-lender-primalend-s-unpaid-creditors-eye-bankruptcy-push title=Subprime Lender PrimaLend’s Creditors Eye Bankruptcy Push include_description=true provider=Ollama
+2025-10-19T20:08:43.684837406+08:00  INFO backend::fetcher: src/fetcher/mod.rs:600: translation skipped (provider unavailable) feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-17/subprime-lender-primalend-s-unpaid-creditors-eye-bankruptcy-push provider="ollama" provider_available=true
+2025-10-19T20:08:43.684854275+08:00  INFO backend::fetcher: src/fetcher/mod.rs:872: pre-insert article snapshot feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-17/subprime-lender-primalend-s-unpaid-creditors-eye-bankruptcy-push language= preview_desc="Creditors of PrimaLend, which provides financing to auto dealerships that cater "
+2025-10-19T20:08:43.684870739+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=79 url=https://www.bloomberg.com/news/videos/2025-10-18/protesters-take-part-in-a-no-kings-in-washington-d-c need_translate=true title=Protesters Take Part in A "No Kings" in Washington, D.C.
+2025-10-19T20:08:43.684878921+08:00  INFO backend::fetcher: src/fetcher/mod.rs:553: pre-translation decision feed_id=79 url=https://www.bloomberg.com/news/videos/2025-10-18/protesters-take-part-in-a-no-kings-in-washington-d-c translate_descriptions=true has_original_description=true
+2025-10-19T20:08:43.684891245+08:00  INFO backend::fetcher: src/fetcher/mod.rs:564: translation start feed_id=79 url=https://www.bloomberg.com/news/videos/2025-10-18/protesters-take-part-in-a-no-kings-in-washington-d-c title=Protesters Take Part in A "No Kings" in Washington, D.C. include_description=true provider=Ollama
+2025-10-19T20:08:43.684899023+08:00  INFO backend::fetcher: src/fetcher/mod.rs:600: translation skipped (provider unavailable) feed_id=79 url=https://www.bloomberg.com/news/videos/2025-10-18/protesters-take-part-in-a-no-kings-in-washington-d-c provider="ollama" provider_available=true
+2025-10-19T20:08:43.684916093+08:00  INFO backend::fetcher: src/fetcher/mod.rs:872: pre-insert article snapshot feed_id=79 url=https://www.bloomberg.com/news/videos/2025-10-18/protesters-take-part-in-a-no-kings-in-washington-d-c language= preview_desc="Protesters take part in a \"No Kings\" protest against President Donald Trump's po"
+2025-10-19T20:08:43.684952760+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-18/bdcs-private-credit-s-most-popular-funds-are-drawing-scrutiny need_translate=true title=BDCs, Private Credit’s Most Popular Funds, Are Drawing Scrutiny
+2025-10-19T20:08:43.684963872+08:00  INFO backend::fetcher: src/fetcher/mod.rs:553: pre-translation decision feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-18/bdcs-private-credit-s-most-popular-funds-are-drawing-scrutiny translate_descriptions=true has_original_description=true
+2025-10-19T20:08:43.684995387+08:00  INFO backend::fetcher: src/fetcher/mod.rs:564: translation start feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-18/bdcs-private-credit-s-most-popular-funds-are-drawing-scrutiny title=BDCs, Private Credit’s Most Popular Funds, Are Drawing Scrutiny include_description=true provider=Ollama
+2025-10-19T20:08:43.685027104+08:00  INFO backend::fetcher: src/fetcher/mod.rs:600: translation skipped (provider unavailable) feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-18/bdcs-private-credit-s-most-popular-funds-are-drawing-scrutiny provider="ollama" provider_available=true
+2025-10-19T20:08:43.685048519+08:00  INFO backend::fetcher: src/fetcher/mod.rs:872: pre-insert article snapshot feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-18/bdcs-private-credit-s-most-popular-funds-are-drawing-scrutiny language= preview_desc="One of private credit’s favorite fund structures has emerged as a new battlegr"
+2025-10-19T20:08:43.685065691+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=79 url=https://www.bloomberg.com/news/videos/2025-10-18/inside-japan-s-new-immigration-era-video need_translate=true title=Inside Japan’s New Immigration Era
+2025-10-19T20:08:43.685095691+08:00  INFO backend::fetcher: src/fetcher/mod.rs:553: pre-translation decision feed_id=79 url=https://www.bloomberg.com/news/videos/2025-10-18/inside-japan-s-new-immigration-era-video translate_descriptions=true has_original_description=true
+2025-10-19T20:08:43.685108115+08:00  INFO backend::fetcher: src/fetcher/mod.rs:564: translation start feed_id=79 url=https://www.bloomberg.com/news/videos/2025-10-18/inside-japan-s-new-immigration-era-video title=Inside Japan’s New Immigration Era include_description=true provider=Ollama
+2025-10-19T20:08:43.685140338+08:00  INFO backend::fetcher: src/fetcher/mod.rs:600: translation skipped (provider unavailable) feed_id=79 url=https://www.bloomberg.com/news/videos/2025-10-18/inside-japan-s-new-immigration-era-video provider="ollama" provider_available=true
+2025-10-19T20:08:43.685180540+08:00  INFO backend::fetcher: src/fetcher/mod.rs:872: pre-insert article snapshot feed_id=79 url=https://www.bloomberg.com/news/videos/2025-10-18/inside-japan-s-new-immigration-era-video language= preview_desc="With its population shrinking and its labor force aging, Japan is turning to for"
+2025-10-19T20:08:43.685219934+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-18/traders-spooked-as-bank-lending-risk-puts-stock-market-on-edge need_translate=true title=Traders ‘Spooked’ as Bank Lending Risk Puts Stock Market on Edge
+2025-10-19T20:08:43.685251248+08:00  INFO backend::fetcher: src/fetcher/mod.rs:553: pre-translation decision feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-18/traders-spooked-as-bank-lending-risk-puts-stock-market-on-edge translate_descriptions=true has_original_description=true
+2025-10-19T20:08:43.685261046+08:00  INFO backend::fetcher: src/fetcher/mod.rs:564: translation start feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-18/traders-spooked-as-bank-lending-risk-puts-stock-market-on-edge title=Traders ‘Spooked’ as Bank Lending Risk Puts Stock Market on Edge include_description=true provider=Ollama
+2025-10-19T20:08:43.685291753+08:00  INFO backend::fetcher: src/fetcher/mod.rs:600: translation skipped (provider unavailable) feed_id=79 url=https://www.bloomberg.com/news/articles/2025-10-18/traders-spooked-as-bank-lending-risk-puts-stock-market-on-edge provider="ollama" provider_available=true
+2025-10-19T20:09:26.332934490+08:00  INFO backend::service::feeds: src/service/feeds.rs:180: feed and associated content deleted feed_id=79
+2025-10-19T20:09:37.795385101+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T20:09:37.817375665+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T20:10:42.390760684+08:00  INFO backend::service::feeds: src/service/feeds.rs:85: feed saved feed_id=80 url="https://36kr.com/feed" enabled=true source_domain=36kr.com derived_source_domain=false
+2025-10-19T20:10:42.391817730+08:00  INFO backend::service::feeds: src/service/feeds.rs:118: applied filter condition immediately after update feed_id=80 deleted=0
+2025-10-19T20:10:45.479427682+08:00  WARN backend::fetcher: src/fetcher/mod.rs:410: failed to fetch feed feed_id=80 url=https://36kr.com/feed error=error sending request for url (https://36kr.com/feed) chain=error sending request for url (https://36kr.com/feed) -> client error (Connect) -> tls handshake eof
+2025-10-19T20:10:45.479488245+08:00  INFO backend::fetcher: src/fetcher/mod.rs:1052: feed fetch failed, will attempt quick retry feed_id=80 status=0
+2025-10-19T20:10:45.479511785+08:00  INFO backend::fetcher: src/fetcher/mod.rs:367: feed fetch failed, retrying shortly feed_id=80 url=https://36kr.com/feed attempt=1 error=error sending request for url (https://36kr.com/feed)
+2025-10-19T20:10:57.503480298+08:00  INFO backend::fetcher: src/fetcher/mod.rs:439: feed http fetch succeeded feed_id=80 status=200 url=https://36kr.com/feed
+2025-10-19T20:11:03.419804503+08:00  INFO backend::fetcher: src/fetcher/mod.rs:457: feed xml parsed feed_id="a358b4dd2efd07271204fdf9fe596cdd" status=200 entry_count=30 bytes_len=134103
+2025-10-19T20:11:03.426788953+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=80 url=https://36kr.com/p/3512964102970499?f=rss need_translate=false title=暧昧但不确立关系，年轻女孩们困在situationship里
+2025-10-19T20:11:03.426837596+08:00  INFO backend::fetcher: src/fetcher/mod.rs:872: pre-insert article snapshot feed_id=80 url=https://36kr.com/p/3512964102970499?f=rss language= preview_desc="<p class=\"image-wrapper\"><img data-img-size-val=\"900,1030\" src=\"https://img.36kr"
+2025-10-19T20:11:03.426881635+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=80 url=https://36kr.com/p/3512963909246089?f=rss need_translate=false title=卖价过万的「大头娃娃」，成了「痛系」年轻人的新型奢侈品
+2025-10-19T20:11:03.426890543+08:00  INFO backend::fetcher: src/fetcher/mod.rs:872: pre-insert article snapshot feed_id=80 url=https://36kr.com/p/3512963909246089?f=rss language= preview_desc="<p class=\"image-wrapper\"><img data-img-size-val=\"900,1030\" src=\"https://img.36kr"
+2025-10-19T20:11:03.426907157+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=80 url=https://36kr.com/p/3514451621075848?f=rss need_translate=false title=一位北京女CEO要敲钟了！
+2025-10-19T20:14:37.820144319+08:00  INFO backend::fetcher: src/fetcher/mod.rs:264: starting fetch round count=1
+2025-10-19T20:14:37.820192258+08:00  INFO backend::fetcher: src/fetcher/mod.rs:279: fetching feed feed_id=80 url=https://36kr.com/feed
+2025-10-19T20:15:27.675585797+08:00  INFO backend::service::feeds: src/service/feeds.rs:180: feed and associated content deleted feed_id=80
+2025-10-19T20:15:55.223279395+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T20:15:55.242535894+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T20:16:05.674627866+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T20:16:05.697797308+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T20:16:33.557043645+08:00  INFO backend::service::feeds: src/service/feeds.rs:85: feed saved feed_id=81 url="https://36kr.com/feed" enabled=true source_domain=36kr.com derived_source_domain=false
+2025-10-19T20:16:33.557977169+08:00  INFO backend::service::feeds: src/service/feeds.rs:118: applied filter condition immediately after update feed_id=81 deleted=0
+2025-10-19T20:16:35.846420469+08:00  INFO backend::fetcher: src/fetcher/mod.rs:439: feed http fetch succeeded feed_id=81 status=200 url=https://36kr.com/feed
+2025-10-19T20:16:48.560712167+08:00  INFO backend::fetcher: src/fetcher/mod.rs:1052: feed fetch failed, will attempt quick retry feed_id=81 status=200
+2025-10-19T20:16:48.560743896+08:00  INFO backend::fetcher: src/fetcher/mod.rs:367: feed fetch failed, retrying shortly feed_id=81 url=https://36kr.com/feed attempt=1 error=request or response body error
+2025-10-19T20:16:59.726326650+08:00  INFO backend::fetcher: src/fetcher/mod.rs:439: feed http fetch succeeded feed_id=81 status=200 url=https://36kr.com/feed
+2025-10-19T20:17:02.691173275+08:00  INFO backend::fetcher: src/fetcher/mod.rs:457: feed xml parsed feed_id="a358b4dd2efd07271204fdf9fe596cdd" status=200 entry_count=30 bytes_len=134109
+2025-10-19T20:17:02.698248018+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=81 url=https://36kr.com/p/3512964102970499?f=rss need_translate=false title=暧昧但不确立关系，年轻女孩们困在situationship里
+2025-10-19T20:17:02.698266264+08:00  INFO backend::fetcher: src/fetcher/mod.rs:872: pre-insert article snapshot feed_id=81 url=https://36kr.com/p/3512964102970499?f=rss language= preview_desc="<p class=\"image-wrapper\"><img data-img-size-val=\"900,1030\" src=\"https://img.36kr"
+2025-10-19T20:17:02.698917215+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=81 url=https://36kr.com/p/3512963909246089?f=rss need_translate=false title=卖价过万的「大头娃娃」，成了「痛系」年轻人的新型奢侈品
+2025-10-19T20:17:02.698952505+08:00  INFO backend::fetcher: src/fetcher/mod.rs:872: pre-insert article snapshot feed_id=81 url=https://36kr.com/p/3512963909246089?f=rss language= preview_desc="<p class=\"image-wrapper\"><img data-img-size-val=\"900,1030\" src=\"https://img.36kr"
+2025-10-19T20:17:02.698972756+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=81 url=https://36kr.com/p/3514451621075848?f=rss need_translate=false title=一位北京女CEO要敲钟了！
+2025-10-19T20:21:05.701202944+08:00  INFO backend::fetcher: src/fetcher/mod.rs:264: starting fetch round count=1
+2025-10-19T20:21:05.701286483+08:00  INFO backend::fetcher: src/fetcher/mod.rs:279: fetching feed feed_id=81 url=https://36kr.com/feed
+2025-10-19T20:21:57.512566153+08:00  INFO backend::service::feeds: src/service/feeds.rs:180: feed and associated content deleted feed_id=81
+2025-10-19T20:22:26.309925535+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T20:22:26.335120665+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T20:23:11.725676861+08:00  INFO backend::service::feeds: src/service/feeds.rs:85: feed saved feed_id=82 url="https://36kr.com/feed" enabled=true source_domain=36kr.com derived_source_domain=false
+2025-10-19T20:23:11.726905861+08:00  INFO backend::service::feeds: src/service/feeds.rs:118: applied filter condition immediately after update feed_id=82 deleted=0
+2025-10-19T20:23:16.434693711+08:00  INFO backend::fetcher: src/fetcher/mod.rs:439: feed http fetch succeeded feed_id=82 status=200 url=https://36kr.com/feed
+2025-10-19T20:23:26.730088970+08:00  INFO backend::fetcher: src/fetcher/mod.rs:1057: feed fetch failed, will attempt quick retry feed_id=82 status=200
+2025-10-19T20:23:26.730133347+08:00  INFO backend::fetcher: src/fetcher/mod.rs:367: feed fetch failed, retrying shortly feed_id=82 url=https://36kr.com/feed attempt=1 error=request or response body error
+2025-10-19T20:23:37.863905041+08:00  INFO backend::fetcher: src/fetcher/mod.rs:439: feed http fetch succeeded feed_id=82 status=200 url=https://36kr.com/feed
+2025-10-19T20:23:39.752738774+08:00  INFO backend::fetcher: src/fetcher/mod.rs:457: feed xml parsed feed_id="a358b4dd2efd07271204fdf9fe596cdd" status=200 entry_count=30 bytes_len=134097
+2025-10-19T20:23:39.759823262+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=82 url=https://36kr.com/p/3512964102970499?f=rss need_translate=false title=暧昧但不确立关系，年轻女孩们困在situationship里
+2025-10-19T20:23:39.759862103+08:00  INFO backend::fetcher: src/fetcher/mod.rs:872: pre-insert article snapshot feed_id=82 url=https://36kr.com/p/3512964102970499?f=rss language= preview_desc="<p class=\"image-wrapper\"><img data-img-size-val=\"900,1030\" src=\"https://img.36kr"
+2025-10-19T20:23:39.759899738+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=82 url=https://36kr.com/p/3512963909246089?f=rss need_translate=false title=卖价过万的「大头娃娃」，成了「痛系」年轻人的新型奢侈品
+2025-10-19T20:23:39.759907767+08:00  INFO backend::fetcher: src/fetcher/mod.rs:872: pre-insert article snapshot feed_id=82 url=https://36kr.com/p/3512963909246089?f=rss language= preview_desc="<p class=\"image-wrapper\"><img data-img-size-val=\"900,1030\" src=\"https://img.36kr"
+2025-10-19T20:23:39.759924026+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=82 url=https://36kr.com/p/3514451621075848?f=rss need_translate=false title=一位北京女CEO要敲钟了！
+2025-10-19T20:24:42.891372363+08:00  INFO backend::service::feeds: src/service/feeds.rs:180: feed and associated content deleted feed_id=82
+2025-10-19T20:29:53.447171766+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T20:29:53.474754151+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T20:30:20.140792948+08:00  INFO backend::service::feeds: src/service/feeds.rs:85: feed saved feed_id=83 url="https://36kr.com/feed" enabled=true source_domain=36kr.com derived_source_domain=false
+2025-10-19T20:30:20.142752833+08:00  INFO backend::service::feeds: src/service/feeds.rs:118: applied filter condition immediately after update feed_id=83 deleted=0
+2025-10-19T20:30:21.622473644+08:00  INFO backend::fetcher: src/fetcher/mod.rs:439: feed http fetch succeeded feed_id=83 status=200 url=https://36kr.com/feed
+2025-10-19T20:30:24.385753895+08:00  INFO backend::fetcher: src/fetcher/mod.rs:457: feed xml parsed feed_id="a358b4dd2efd07271204fdf9fe596cdd" status=200 entry_count=30 bytes_len=134106
+2025-10-19T20:30:24.392875327+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=83 url=https://36kr.com/p/3512964102970499?f=rss need_translate=false title=暧昧但不确立关系，年轻女孩们困在situationship里
+2025-10-19T20:30:24.392913757+08:00  INFO backend::fetcher: src/fetcher/mod.rs:879: pre-insert article snapshot feed_id=83 url=https://36kr.com/p/3512964102970499?f=rss language= preview_desc="<p class=\"image-wrapper\"><img data-img-size-val=\"900,1030\" src=\"https://img.36kr"
+2025-10-19T20:30:24.392928568+08:00  INFO backend::fetcher: src/fetcher/mod.rs:890: entry dedup finished feed_id=83 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T20:30:24.392954588+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=83 url=https://36kr.com/p/3512963909246089?f=rss need_translate=false title=卖价过万的「大头娃娃」，成了「痛系」年轻人的新型奢侈品
+2025-10-19T20:30:24.392962494+08:00  INFO backend::fetcher: src/fetcher/mod.rs:879: pre-insert article snapshot feed_id=83 url=https://36kr.com/p/3512963909246089?f=rss language= preview_desc="<p class=\"image-wrapper\"><img data-img-size-val=\"900,1030\" src=\"https://img.36kr"
+2025-10-19T20:30:24.392990616+08:00  INFO backend::fetcher: src/fetcher/mod.rs:890: entry dedup finished feed_id=83 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T20:30:24.393007529+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=83 url=https://36kr.com/p/3514451621075848?f=rss need_translate=false title=一位北京女CEO要敲钟了！
+2025-10-19T20:31:36.901323123+08:00  INFO backend::service::feeds: src/service/feeds.rs:180: feed and associated content deleted feed_id=83
+2025-10-19T20:32:11.256995398+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T20:32:11.281025877+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T20:32:36.799152229+08:00  INFO backend::service::feeds: src/service/feeds.rs:85: feed saved feed_id=84 url="https://36kr.com/feed" enabled=true source_domain=36kr.com derived_source_domain=false
+2025-10-19T20:32:36.800214955+08:00  INFO backend::service::feeds: src/service/feeds.rs:118: applied filter condition immediately after update feed_id=84 deleted=0
+2025-10-19T20:32:38.846895658+08:00  INFO backend::fetcher: src/fetcher/mod.rs:439: feed http fetch succeeded feed_id=84 status=200 url=https://36kr.com/feed
+2025-10-19T20:32:42.280118788+08:00  INFO backend::fetcher: src/fetcher/mod.rs:457: feed xml parsed feed_id="a358b4dd2efd07271204fdf9fe596cdd" status=200 entry_count=30 bytes_len=134094
+2025-10-19T20:32:42.287267335+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=84 url=https://36kr.com/p/3512964102970499?f=rss need_translate=false title=暧昧但不确立关系，年轻女孩们困在situationship里
+2025-10-19T20:32:42.287304151+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=84 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T20:32:42.287314082+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: pre-insert article snapshot feed_id=84 url=https://36kr.com/p/3512964102970499?f=rss language= preview_desc="<p class=\"image-wrapper\"><img data-img-size-val=\"900,1030\" src=\"https://img.36kr"
+2025-10-19T20:32:42.287326721+08:00  INFO backend::fetcher: src/fetcher/mod.rs:894: entry dedup finished feed_id=84 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T20:32:42.287349593+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=84 url=https://36kr.com/p/3512963909246089?f=rss need_translate=false title=卖价过万的「大头娃娃」，成了「痛系」年轻人的新型奢侈品
+2025-10-19T20:32:42.287355713+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=84 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T20:32:42.287361832+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: pre-insert article snapshot feed_id=84 url=https://36kr.com/p/3512963909246089?f=rss language= preview_desc="<p class=\"image-wrapper\"><img data-img-size-val=\"900,1030\" src=\"https://img.36kr"
+2025-10-19T20:32:42.287371061+08:00  INFO backend::fetcher: src/fetcher/mod.rs:894: entry dedup finished feed_id=84 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T20:32:42.287381694+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=84 url=https://36kr.com/p/3514451621075848?f=rss need_translate=false title=一位北京女CEO要敲钟了！
+2025-10-19T20:32:42.287387613+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=84 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T20:37:11.284348402+08:00  INFO backend::fetcher: src/fetcher/mod.rs:264: starting fetch round count=1
+2025-10-19T20:37:11.284424020+08:00  INFO backend::fetcher: src/fetcher/mod.rs:279: fetching feed feed_id=84 url=https://36kr.com/feed
+2025-10-19T20:50:15.204298534+08:00  INFO backend::service::feeds: src/service/feeds.rs:180: feed and associated content deleted feed_id=84
+2025-10-19T21:12:23.301063302+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T21:12:23.346550296+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T21:15:11.501746233+08:00  INFO backend::service::feeds: src/service/feeds.rs:85: feed saved feed_id=85 url="https://36kr.com/feed" enabled=true source_domain=36kr.com derived_source_domain=false
+2025-10-19T21:15:11.504128331+08:00  INFO backend::service::feeds: src/service/feeds.rs:118: applied filter condition immediately after update feed_id=85 deleted=0
+2025-10-19T21:15:13.381470448+08:00  INFO backend::fetcher: src/fetcher/mod.rs:439: feed http fetch succeeded feed_id=85 status=200 url=https://36kr.com/feed
+2025-10-19T21:15:15.049243610+08:00  INFO backend::fetcher: src/fetcher/mod.rs:457: feed xml parsed feed_id="a358b4dd2efd07271204fdf9fe596cdd" status=200 entry_count=30 bytes_len=120099
+2025-10-19T21:15:15.056229183+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=85 url=https://36kr.com/p/3516113472216198?f=rss need_translate=false title=《逃离鸭科夫》发售；多款大厂游戏上线或开测；传奇游戏制作人板垣伴信离世 | 氪游周报10.13-10.19
+2025-10-19T21:15:15.056246983+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=85 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:15:15.056252183+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=85 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:15:15.056260683+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=85 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:15:15.056272883+08:00  INFO backend::fetcher: src/fetcher/mod.rs:902: pre-insert article snapshot feed_id=85 url=https://36kr.com/p/3516113472216198?f=rss language= preview_desc="<p>文 | 马晓迪\u{200d}&nbsp;</p>\n  <p>编辑 | 刘士武</p>\n  <h2><strong>新游"
+2025-10-19T21:15:15.056280283+08:00  INFO backend::fetcher: src/fetcher/mod.rs:913: entry dedup finished feed_id=85 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:15:15.056287383+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=85 url=https://36kr.com/p/3512964102970499?f=rss need_translate=false title=暧昧但不确立关系，年轻女孩们困在situationship里
+2025-10-19T21:15:15.056290183+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=85 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:15:15.056292783+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=85 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:15:15.056296383+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=85 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:15:15.056300383+08:00  INFO backend::fetcher: src/fetcher/mod.rs:902: pre-insert article snapshot feed_id=85 url=https://36kr.com/p/3512964102970499?f=rss language= preview_desc="<p class=\"image-wrapper\"><img data-img-size-val=\"900,1030\" src=\"https://img.36kr"
+2025-10-19T21:15:15.056303783+08:00  INFO backend::fetcher: src/fetcher/mod.rs:913: entry dedup finished feed_id=85 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:15:15.056309283+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=85 url=https://36kr.com/p/3512963909246089?f=rss need_translate=false title=卖价过万的「大头娃娃」，成了「痛系」年轻人的新型奢侈品
+2025-10-19T21:15:15.056311783+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=85 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:15:15.056314083+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=85 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:15:15.056318183+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=85 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:15:15.056322083+08:00  INFO backend::fetcher: src/fetcher/mod.rs:902: pre-insert article snapshot feed_id=85 url=https://36kr.com/p/3512963909246089?f=rss language= preview_desc="<p class=\"image-wrapper\"><img data-img-size-val=\"900,1030\" src=\"https://img.36kr"
+2025-10-19T21:15:15.056325683+08:00  INFO backend::fetcher: src/fetcher/mod.rs:913: entry dedup finished feed_id=85 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:15:15.056330083+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=85 url=https://36kr.com/p/3514451621075848?f=rss need_translate=false title=一位北京女CEO要敲钟了！
+2025-10-19T21:15:15.056332483+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=85 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T21:15:15.056334883+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=85 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T21:15:15.056337683+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=85 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T21:16:44.211991222+08:00  INFO backend::service::feeds: src/service/feeds.rs:180: feed and associated content deleted feed_id=85
+2025-10-19T21:17:23.348689882+08:00  INFO backend::fetcher: src/fetcher/mod.rs:260: no feeds eligible this round
+2025-10-19T21:20:08.349374734+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T21:20:08.373593968+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T21:20:36.160763551+08:00  WARN backend::service::feeds: src/service/feeds.rs:215: feed test request failed error=error sending request for url (https://36kr.com/feed) url="https://36kr.com/feed" chain=error sending request for url (https://36kr.com/feed) -> client error (SendRequest) -> connection error -> peer closed connection without sending TLS close_notify: https://docs.rs/rustls/latest/rustls/manual/_03_howto/index.html#unexpected-eof
+2025-10-19T21:20:39.160986339+08:00  INFO backend::service::feeds: src/service/feeds.rs:85: feed saved feed_id=86 url="https://36kr.com/feed" enabled=true source_domain=36kr.com derived_source_domain=false
+2025-10-19T21:20:39.161881037+08:00  INFO backend::service::feeds: src/service/feeds.rs:118: applied filter condition immediately after update feed_id=86 deleted=0
+2025-10-19T21:20:40.299248254+08:00  INFO backend::fetcher: src/fetcher/mod.rs:439: feed http fetch succeeded feed_id=86 status=200 url=https://36kr.com/feed
+2025-10-19T21:20:41.760415529+08:00  INFO backend::fetcher: src/fetcher/mod.rs:457: feed xml parsed feed_id="a358b4dd2efd07271204fdf9fe596cdd" status=200 entry_count=30 bytes_len=120087
+2025-10-19T21:20:41.767160607+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=86 url=https://36kr.com/p/3516113472216198?f=rss need_translate=false title=《逃离鸭科夫》发售；多款大厂游戏上线或开测；传奇游戏制作人板垣伴信离世 | 氪游周报10.13-10.19
+2025-10-19T21:20:41.767196906+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=86 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:20:41.767206806+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=86 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:20:41.767229406+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=86 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:20:41.767243306+08:00  INFO backend::fetcher: src/fetcher/mod.rs:903: pre-insert article snapshot feed_id=86 url=https://36kr.com/p/3516113472216198?f=rss language= preview_desc="<p>文 | 马晓迪\u{200d}&nbsp;</p>\n  <p>编辑 | 刘士武</p>\n  <h2><strong>新游"
+2025-10-19T21:20:41.767256406+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: entry dedup finished feed_id=86 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:20:41.767272506+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=86 url=https://36kr.com/p/3512964102970499?f=rss need_translate=false title=暧昧但不确立关系，年轻女孩们困在situationship里
+2025-10-19T21:20:41.767278606+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=86 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:20:41.767285206+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=86 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:20:41.767294206+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=86 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:20:41.767307606+08:00  INFO backend::fetcher: src/fetcher/mod.rs:903: pre-insert article snapshot feed_id=86 url=https://36kr.com/p/3512964102970499?f=rss language= preview_desc="<p class=\"image-wrapper\"><img data-img-size-val=\"900,1030\" src=\"https://img.36kr"
+2025-10-19T21:20:41.767315206+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: entry dedup finished feed_id=86 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:20:41.767358106+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=86 url=https://36kr.com/p/3512963909246089?f=rss need_translate=false title=卖价过万的「大头娃娃」，成了「痛系」年轻人的新型奢侈品
+2025-10-19T21:20:41.767367606+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=86 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:20:41.767374806+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=86 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:20:41.767385606+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=86 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:20:41.767394706+08:00  INFO backend::fetcher: src/fetcher/mod.rs:903: pre-insert article snapshot feed_id=86 url=https://36kr.com/p/3512963909246089?f=rss language= preview_desc="<p class=\"image-wrapper\"><img data-img-size-val=\"900,1030\" src=\"https://img.36kr"
+2025-10-19T21:20:41.767403106+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: entry dedup finished feed_id=86 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:20:41.767425306+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=86 url=https://36kr.com/p/3514451621075848?f=rss need_translate=false title=一位北京女CEO要敲钟了！
+2025-10-19T21:20:41.767443706+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=86 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T21:20:41.767450306+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=86 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T21:20:41.767457306+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=86 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T21:24:27.829636876+08:00  INFO backend::service::feeds: src/service/feeds.rs:180: feed and associated content deleted feed_id=86
+2025-10-19T21:25:08.376442688+08:00  INFO backend::fetcher: src/fetcher/mod.rs:260: no feeds eligible this round
+2025-10-19T21:26:17.728556173+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T21:26:17.754369377+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T21:26:46.778124113+08:00  INFO backend::service::feeds: src/service/feeds.rs:85: feed saved feed_id=87 url="https://36kr.com/feed" enabled=true source_domain=36kr.com derived_source_domain=false
+2025-10-19T21:26:47.939619326+08:00  INFO backend::fetcher: src/fetcher/mod.rs:439: feed http fetch succeeded feed_id=87 status=200 url=https://36kr.com/feed
+2025-10-19T21:26:51.046164914+08:00  INFO backend::fetcher: src/fetcher/mod.rs:457: feed xml parsed feed_id="a358b4dd2efd07271204fdf9fe596cdd" status=200 entry_count=30 bytes_len=120087
+2025-10-19T21:26:51.052981478+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=87 url=https://36kr.com/p/3516113472216198?f=rss need_translate=false title=《逃离鸭科夫》发售；多款大厂游戏上线或开测；传奇游戏制作人板垣伴信离世 | 氪游周报10.13-10.19
+2025-10-19T21:26:51.053017888+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=87 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:26:51.053028991+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=87 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:26:51.053053298+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=87 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:26:51.053060600+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=87 url=https://36kr.com/p/3516113472216198?f=rss checked=0
+2025-10-19T21:26:51.053140022+08:00  INFO backend::fetcher: src/fetcher/mod.rs:909: pre-insert article snapshot feed_id=87 url=https://36kr.com/p/3516113472216198?f=rss language= preview_desc="<p>文 | 马晓迪\u{200d}&nbsp;</p>\n  <p>编辑 | 刘士武</p>\n  <h2><strong>新游"
+2025-10-19T21:26:51.053178832+08:00  INFO backend::fetcher: src/fetcher/mod.rs:920: entry dedup finished feed_id=87 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:26:51.053200538+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=87 url=https://36kr.com/p/3512964102970499?f=rss need_translate=false title=暧昧但不确立关系，年轻女孩们困在situationship里
+2025-10-19T21:26:51.053207440+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=87 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:26:51.053213942+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=87 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:26:51.053221644+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=87 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:26:51.053229146+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=87 url=https://36kr.com/p/3512964102970499?f=rss checked=1
+2025-10-19T21:26:51.053262855+08:00  INFO backend::fetcher: src/fetcher/mod.rs:909: pre-insert article snapshot feed_id=87 url=https://36kr.com/p/3512964102970499?f=rss language= preview_desc="<p class=\"image-wrapper\"><img data-img-size-val=\"900,1030\" src=\"https://img.36kr"
+2025-10-19T21:26:51.053278359+08:00  INFO backend::fetcher: src/fetcher/mod.rs:920: entry dedup finished feed_id=87 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:26:51.053304466+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=87 url=https://36kr.com/p/3512963909246089?f=rss need_translate=false title=卖价过万的「大头娃娃」，成了「痛系」年轻人的新型奢侈品
+2025-10-19T21:26:51.053311068+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=87 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:26:51.053346178+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=87 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:26:51.053361582+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=87 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:26:51.053371085+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=87 url=https://36kr.com/p/3512963909246089?f=rss checked=2
+2025-10-19T21:26:51.053414897+08:00  INFO backend::fetcher: src/fetcher/mod.rs:909: pre-insert article snapshot feed_id=87 url=https://36kr.com/p/3512963909246089?f=rss language= preview_desc="<p class=\"image-wrapper\"><img data-img-size-val=\"900,1030\" src=\"https://img.36kr"
+2025-10-19T21:26:51.053449706+08:00  INFO backend::fetcher: src/fetcher/mod.rs:920: entry dedup finished feed_id=87 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:26:51.053466211+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=87 url=https://36kr.com/p/3514451621075848?f=rss need_translate=false title=一位北京女CEO要敲钟了！
+2025-10-19T21:26:51.053473113+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=87 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T21:26:51.053479714+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=87 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T21:26:51.053488017+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=87 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T21:26:51.053497019+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=87 url=https://36kr.com/p/3514451621075848?f=rss checked=3
+2025-10-19T21:28:32.921964905+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T21:28:32.943682499+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T21:28:45.844075154+08:00  INFO backend::service::feeds: src/service/feeds.rs:180: feed and associated content deleted feed_id=87
+2025-10-19T21:28:54.464271612+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T21:28:54.486510202+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T21:29:11.378773322+08:00  INFO backend::service::feeds: src/service/feeds.rs:85: feed saved feed_id=88 url="https://36kr.com/feed" enabled=true source_domain=36kr.com derived_source_domain=false
+2025-10-19T21:29:14.034252347+08:00  INFO backend::fetcher: src/fetcher/mod.rs:439: feed http fetch succeeded feed_id=88 status=200 url=https://36kr.com/feed
+2025-10-19T21:29:17.276537706+08:00  INFO backend::fetcher: src/fetcher/mod.rs:457: feed xml parsed feed_id="a358b4dd2efd07271204fdf9fe596cdd" status=200 entry_count=30 bytes_len=120105
+2025-10-19T21:29:17.283982453+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=88 url=https://36kr.com/p/3516113472216198?f=rss need_translate=false title=《逃离鸭科夫》发售；多款大厂游戏上线或开测；传奇游戏制作人板垣伴信离世 | 氪游周报10.13-10.19
+2025-10-19T21:29:17.284018953+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=88 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:29:17.284028753+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=88 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:29:17.284042953+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=88 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:29:17.284049753+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=88 url=https://36kr.com/p/3516113472216198?f=rss checked=0
+2025-10-19T21:29:17.284126952+08:00  INFO backend::fetcher: src/fetcher/mod.rs:909: pre-insert article snapshot feed_id=88 url=https://36kr.com/p/3516113472216198?f=rss language= preview_desc="<p>文 | 马晓迪\u{200d}&nbsp;</p>\n  <p>编辑 | 刘士武</p>\n  <h2><strong>新游"
+2025-10-19T21:29:17.284164352+08:00  INFO backend::fetcher: src/fetcher/mod.rs:920: entry dedup finished feed_id=88 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:29:17.284183552+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=88 url=https://36kr.com/p/3512964102970499?f=rss need_translate=false title=暧昧但不确立关系，年轻女孩们困在situationship里
+2025-10-19T21:29:17.284190152+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=88 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:29:17.284196752+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=88 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:29:17.284204352+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=88 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:29:17.284211852+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=88 url=https://36kr.com/p/3512964102970499?f=rss checked=1
+2025-10-19T21:29:17.284247051+08:00  INFO backend::fetcher: src/fetcher/mod.rs:909: pre-insert article snapshot feed_id=88 url=https://36kr.com/p/3512964102970499?f=rss language= preview_desc="<p class=\"image-wrapper\"><img data-img-size-val=\"900,1030\" src=\"https://img.36kr"
+2025-10-19T21:29:17.284279251+08:00  INFO backend::fetcher: src/fetcher/mod.rs:920: entry dedup finished feed_id=88 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:29:17.284316551+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=88 url=https://36kr.com/p/3512963909246089?f=rss need_translate=false title=卖价过万的「大头娃娃」，成了「痛系」年轻人的新型奢侈品
+2025-10-19T21:29:17.284346751+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=88 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:29:17.284356451+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=88 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:29:17.284366651+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=88 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:29:17.284374750+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=88 url=https://36kr.com/p/3512963909246089?f=rss checked=2
+2025-10-19T21:29:17.284410850+08:00  INFO backend::fetcher: src/fetcher/mod.rs:909: pre-insert article snapshot feed_id=88 url=https://36kr.com/p/3512963909246089?f=rss language= preview_desc="<p class=\"image-wrapper\"><img data-img-size-val=\"900,1030\" src=\"https://img.36kr"
+2025-10-19T21:29:17.284444150+08:00  INFO backend::fetcher: src/fetcher/mod.rs:920: entry dedup finished feed_id=88 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:29:17.284470150+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=88 url=https://36kr.com/p/3514451621075848?f=rss need_translate=false title=一位北京女CEO要敲钟了！
+2025-10-19T21:29:17.284479550+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=88 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T21:29:17.284486450+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=88 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T21:29:17.284497550+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=88 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T21:29:17.284505550+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=88 url=https://36kr.com/p/3514451621075848?f=rss checked=3
+2025-10-19T21:31:28.087599437+08:00  INFO backend::service::feeds: src/service/feeds.rs:180: feed and associated content deleted feed_id=88
+2025-10-19T21:33:45.897679728+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T21:33:45.923581587+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T21:34:02.366511618+08:00  INFO backend::service::feeds: src/service/feeds.rs:85: feed saved feed_id=89 url="https://36kr.com/feed" enabled=true source_domain=36kr.com derived_source_domain=false
+2025-10-19T21:34:14.073863033+08:00  WARN backend::fetcher: src/fetcher/mod.rs:410: failed to fetch feed feed_id=89 url=https://36kr.com/feed error=error sending request for url (https://36kr.com/feed) chain=error sending request for url (https://36kr.com/feed) -> client error (Connect) -> tls handshake eof
+2025-10-19T21:34:14.073903632+08:00  INFO backend::fetcher: src/fetcher/mod.rs:1099: feed fetch failed, will attempt quick retry feed_id=89 status=0
+2025-10-19T21:34:14.073917832+08:00  INFO backend::fetcher: src/fetcher/mod.rs:367: feed fetch failed, retrying shortly feed_id=89 url=https://36kr.com/feed attempt=1 error=error sending request for url (https://36kr.com/feed)
+2025-10-19T21:34:26.584171435+08:00  INFO backend::fetcher: src/fetcher/mod.rs:439: feed http fetch succeeded feed_id=89 status=200 url=https://36kr.com/feed
+2025-10-19T21:34:32.411355231+08:00  INFO backend::fetcher: src/fetcher/mod.rs:457: feed xml parsed feed_id="a358b4dd2efd07271204fdf9fe596cdd" status=200 entry_count=30 bytes_len=120090
+2025-10-19T21:34:32.418589518+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=89 url=https://36kr.com/p/3516113472216198?f=rss need_translate=false title=《逃离鸭科夫》发售；多款大厂游戏上线或开测；传奇游戏制作人板垣伴信离世 | 氪游周报10.13-10.19
+2025-10-19T21:34:32.418625818+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=89 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:34:32.418636318+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=89 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:34:32.418650018+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=89 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:34:32.418657418+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=89 url=https://36kr.com/p/3516113472216198?f=rss checked=0
+2025-10-19T21:34:32.418726917+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=89 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:34:32.418759017+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=89 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:34:32.418773517+08:00  INFO backend::fetcher: src/fetcher/mod.rs:913: pre-insert article snapshot feed_id=89 url=https://36kr.com/p/3516113472216198?f=rss language= preview_desc="<p>文 | 马晓迪\u{200d}&nbsp;</p>\n  <p>编辑 | 刘士武</p>\n  <h2><strong>新游"
+2025-10-19T21:34:32.418788017+08:00  INFO backend::fetcher: src/fetcher/mod.rs:924: entry dedup finished feed_id=89 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:34:32.418816817+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=89 url=https://36kr.com/p/3512964102970499?f=rss need_translate=false title=暧昧但不确立关系，年轻女孩们困在situationship里
+2025-10-19T21:34:32.418823617+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=89 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:34:32.418830317+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=89 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:34:32.418838417+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=89 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:34:32.418850717+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=89 url=https://36kr.com/p/3512964102970499?f=rss checked=1
+2025-10-19T21:34:32.418860217+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=89 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:34:32.418866417+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=89 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:34:32.418872917+08:00  INFO backend::fetcher: src/fetcher/mod.rs:913: pre-insert article snapshot feed_id=89 url=https://36kr.com/p/3512964102970499?f=rss language= preview_desc="<p class=\"image-wrapper\"><img data-img-size-val=\"900,1030\" src=\"https://img.36kr"
+2025-10-19T21:34:32.418880717+08:00  INFO backend::fetcher: src/fetcher/mod.rs:924: entry dedup finished feed_id=89 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:34:32.418914317+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=89 url=https://36kr.com/p/3512963909246089?f=rss need_translate=false title=卖价过万的「大头娃娃」，成了「痛系」年轻人的新型奢侈品
+2025-10-19T21:34:32.418945117+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=89 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:34:32.418955117+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=89 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:34:32.418966217+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=89 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:34:32.419014017+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=89 url=https://36kr.com/p/3512963909246089?f=rss checked=2
+2025-10-19T21:34:32.419051417+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=89 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:34:32.419062517+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=89 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:34:32.419070617+08:00  INFO backend::fetcher: src/fetcher/mod.rs:913: pre-insert article snapshot feed_id=89 url=https://36kr.com/p/3512963909246089?f=rss language= preview_desc="<p class=\"image-wrapper\"><img data-img-size-val=\"900,1030\" src=\"https://img.36kr"
+2025-10-19T21:34:32.419103917+08:00  INFO backend::fetcher: src/fetcher/mod.rs:924: entry dedup finished feed_id=89 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:34:32.419127817+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=89 url=https://36kr.com/p/3514451621075848?f=rss need_translate=false title=一位北京女CEO要敲钟了！
+2025-10-19T21:34:32.419136617+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=89 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T21:34:32.419144317+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=89 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T21:34:32.419162617+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=89 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T21:34:32.419171417+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=89 url=https://36kr.com/p/3514451621075848?f=rss checked=3
+2025-10-19T21:34:32.419223117+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=89 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T21:34:32.419232817+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=89 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T21:36:52.108257760+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T21:36:52.133315257+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T21:37:05.465094454+08:00  INFO backend::service::feeds: src/service/feeds.rs:180: feed and associated content deleted feed_id=89
+2025-10-19T21:37:13.595318317+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T21:37:13.616321081+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T21:37:30.456195626+08:00  INFO backend::service::feeds: src/service/feeds.rs:85: feed saved feed_id=90 url="https://36kr.com/feed" enabled=true source_domain=36kr.com derived_source_domain=false
+2025-10-19T21:37:36.246556118+08:00  INFO backend::fetcher: src/fetcher/mod.rs:439: feed http fetch succeeded feed_id=90 status=200 url=https://36kr.com/feed
+2025-10-19T21:37:38.653534414+08:00  INFO backend::fetcher: src/fetcher/mod.rs:457: feed xml parsed feed_id="a358b4dd2efd07271204fdf9fe596cdd" status=200 entry_count=30 bytes_len=120090
+2025-10-19T21:37:38.660455723+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/p/3516113472216198?f=rss need_translate=false title=《逃离鸭科夫》发售；多款大厂游戏上线或开测；传奇游戏制作人板垣伴信离世 | 氪游周报10.13-10.19
+2025-10-19T21:37:38.660492223+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:37:38.660502723+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:37:38.660516023+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:37:38.660523023+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/p/3516113472216198?f=rss checked=0
+2025-10-19T21:37:38.660586823+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:37:38.660618023+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:37:38.660628123+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/p/3516113472216198?f=rss language= preview_desc=<p>文 | 马晓迪‍&nbsp;</p>
+  <p>编辑 | 刘士武</p>
+  <h2><strong>新游速递</strong></h2>
+  <p><s
+2025-10-19T21:37:38.660640023+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/p/3516113472216198?f=rss
+2025-10-19T21:37:38.660671923+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/p/3512964102970499?f=rss need_translate=false title=暧昧但不确立关系，年轻女孩们困在situationship里
+2025-10-19T21:37:38.660702023+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:37:38.660711823+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:37:38.660738023+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:37:38.660747723+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/p/3512964102970499?f=rss checked=1
+2025-10-19T21:37:38.660783223+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:37:38.660793223+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:37:38.660801023+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/p/3512964102970499?f=rss language= preview_desc=<p class="image-wrapper"><img data-img-size-val="900,1030" src="https://img.36kr
+2025-10-19T21:37:38.660810223+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/p/3512964102970499?f=rss
+2025-10-19T21:37:38.660839023+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/p/3512963909246089?f=rss need_translate=false title=卖价过万的「大头娃娃」，成了「痛系」年轻人的新型奢侈品
+2025-10-19T21:37:38.660868523+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:37:38.660878223+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:37:38.660889323+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:37:38.660898024+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/p/3512963909246089?f=rss checked=2
+2025-10-19T21:37:38.660929524+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:37:38.660958924+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:37:38.660967524+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/p/3512963909246089?f=rss language= preview_desc=<p class="image-wrapper"><img data-img-size-val="900,1030" src="https://img.36kr
+2025-10-19T21:37:38.660977824+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/p/3512963909246089?f=rss
+2025-10-19T21:37:38.661002424+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/p/3514451621075848?f=rss need_translate=false title=一位北京女CEO要敲钟了！
+2025-10-19T21:37:38.661009224+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T21:37:38.661016024+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T21:37:38.661023424+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T21:37:38.661033424+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/p/3514451621075848?f=rss checked=3
+2025-10-19T21:37:38.661064224+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T21:37:38.661093124+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T21:37:38.661115924+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/p/3514451621075848?f=rss language= preview_desc=<p>近日，轻松健康集团IPO获证监会备案，为赴港上市铺平道路。</p>
+  <p>这家公司乍听陌生，旗下此前业务可能更为人熟悉——轻松筹。“家人突然罹患重病，
+2025-10-19T21:37:38.661125024+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/p/3514451621075848?f=rss
+2025-10-19T21:37:38.661146524+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/p/3514429338426503?f=rss need_translate=false title=英伟达与台积电合作，首片美国本土制造Blackwell芯片晶圆亮相
+2025-10-19T21:37:38.661153624+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/p/3514429338426503?f=rss
+2025-10-19T21:37:38.661160424+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/p/3514429338426503?f=rss
+2025-10-19T21:37:38.661199124+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/p/3514429338426503?f=rss
+2025-10-19T21:37:38.661210324+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/p/3514429338426503?f=rss checked=4
+2025-10-19T21:37:38.661244024+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/p/3514429338426503?f=rss
+2025-10-19T21:37:38.661273324+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/p/3514429338426503?f=rss
+2025-10-19T21:37:38.661282224+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/p/3514429338426503?f=rss language= preview_desc=<p class="image-wrapper"><img data-img-size-val="1080,460" src="https://img.36kr
+2025-10-19T21:37:38.661293024+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/p/3514429338426503?f=rss
+2025-10-19T21:37:38.661340324+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/p/3514290006186883?f=rss need_translate=false title=起猛了，看见小红书抢闲鱼的饭碗了
+2025-10-19T21:37:38.661357524+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/p/3514290006186883?f=rss
+2025-10-19T21:37:38.661367124+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/p/3514290006186883?f=rss
+2025-10-19T21:37:38.661376824+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/p/3514290006186883?f=rss
+2025-10-19T21:37:38.661407524+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/p/3514290006186883?f=rss checked=5
+2025-10-19T21:37:38.661439024+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/p/3514290006186883?f=rss
+2025-10-19T21:37:38.661447624+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/p/3514290006186883?f=rss
+2025-10-19T21:37:38.661455424+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/p/3514290006186883?f=rss language= preview_desc=<p>看着这个标题，很多人心里可能会纳闷。</p>
+  <p>一个是内容社区，一个是闲置交易平台，怎么就 PK 上了？</p>
+  <p>请看。</p>
+  <
+2025-10-19T21:37:38.661464224+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/p/3514290006186883?f=rss
+2025-10-19T21:37:38.661516924+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/p/3514283432516481?f=rss need_translate=false title=风靡全网的电子茅台，年轻人只租不买？
+2025-10-19T21:37:38.661526124+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/p/3514283432516481?f=rss
+2025-10-19T21:37:38.661534024+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/p/3514283432516481?f=rss
+2025-10-19T21:37:38.661543224+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/p/3514283432516481?f=rss
+2025-10-19T21:37:38.661552524+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/p/3514283432516481?f=rss checked=6
+2025-10-19T21:37:38.661586724+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/p/3514283432516481?f=rss
+2025-10-19T21:37:38.661616524+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/p/3514283432516481?f=rss
+2025-10-19T21:37:38.661626324+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/p/3514283432516481?f=rss language= preview_desc=<p>这年头，当你在旅游景区看到人们举着五花八门的拍摄设备时，千万不要觉得我们真的步入了人均自媒体时代。</p>
+  <p>你懂的，拍摄打卡早已成为了人们记录生
+2025-10-19T21:37:38.661635624+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/p/3514283432516481?f=rss
+2025-10-19T21:37:38.661660825+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/p/3514209326767236?f=rss need_translate=false title=“至少便宜10%” “大闸蟹自由”来了？
+2025-10-19T21:37:38.661667825+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/p/3514209326767236?f=rss
+2025-10-19T21:37:38.661674825+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/p/3514209326767236?f=rss
+2025-10-19T21:37:38.661683625+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/p/3514209326767236?f=rss
+2025-10-19T21:37:38.661692725+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/p/3514209326767236?f=rss checked=7
+2025-10-19T21:37:38.661732925+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/p/3514209326767236?f=rss
+2025-10-19T21:37:38.661762225+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/p/3514209326767236?f=rss
+2025-10-19T21:37:38.661772025+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/p/3514209326767236?f=rss language= preview_desc=<p>近期，大闸蟹开始大量上市。今年的大闸蟹价格如何？消费者能实现“大闸蟹自由”吗？</p>
+  <h2><strong>比去年便宜？</strong></h2
+2025-10-19T21:37:38.661781625+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/p/3514209326767236?f=rss
+2025-10-19T21:37:38.661811525+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/p/3514116401798279?f=rss need_translate=false title=500亿芯片龙头 买下一张入场券
+2025-10-19T21:37:38.661818125+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/p/3514116401798279?f=rss
+2025-10-19T21:37:38.661824825+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/p/3514116401798279?f=rss
+2025-10-19T21:37:38.661833725+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/p/3514116401798279?f=rss
+2025-10-19T21:37:38.661842025+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/p/3514116401798279?f=rss checked=8
+2025-10-19T21:37:38.661873125+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/p/3514116401798279?f=rss
+2025-10-19T21:37:38.661903425+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/p/3514116401798279?f=rss
+2025-10-19T21:37:38.661913325+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/p/3514116401798279?f=rss language= preview_desc=<p>2025年以来，半导体行业的并购案在A股公告栏里几乎是周更。这种活跃性不仅给早期机构提供了一个安全快速的退出通道，也加速了半导体行业的整合和进化。</p>
+2025-10-19T21:37:38.661933225+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/p/3514116401798279?f=rss
+2025-10-19T21:37:38.661956825+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/p/3514017849678723?f=rss need_translate=false title=激光雷达还有蛋糕分给图达通吗？
+2025-10-19T21:37:38.661963725+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/p/3514017849678723?f=rss
+2025-10-19T21:37:38.661971525+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/p/3514017849678723?f=rss
+2025-10-19T21:37:38.661979925+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/p/3514017849678723?f=rss
+2025-10-19T21:37:38.661988925+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/p/3514017849678723?f=rss checked=9
+2025-10-19T21:37:38.662021325+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/p/3514017849678723?f=rss
+2025-10-19T21:37:38.662051025+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/p/3514017849678723?f=rss
+2025-10-19T21:37:38.662061025+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/p/3514017849678723?f=rss language= preview_desc=<p>今年8月26日，港交所官网的一则更新，让图达通再次成为激光雷达行业的焦点——这家曾在2023年拿下“全球乘用车激光雷达出货量冠军”的企业，第三次向资本市场
+2025-10-19T21:37:38.662069925+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/p/3514017849678723?f=rss
+2025-10-19T21:37:38.662082425+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/newsflashes/3515804730465416?f=rss need_translate=false title=飞行中突发锂电池自燃 国航：给予旅客补偿
+2025-10-19T21:37:38.662090725+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/newsflashes/3515804730465416?f=rss
+2025-10-19T21:37:38.662097725+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/newsflashes/3515804730465416?f=rss
+2025-10-19T21:37:38.662109225+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/newsflashes/3515804730465416?f=rss
+2025-10-19T21:37:38.662118725+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/newsflashes/3515804730465416?f=rss checked=10
+2025-10-19T21:37:38.662163725+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/newsflashes/3515804730465416?f=rss
+2025-10-19T21:37:38.662174225+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/newsflashes/3515804730465416?f=rss
+2025-10-19T21:37:38.662195525+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/newsflashes/3515804730465416?f=rss language= preview_desc=从中国国际航空客服热线工作人员处获悉，18日CA139航班在飞行途中突发旅客行李架上手提行李内锂电池自燃，给旅客带来损失，中国国际航空公司将分别补偿经济舱和公务
+2025-10-19T21:37:38.662205325+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/newsflashes/3515804730465416?f=rss
+2025-10-19T21:37:38.662218325+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/newsflashes/3515801994812550?f=rss need_translate=false title=韩国商业银行将暂停银条销售
+2025-10-19T21:37:38.662246925+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/newsflashes/3515801994812550?f=rss
+2025-10-19T21:37:38.662256325+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/newsflashes/3515801994812550?f=rss
+2025-10-19T21:37:38.662264625+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/newsflashes/3515801994812550?f=rss
+2025-10-19T21:37:38.662273525+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/newsflashes/3515801994812550?f=rss checked=11
+2025-10-19T21:37:38.662282725+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/newsflashes/3515801994812550?f=rss
+2025-10-19T21:37:38.662290425+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/newsflashes/3515801994812550?f=rss
+2025-10-19T21:37:38.662298925+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/newsflashes/3515801994812550?f=rss language= preview_desc=近期白银价格屡创新高，韩国黄金交易所数据显示，10月17日白银价格为每克2467韩元、约合人民币12元，年初至今累计涨幅近70%，高于同期的黄金涨幅。韩国投资者
+2025-10-19T21:37:38.662307525+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/newsflashes/3515801994812550?f=rss
+2025-10-19T21:37:38.662322725+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/newsflashes/3515800349564040?f=rss need_translate=false title=优必选再爆亿元大单，Walker人形机器人全年订单金额已超6.3亿
+2025-10-19T21:37:38.662333525+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/newsflashes/3515800349564040?f=rss
+2025-10-19T21:37:38.662341325+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/newsflashes/3515800349564040?f=rss
+2025-10-19T21:37:38.662352725+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/newsflashes/3515800349564040?f=rss
+2025-10-19T21:37:38.662361425+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/newsflashes/3515800349564040?f=rss checked=12
+2025-10-19T21:37:38.662391126+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/newsflashes/3515800349564040?f=rss
+2025-10-19T21:37:38.662421026+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/newsflashes/3515800349564040?f=rss
+2025-10-19T21:37:38.662431026+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/newsflashes/3515800349564040?f=rss language= preview_desc=10月19日消息，“人形机器人第一股”优必选（9880.HK）中标“广西具身智能数据采集及测试中心设备采购及安装”项目，订单金额达1.26亿元。根据项目规划，本
+2025-10-19T21:37:38.662441326+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/newsflashes/3515800349564040?f=rss
+2025-10-19T21:37:38.662463026+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/newsflashes/3515799568145280?f=rss need_translate=false title=中信银行：每股中信优1将于10月27日发放现金股息4.08元
+2025-10-19T21:37:38.662469926+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/newsflashes/3515799568145280?f=rss
+2025-10-19T21:37:38.662476826+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/newsflashes/3515799568145280?f=rss
+2025-10-19T21:37:38.662485126+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/newsflashes/3515799568145280?f=rss
+2025-10-19T21:37:38.662495226+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/newsflashes/3515799568145280?f=rss checked=13
+2025-10-19T21:37:38.662526826+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/newsflashes/3515799568145280?f=rss
+2025-10-19T21:37:38.662539326+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/newsflashes/3515799568145280?f=rss
+2025-10-19T21:37:38.662548726+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/newsflashes/3515799568145280?f=rss language= preview_desc=中信银行(7.16, -0.13, -1.78%)（00998）公布，该行将于2025 年 10 月 27 日派发优先股（证券简称：中信优1，证券代码：3600
+2025-10-19T21:37:38.662558026+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/newsflashes/3515799568145280?f=rss
+2025-10-19T21:37:38.662571026+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/newsflashes/3515798652738689?f=rss need_translate=false title=上海首个知识产权全链条保护中心落地徐汇
+2025-10-19T21:37:38.662579226+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/newsflashes/3515798652738689?f=rss
+2025-10-19T21:37:38.662585626+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/newsflashes/3515798652738689?f=rss
+2025-10-19T21:37:38.662597326+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/newsflashes/3515798652738689?f=rss
+2025-10-19T21:37:38.662606926+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/newsflashes/3515798652738689?f=rss checked=14
+2025-10-19T21:37:38.662651726+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/newsflashes/3515798652738689?f=rss
+2025-10-19T21:37:38.662662526+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/newsflashes/3515798652738689?f=rss
+2025-10-19T21:37:38.662671226+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/newsflashes/3515798652738689?f=rss language= preview_desc=第二十二届上海知识产权国际论坛“人工智能时代的知识产权运营管理”分论坛10月19日在徐汇区举行。论坛上，上海市首个知识产权全链条保护中心揭牌成立，标志着徐汇区在
+2025-10-19T21:37:38.662710326+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/newsflashes/3515798652738689?f=rss
+2025-10-19T21:37:38.662752626+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/newsflashes/3515797440142467?f=rss need_translate=false title=投资银条供不应求 中国“银都”部分店铺白银卖断货
+2025-10-19T21:37:38.662762226+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/newsflashes/3515797440142467?f=rss
+2025-10-19T21:37:38.662769926+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/newsflashes/3515797440142467?f=rss
+2025-10-19T21:37:38.662778926+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/newsflashes/3515797440142467?f=rss
+2025-10-19T21:37:38.662790226+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/newsflashes/3515797440142467?f=rss checked=15
+2025-10-19T21:37:38.662821926+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/newsflashes/3515797440142467?f=rss
+2025-10-19T21:37:38.662852726+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/newsflashes/3515797440142467?f=rss
+2025-10-19T21:37:38.662862526+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/newsflashes/3515797440142467?f=rss language= preview_desc=今年银价持续走高，累计涨幅接近70%。湖南郴州永兴县是我国白银重要产区，白银产量约占全国四分之一，有中国“银都”之称。当地建成了国内最大的银制品批发中心。由于白
+2025-10-19T21:37:38.662872226+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/newsflashes/3515797440142467?f=rss
+2025-10-19T21:37:38.662884026+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/newsflashes/3515796868373377?f=rss need_translate=false title=印度10月上半月从俄罗斯进口的石油量增加
+2025-10-19T21:37:38.662890626+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/newsflashes/3515796868373377?f=rss
+2025-10-19T21:37:38.662897226+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/newsflashes/3515796868373377?f=rss
+2025-10-19T21:37:38.662905626+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/newsflashes/3515796868373377?f=rss
+2025-10-19T21:37:38.662914826+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/newsflashes/3515796868373377?f=rss checked=16
+2025-10-19T21:37:38.662944826+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/newsflashes/3515796868373377?f=rss
+2025-10-19T21:37:38.663001526+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/newsflashes/3515796868373377?f=rss
+2025-10-19T21:37:38.663014226+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/newsflashes/3515796868373377?f=rss language= preview_desc=据印度媒体17日报道，由于印度国内市场需求增加，印度从俄罗斯进口的石油量在10月上半月有所回升。数据显示，10月上半月，印度平均每天从俄罗斯进口石油约180万桶
+2025-10-19T21:37:38.663035926+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/newsflashes/3515796868373377?f=rss
+2025-10-19T21:37:38.663049226+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/newsflashes/3515796316068996?f=rss need_translate=false title=台风“风神”将于19日傍晚前后进入南海东部海面
+2025-10-19T21:37:38.663056726+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/newsflashes/3515796316068996?f=rss
+2025-10-19T21:37:38.663063626+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/newsflashes/3515796316068996?f=rss
+2025-10-19T21:37:38.663072426+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/newsflashes/3515796316068996?f=rss
+2025-10-19T21:37:38.663085826+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/newsflashes/3515796316068996?f=rss checked=17
+2025-10-19T21:37:38.663118926+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/newsflashes/3515796316068996?f=rss
+2025-10-19T21:37:38.663148827+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/newsflashes/3515796316068996?f=rss
+2025-10-19T21:37:38.663158627+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/newsflashes/3515796316068996?f=rss language= preview_desc=据海南省气象局，今年第24号台风“风神”（热带风暴级）将于19日傍晚前后进入南海东部海面，强度逐渐加强，最强可达强热带风暴级或台风级（30～35米/秒，11～1
+2025-10-19T21:37:38.663169027+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/newsflashes/3515796316068996?f=rss
+2025-10-19T21:37:38.663181727+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/newsflashes/3515795216047236?f=rss need_translate=false title=广东：10月12日至18日全省新增报告2086例基孔肯雅热本地个案
+2025-10-19T21:37:38.663188527+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/newsflashes/3515795216047236?f=rss
+2025-10-19T21:37:38.663195227+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/newsflashes/3515795216047236?f=rss
+2025-10-19T21:37:38.663207427+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/newsflashes/3515795216047236?f=rss
+2025-10-19T21:37:38.663217627+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/newsflashes/3515795216047236?f=rss checked=18
+2025-10-19T21:37:38.663264927+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/newsflashes/3515795216047236?f=rss
+2025-10-19T21:37:38.663293927+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/newsflashes/3515795216047236?f=rss
+2025-10-19T21:37:38.663303327+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/newsflashes/3515795216047236?f=rss language= preview_desc=据广东省疾控局消息，2025年10月12日0时至10月18日24时，全省新增报告2086例基孔肯雅热本地个案（含无症状感染者），未报告重症和死亡个案。个案分布在
+2025-10-19T21:37:38.663312927+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/newsflashes/3515795216047236?f=rss
+2025-10-19T21:37:38.663326527+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/newsflashes/3515567635291017?f=rss need_translate=false title=海南省发布台风四级预警（海上）
+2025-10-19T21:37:38.663333527+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/newsflashes/3515567635291017?f=rss
+2025-10-19T21:37:38.663340527+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/newsflashes/3515567635291017?f=rss
+2025-10-19T21:37:38.663348327+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/newsflashes/3515567635291017?f=rss
+2025-10-19T21:37:38.663362627+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/newsflashes/3515567635291017?f=rss checked=19
+2025-10-19T21:37:38.663393227+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/newsflashes/3515567635291017?f=rss
+2025-10-19T21:37:38.663422227+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/newsflashes/3515567635291017?f=rss
+2025-10-19T21:37:38.663431827+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/newsflashes/3515567635291017?f=rss language= preview_desc=海南省气象局2025年10月19日10时30分发布台风四级预警（海上）。受“风神”和冷空气共同影响，19日夜间～23日白天，南海中部和北部海面风力自东向西逐渐增
+2025-10-19T21:37:38.663442227+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/newsflashes/3515567635291017?f=rss
+2025-10-19T21:37:38.663476227+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/newsflashes/3515566908185481?f=rss need_translate=false title=本周活跃度前十个股名单出炉，44股累计换手率超100%
+2025-10-19T21:37:38.663515127+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/newsflashes/3515566908185481?f=rss
+2025-10-19T21:37:38.663524327+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/newsflashes/3515566908185481?f=rss
+2025-10-19T21:37:38.663533527+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/newsflashes/3515566908185481?f=rss
+2025-10-19T21:37:38.663545227+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/newsflashes/3515566908185481?f=rss checked=20
+2025-10-19T21:37:38.663577027+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/newsflashes/3515566908185481?f=rss
+2025-10-19T21:37:38.663606527+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/newsflashes/3515566908185481?f=rss
+2025-10-19T21:37:38.663616327+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/newsflashes/3515566908185481?f=rss language= preview_desc=本周五个交易日中有44只个股换手率超过100%。其中，云汉芯城排名居首，周换手率达到261.23%；此外，北方长龙、蓝丰生化本周换手率均超200%。
+按照申万一
+2025-10-19T21:37:38.663625527+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/newsflashes/3515566908185481?f=rss
+2025-10-19T21:37:38.663638227+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/newsflashes/3515565907368833?f=rss need_translate=false title=10月18日北京新房网签227套、二手房网签187套
+2025-10-19T21:37:38.663645427+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/newsflashes/3515565907368833?f=rss
+2025-10-19T21:37:38.663652927+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/newsflashes/3515565907368833?f=rss
+2025-10-19T21:37:38.663661327+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/newsflashes/3515565907368833?f=rss
+2025-10-19T21:37:38.663673527+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/newsflashes/3515565907368833?f=rss checked=21
+2025-10-19T21:37:38.663704427+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/newsflashes/3515565907368833?f=rss
+2025-10-19T21:37:38.663736527+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/newsflashes/3515565907368833?f=rss
+2025-10-19T21:37:38.663746527+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/newsflashes/3515565907368833?f=rss language= preview_desc=北京市住建委官网数据显示，10月18日北京新房网签227套，网签面积17561.58平方米，其中住宅网签124套，网签面积14521.71平方米；二手房网签18
+2025-10-19T21:37:38.663755827+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/newsflashes/3515565907368833?f=rss
+2025-10-19T21:37:38.663768327+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/newsflashes/3515565107354505?f=rss need_translate=false title=申万宏源证券董事长：中国居民家庭资产配置步入多元化配置新时期
+2025-10-19T21:37:38.663775027+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/newsflashes/3515565107354505?f=rss
+2025-10-19T21:37:38.663781827+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/newsflashes/3515565107354505?f=rss
+2025-10-19T21:37:38.663794427+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/newsflashes/3515565107354505?f=rss
+2025-10-19T21:37:38.663805627+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/newsflashes/3515565107354505?f=rss checked=22
+2025-10-19T21:37:38.663851527+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/newsflashes/3515565107354505?f=rss
+2025-10-19T21:37:38.663882628+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/newsflashes/3515565107354505?f=rss
+2025-10-19T21:37:38.663903028+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/newsflashes/3515565107354505?f=rss language= preview_desc=申万宏源证券董事长刘健表示，中国居民家庭资产配置正在进入高增长、多元化及增加境外资产配置的新时期。从配置结构看，中国居民财富结构正经历从储蓄与单一房地产投资为主
+2025-10-19T21:37:38.663912828+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/newsflashes/3515565107354505?f=rss
+2025-10-19T21:37:38.663925828+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/newsflashes/3515563522301062?f=rss need_translate=false title=安世中国致全体员工：国内全部主体运营及员工薪资福利一切正常
+2025-10-19T21:37:38.663954928+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/newsflashes/3515563522301062?f=rss
+2025-10-19T21:37:38.663964628+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/newsflashes/3515563522301062?f=rss
+2025-10-19T21:37:38.663973928+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/newsflashes/3515563522301062?f=rss
+2025-10-19T21:37:38.663985228+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/newsflashes/3515563522301062?f=rss checked=23
+2025-10-19T21:37:38.664017328+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/newsflashes/3515563522301062?f=rss
+2025-10-19T21:37:38.664046228+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/newsflashes/3515563522301062?f=rss
+2025-10-19T21:37:38.664056228+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/newsflashes/3515563522301062?f=rss language= preview_desc=荷兰对中国企业闻泰海外半导体资产“冻结”运营17天之后，中、荷公司“脱钩”。10月18日下午，安世半导体（中国）有限公司官方公众号发布公告称，员工继续执行安世国
+2025-10-19T21:37:38.664065528+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/newsflashes/3515563522301062?f=rss
+2025-10-19T21:37:38.664077428+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/newsflashes/3515562834189193?f=rss need_translate=false title=英伟达首席执行官黄仁勋将出席在韩国举行的亚太经合组织（APEC） CEO峰会
+2025-10-19T21:37:38.664087328+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/newsflashes/3515562834189193?f=rss
+2025-10-19T21:37:38.664094528+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/newsflashes/3515562834189193?f=rss
+2025-10-19T21:37:38.664103528+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/newsflashes/3515562834189193?f=rss
+2025-10-19T21:37:38.664117528+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/newsflashes/3515562834189193?f=rss checked=24
+2025-10-19T21:37:38.664148528+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/newsflashes/3515562834189193?f=rss
+2025-10-19T21:37:38.664177728+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/newsflashes/3515562834189193?f=rss
+2025-10-19T21:37:38.664186928+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/newsflashes/3515562834189193?f=rss language= preview_desc=英伟达公司19日表示，公司首席执行官（CEO）黄仁勋将于28日访问韩国，出席在庆州举行的亚太经合组织（APEC）工商领导人峰会。
+2025-10-19T21:37:38.664197028+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/newsflashes/3515562834189193?f=rss
+2025-10-19T21:37:38.664241028+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/newsflashes/3515561859587209?f=rss need_translate=false title=清华大学经济管理院长白重恩：经济治理要更重视消费
+2025-10-19T21:37:38.664250228+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/newsflashes/3515561859587209?f=rss
+2025-10-19T21:37:38.664257728+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/newsflashes/3515561859587209?f=rss
+2025-10-19T21:37:38.664275828+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/newsflashes/3515561859587209?f=rss
+2025-10-19T21:37:38.664287728+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/newsflashes/3515561859587209?f=rss checked=25
+2025-10-19T21:37:38.664318828+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/newsflashes/3515561859587209?f=rss
+2025-10-19T21:37:38.664348128+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/newsflashes/3515561859587209?f=rss
+2025-10-19T21:37:38.664357728+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/newsflashes/3515561859587209?f=rss language= preview_desc=在今日全球财富管理论坛·2025上海苏河湾大会上，清华大学经济管理院长白重恩提出，当前社会总需求不足是挑战但也是机会。白重恩提出，当下社会投资回报率低，需从社会
+2025-10-19T21:37:38.664367128+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/newsflashes/3515561859587209?f=rss
+2025-10-19T21:37:38.664379828+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/newsflashes/3515560326552709?f=rss need_translate=false title=王腾被小米辞退后考虑自立门户创业
+2025-10-19T21:37:38.664390328+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/newsflashes/3515560326552709?f=rss
+2025-10-19T21:37:38.664397328+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/newsflashes/3515560326552709?f=rss
+2025-10-19T21:37:38.664406228+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/newsflashes/3515560326552709?f=rss
+2025-10-19T21:37:38.664416728+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/newsflashes/3515560326552709?f=rss checked=26
+2025-10-19T21:37:38.664463128+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/newsflashes/3515560326552709?f=rss
+2025-10-19T21:37:38.664492528+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/newsflashes/3515560326552709?f=rss
+2025-10-19T21:37:38.664502028+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/newsflashes/3515560326552709?f=rss language= preview_desc=小米原中国区市场部总经理王腾于今年9月因泄密被辞退。10月17日王腾微博转发红米手机官方推文并表示：K90 Pro Max，史上最强的K系列，产研团队倾注了很多
+2025-10-19T21:37:38.664511028+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/newsflashes/3515560326552709?f=rss
+2025-10-19T21:37:38.664544928+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/newsflashes/3515556803370114?f=rss need_translate=false title=中国天眼捕获新的毫秒级射电暴
+2025-10-19T21:37:38.664553128+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/newsflashes/3515556803370114?f=rss
+2025-10-19T21:37:38.664559928+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/newsflashes/3515556803370114?f=rss
+2025-10-19T21:37:38.664568528+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/newsflashes/3515556803370114?f=rss
+2025-10-19T21:37:38.664578628+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/newsflashes/3515556803370114?f=rss checked=27
+2025-10-19T21:37:38.664610428+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/newsflashes/3515556803370114?f=rss
+2025-10-19T21:37:38.664643029+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/newsflashes/3515556803370114?f=rss
+2025-10-19T21:37:38.664652929+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/newsflashes/3515556803370114?f=rss language= preview_desc=据央视财经，从北京大学地球与空间科学学院获悉，近日该学院研究团队利用“中国天眼”（500米口径球面射电望远镜FAST），探测到一种新的来源于恒星黑子区域磁场的毫
+2025-10-19T21:37:38.664673229+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/newsflashes/3515556803370114?f=rss
+2025-10-19T21:37:38.664686829+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/newsflashes/3515555070286982?f=rss need_translate=false title=台风“风神”将于今天傍晚进入南海，最强可达强热带风暴或台风级
+2025-10-19T21:37:38.664724929+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/newsflashes/3515555070286982?f=rss
+2025-10-19T21:37:38.664757329+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/newsflashes/3515555070286982?f=rss
+2025-10-19T21:37:38.664768529+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/newsflashes/3515555070286982?f=rss
+2025-10-19T21:37:38.664782929+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/newsflashes/3515555070286982?f=rss checked=28
+2025-10-19T21:37:38.664815029+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/newsflashes/3515555070286982?f=rss
+2025-10-19T21:37:38.664844529+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/newsflashes/3515555070286982?f=rss
+2025-10-19T21:37:38.664854329+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/newsflashes/3515555070286982?f=rss language= preview_desc=中央气象台10月19日10时继续发布台风蓝色预警：今年第24号台风“风神”（热带风暴级）的中心今天（19日）上午8点钟位于菲律宾吕宋岛上，就是北纬14.0度、东
+2025-10-19T21:37:38.664864929+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/newsflashes/3515555070286982?f=rss
+2025-10-19T21:37:38.664877529+08:00  INFO backend::fetcher: src/fetcher/mod.rs:532: title translation decision feed_id=90 url=https://36kr.com/newsflashes/3515542406830976?f=rss need_translate=false title=eSIM版iPhoneAir即将发售
+2025-10-19T21:37:38.664886129+08:00  INFO backend::fetcher: src/fetcher/mod.rs:541: begin entry processing feed_id=90 url=https://36kr.com/newsflashes/3515542406830976?f=rss
+2025-10-19T21:37:38.664892629+08:00  INFO backend::fetcher: src/fetcher/mod.rs:657: preparing title signature feed_id=90 url=https://36kr.com/newsflashes/3515542406830976?f=rss
+2025-10-19T21:37:38.664899929+08:00  INFO backend::fetcher: src/fetcher/mod.rs:659: prepared title signature feed_id=90 url=https://36kr.com/newsflashes/3515542406830976?f=rss
+2025-10-19T21:37:38.664910429+08:00  INFO backend::fetcher: src/fetcher/mod.rs:697: intra-batch compare done feed_id=90 url=https://36kr.com/newsflashes/3515542406830976?f=rss checked=29
+2025-10-19T21:37:38.664942729+08:00  INFO backend::fetcher: src/fetcher/mod.rs:883: no historical candidates; skipping hist compare feed_id=90 url=https://36kr.com/newsflashes/3515542406830976?f=rss
+2025-10-19T21:37:38.664974029+08:00  INFO backend::fetcher: src/fetcher/mod.rs:905: entry processing completed; proceeding to persist feed_id=90 url=https://36kr.com/newsflashes/3515542406830976?f=rss
+2025-10-19T21:37:38.664983929+08:00  INFO backend::fetcher: src/fetcher/mod.rs:914: pre-insert article snapshot feed_id=90 url=https://36kr.com/newsflashes/3515542406830976?f=rss language= preview_desc=10月22日，苹果首款无实体SIM卡槽的eSIM版iPhone Air将在国内正式发售。极目新闻记者从湖北联通获悉，自10月17日上午9时起，湖北联通用户可在全
+2025-10-19T21:37:38.664994429+08:00  INFO backend::fetcher: src/fetcher/mod.rs:925: entry dedup finished feed_id=90 url=https://36kr.com/newsflashes/3515542406830976?f=rss
+2025-10-19T21:37:38.665003729+08:00  INFO backend::fetcher: src/fetcher/mod.rs:932: about to insert parsed articles feed_id=90 count=30
+2025-10-19T21:37:38.685458556+08:00  INFO backend::fetcher: src/fetcher/mod.rs:934: articles insert finished feed_id=90 inserted=30
+2025-10-19T21:37:38.731713818+08:00  INFO backend::fetcher: src/fetcher/mod.rs:965: inserted articles feed_id=90 count=30
+2025-10-19T21:37:38.731738718+08:00  INFO backend::fetcher: src/fetcher/mod.rs:978: marking feed success feed_id=90
+2025-10-19T21:37:38.734338822+08:00  INFO backend::fetcher: src/fetcher/mod.rs:989: feed fetch successful feed_id=90 status=200 last_fetch_at=2025-10-19T13:37:38.734314722Z
+2025-10-19T21:37:38.734382322+08:00  INFO backend::fetcher: src/fetcher/mod.rs:342: feed fetch succeeded feed_id=90 url=https://36kr.com/feed attempt=1 max_attempts=2
+2025-10-19T21:38:40.462054366+08:00  INFO backend::service::articles: src/service/articles.rs:44: articles list queried page=1 page_size=20 total=30
+2025-10-19T21:39:41.091250435+08:00  INFO backend::service::feeds: src/service/feeds.rs:180: feed and associated content deleted feed_id=90

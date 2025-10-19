@@ -992,21 +992,22 @@ function AiDedupSettingsPanel({
   const toggleEnabled = () => {
     if (!settings) return;
     const next = !settings.enabled;
-    let provider = settings.provider || undefined;
-    if (next && !provider) {
-      // default provider selection when enabling and none chosen
-      provider = settings.deepseek_configured
-        ? "deepseek"
-        : settings.ollama_configured
-        ? "ollama"
-        : undefined;
-      // if still none available, guide user to model settings instead of failing the request
+    // 开启时：若未选择 provider，默认选择已配置的第一个（Deepseek 优先）
+    if (next) {
+      let provider = settings.provider || undefined;
       if (!provider) {
-        onGotoModelSettings();
+        provider = settings.deepseek_configured
+          ? "deepseek"
+          : settings.ollama_configured
+          ? "ollama"
+          : undefined;
+      }
+      if (provider) {
+        mutation.mutate({ enabled: next, provider });
         return;
       }
     }
-    mutation.mutate({ enabled: next, provider });
+    mutation.mutate({ enabled: next });
   };
 
   const changeProvider = (value: string) => {
@@ -1065,19 +1066,21 @@ function AiDedupSettingsPanel({
               启用时必须选择一个已配置的提供商；不做自动校验，后台按选择调用。
             </p>
           </div>
-          <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-            {settings.provider ? settings.provider : '未选择'}
-          </span>
+          {settings.provider ? (
+            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+              {settings.provider}
+            </span>
+          ) : null}
         </div>
         <select
           value={settings.provider || ''}
           onChange={(e) => changeProvider(e.target.value)}
-          disabled={busy}
+          disabled={!settings.enabled || busy}
           className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          <option value="">(未选择)</option>
-          <option value="deepseek" disabled={!settings.deepseek_configured}>Deepseek</option>
-          <option value="ollama" disabled={!settings.ollama_configured}>Ollama</option>
+          {/* 统一不展示“未选择”，未启用时禁用下拉，避免提前选择 */}
+          <option value="deepseek">Deepseek</option>
+          <option value="ollama">Ollama</option>
         </select>
         <p className="mt-3 text-xs text-slate-500">
           {settings.enabled
