@@ -875,7 +875,8 @@ function TranslationSettingsPanel({
           <div className="grid gap-4 lg:grid-cols-2">
             {/* Deepseek 配置移至“⼤模型配置”面板 */}
 
-            {/* 百度翻译配置已移除 */}
+            {/* 模型配置（Ollama）已移至“⼤模型配置”面板 */}
+            {/*
             <section className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm lg:col-span-2">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -954,6 +955,7 @@ function TranslationSettingsPanel({
                 </p>
               )}
             </section>
+            */}
           </div>
 
           {statusMessage ? (
