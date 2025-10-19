@@ -220,7 +220,7 @@ pub async fn update_ai_dedup_settings(
         }
     }
 
-    // provider update (required if enabling)
+    // provider update（可选）
     if let Some(provider) = payload.provider.as_ref() {
         let trimmed = provider.trim();
         if trimmed.is_empty() {
@@ -232,11 +232,23 @@ pub async fn update_ai_dedup_settings(
         repo::settings::upsert_setting(pool, "ai_dedup.provider", trimmed).await?;
     }
 
-    // validation: if enabled true but provider missing
+    // 若启用但未指定 provider，则按 Deepseek > Ollama 的优先级自动选择；均未配置则报错并引导前往大模型配置
     let enabled_raw = repo::settings::get_setting(pool, "ai_dedup.enabled").await?;
     let provider_raw = repo::settings::get_setting(pool, "ai_dedup.provider").await?;
     if matches!(enabled_raw.as_deref(), Some("true")) && provider_raw.as_deref().map(str::is_empty).unwrap_or(true) {
-        return Err(AppError::BadRequest("开启 AI 去重 需要选择 provider".into()));
+        let snapshot = translator.snapshot();
+        let auto = if snapshot.deepseek_configured {
+            Some("deepseek")
+        } else if snapshot.ollama_configured {
+            Some("ollama")
+        } else {
+            None
+        };
+        if let Some(choice) = auto {
+            repo::settings::upsert_setting(pool, "ai_dedup.provider", choice).await?;
+        } else {
+            return Err(AppError::BadRequest("请先在“大模型配置”中配置 Deepseek 或 Ollama 后再启用 AI 去重".into()));
+        }
     }
 
     get_ai_dedup_settings(pool, translator).await

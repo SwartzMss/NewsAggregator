@@ -185,10 +185,6 @@ impl std::str::FromStr for TranslatorProvider {
 pub enum TranslationError {
     #[error("translator not configured")]
     NotConfigured,
-    #[error("translator quota exceeded")]
-    QuotaExceeded,
-    #[error("translator api error {code}: {message}")]
-    Api { code: String, message: String },
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -197,10 +193,6 @@ impl TranslationError {
     fn into_anyhow(self) -> anyhow::Error {
         match self {
             TranslationError::NotConfigured => anyhow!("translator not configured"),
-            TranslationError::QuotaExceeded => anyhow!("translator quota exceeded"),
-            TranslationError::Api { code, message } => {
-                anyhow!("translator api error {code}: {message}")
-            }
             TranslationError::Other(err) => err,
         }
     }
@@ -612,10 +604,6 @@ impl TranslationEngine {
         match self.try_provider(provider, title, description).await {
             Ok(result) => Ok(Some(result)),
             Err(TranslationError::NotConfigured) => Ok(None),
-            Err(err @ TranslationError::QuotaExceeded) => {
-                warn!(provider = provider.as_str(), error = %err, "translator quota exceeded");
-                Err(err.into_anyhow())
-            }
             Err(err) => {
                 warn!(provider = provider.as_str(), error = %err, "translator failed");
                 Err(err.into_anyhow())
