@@ -245,7 +245,6 @@ pub struct TranslatorCredentialsUpdate {
 
 #[derive(Debug, Clone)]
 pub struct TranslatorSnapshot {
-    pub provider: TranslatorProvider,
     pub deepseek_configured: bool,
     pub ollama_configured: bool,
     pub deepseek_api_key_masked: Option<String>,
@@ -432,7 +431,6 @@ impl TranslationEngine {
         };
 
         TranslatorSnapshot {
-            provider: state.provider,
             deepseek_configured: state.deepseek_client.is_some() && state.deepseek_verified,
             ollama_configured: state.ollama_client.is_some() && state.ollama_verified,
             deepseek_api_key_masked: state
