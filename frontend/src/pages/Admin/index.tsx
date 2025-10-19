@@ -786,7 +786,6 @@ function TranslationSettingsPanel({
     if (available(value)) return "";
     const errorMessage = providerError(value);
     if (errorMessage) return "（验证失败）";
-    if (value === "ollama") return hasOllamaConfig ? "（待验证）" : "（未配置）";
     return "（未配置）";
   };
   const statusHints: string[] = [];
