@@ -731,15 +731,7 @@ function TranslationSettingsPanel({
     onSuccess: (data) => {
       queryClient.setQueryData(["translation-settings", token], data);
       queryClient.invalidateQueries({ queryKey: ["translation-settings", token] });
-      const deepseekPending =
-        !data.deepseek_configured && Boolean(data.deepseek_api_key_masked);
-      const ollamaPending =
-        !data.ollama_configured && Boolean(data.ollama_base_url?.trim());
-      if (deepseekPending || ollamaPending) {
-        setFeedback("配置已保存，正在验证凭据…");
-      } else {
-        setFeedback("大模型配置已更新");
-      }
+      setFeedback("翻译配置已更新");
       setDirtyAppId(false);
       setDirtySecret(false);
       setDirtyDeepseek(false);
@@ -765,21 +757,14 @@ function TranslationSettingsPanel({
   const options = useMemo(() => {
     if (!settings) return [] as string[];
     const list: string[] = [];
-    if (settings.deepseek_configured) list.push("deepseek");
     if (settings.ollama_configured) list.push("ollama");
     return list;
   }, [settings]);
   const busy = mutation.isPending;
-  const translateDescriptions = useMemo(() => {
-    if (provider === "ollama") return true; // 强制开启
-    return localTranslate ?? settings?.translate_descriptions ?? false;
-  }, [provider, localTranslate, settings?.translate_descriptions]);
-  const hasDeepseekCredentials = Boolean(settings?.deepseek_api_key_masked);
+  const translateDescriptions = true;
   const currentOllamaBaseUrl = settings?.ollama_base_url ?? "";
   const currentOllamaModel = settings?.ollama_model ?? "";
   const hasOllamaConfig = Boolean(currentOllamaBaseUrl.trim());
-  const pendingDeepseekVerification =
-    Boolean(settings) && hasDeepseekCredentials && !settings?.deepseek_configured && !settings?.deepseek_error;
   const pendingOllamaVerification =
     Boolean(settings) && hasOllamaConfig && !settings?.ollama_configured && !settings?.ollama_error;
   const ollamaBaseUrlValue = ollamaBaseUrlDraft ?? currentOllamaBaseUrl;
@@ -787,32 +772,26 @@ function TranslationSettingsPanel({
 
   useEffect(() => {
     if (!token) return;
-    if (!pendingDeepseekVerification && !pendingOllamaVerification)
+    if (!pendingOllamaVerification)
       return;
-    const timer = window.setInterval(() => {
+  const timer = window.setInterval(() => {
       queryClient.invalidateQueries({ queryKey: ["translation-settings", token] });
     }, 4000);
     return () => window.clearInterval(timer);
   }, [
-    pendingDeepseekVerification,
     pendingOllamaVerification,
     queryClient,
     token,
   ]);
 
-  const formatLabel = (value: string) => {
-    if (value === "ollama") return "Ollama 本地";
-    return "Deepseek";
-  };
+  const formatLabel = (value: string) => (value === "ollama" ? "Ollama 本地" : value);
   const available = (value: string) => {
     if (!settings) return false;
-    if (value === "deepseek") return settings.deepseek_configured;
     if (value === "ollama") return settings.ollama_configured;
     return false;
   };
   const providerError = (value: string) => {
     if (!settings) return null;
-    if (value === "deepseek") return settings.deepseek_error ?? null;
     if (value === "ollama") return settings.ollama_error ?? null;
     return null;
   };
@@ -821,11 +800,8 @@ function TranslationSettingsPanel({
     if (available(value)) return "";
     const errorMessage = providerError(value);
     if (errorMessage) return "（验证失败）";
-    const hasCredential = hasDeepseekCredentials;
-    if (value === "ollama") {
-      return hasOllamaConfig ? "（待验证）" : "（未配置）";
-    }
-    return hasCredential ? "（待验证）" : "（未配置）";
+    if (value === "ollama") return hasOllamaConfig ? "（待验证）" : "（未配置）";
+    return "（未配置）";
   };
   const statusHints: string[] = [];
   if (pendingDeepseekVerification) {
@@ -849,13 +825,7 @@ function TranslationSettingsPanel({
     mutation.mutate(payload);
   };
 
-  const handleToggleDescriptions = () => {
-    if (busy) return;
-    if (provider === "ollama") return; // ollama 下禁用切换
-    const next = !translateDescriptions;
-    setLocalTranslate(next);
-    mutation.mutate({ translate_descriptions: next });
-  };
+  const handleToggleDescriptions = () => {};
 
   return (
     <div className="space-y-5">
@@ -894,78 +864,14 @@ function TranslationSettingsPanel({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-slate-700">默认大模型服务</p>
-                <p className="text-xs text-slate-500">选择默认使用的大模型服务提供商。</p>
+                <p className="text-xs text-slate-500">默认仅使用 Ollama。</p>
               </div>
-              <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                当前：{provider ? formatLabel(provider) : "未选择"}
-              </span>
+              <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">当前：Ollama 本地</span>
             </div>
-            <select
-              value={provider}
-              onChange={(event) => {
-                const value = event.target.value;
-                if (!settings) return;
-                if (value === settings.provider) return;
-                if (!available(value)) return;
-                // 立即本地生效：根据 provider 预置翻译开关
-                const nextTranslate = value === "ollama" ? true : false;
-                setLocalTranslate(nextTranslate);
-                mutation.mutate({ provider: value, translate_descriptions: nextTranslate });
-              }}
-              disabled={busy || !translationEnabled}
-              className="mt-3 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {options.length === 0 && (
-                <option value="" disabled>暂无已验证的大模型服务</option>
-              )}
-              {options.map((option) => {
-                const disabled = !available(option);
-                const errorMessage = providerError(option);
-                const suffix = disabled ? providerStatusSuffix(option) : "";
-                return (
-                  <option
-                    key={option}
-                    value={option}
-                    disabled={disabled}
-                    title={errorMessage || undefined}
-                  >
-                    {`${formatLabel(option)}${suffix}`}
-                  </option>
-                );
-              })}
-            </select>
           </div>
 
           <section className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium text-slate-700">翻译范围</p>
-                <p className="text-xs text-slate-500">默认仅翻译标题，开启后同步翻译摘要。</p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={translateDescriptions}
-                onClick={handleToggleDescriptions}
-                disabled={busy || provider === "ollama"}
-                className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition ${
-                  translateDescriptions ? "bg-primary" : "bg-slate-300"
-                } ${busy || provider === "ollama" ? "opacity-60 cursor-not-allowed" : ""}`}
-              >
-                <span
-                  className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
-                    translateDescriptions ? "translate-x-5" : "translate-x-1"
-                  }`}
-                />
-              </button>
-            </div>
-            <p className="mt-3 text-xs text-slate-500">
-              {provider === "ollama"
-                ? "已选择 Ollama，本模式下默认且固定翻译标题与摘要。"
-                : translateDescriptions
-                ? "标题与摘要都会翻译成中文，适合人工审核或前台展示。"
-                : "仅翻译标题，更省额度，摘要保留原文。"}
-            </p>
+            <p className="text-sm text-slate-600">当前默认翻译标题与摘要（不可更改）。</p>
           </section>
 
           <div className="grid gap-4 lg:grid-cols-2">

@@ -30,3 +30,6 @@
 2025-10-19T08:07:31.778437979+08:00  INFO backend::fetcher: src/fetcher/mod.rs:260: no feeds eligible this round
 2025-10-19T08:09:53.554442389+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
 2025-10-19T08:09:53.590188538+08:00  INFO backend::app: src/app.rs:78: loaded translator provider from database: ollama
+2025-10-19T08:14:43.725416456+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
+2025-10-19T08:14:43.747979510+08:00  INFO backend::app: src/app.rs:78: loaded translator provider from database: ollama
+2025-10-19T08:19:43.750260622+08:00  INFO backend::fetcher: src/fetcher/mod.rs:260: no feeds eligible this round
