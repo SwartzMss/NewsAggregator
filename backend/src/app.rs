@@ -36,6 +36,31 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
     repo::migrations::ensure_schema(&pool).await?;
     repo::maintenance::cleanup_orphan_content(&pool).await?;
 
+    // Normalize translation-related settings at startup:
+    // - Force default provider to 'ollama'
+    // - Remove deprecated Baidu settings keys if present
+    if let Err(err) = async {
+        // Upsert provider to 'ollama' if missing or different
+        let current = repo::settings::get_setting(&pool, "translation.provider").await?;
+        if current.as_deref() != Some("ollama") {
+            repo::settings::upsert_setting(&pool, "translation.provider", "ollama").await?;
+            tracing::info!(old = current.as_deref().unwrap_or("<none>"), new = "ollama", "normalized translation.provider");
+        }
+        // Ensure range is always title+desc (frontend is fixed but keep consistent server-side)
+        let range = repo::settings::get_setting(&pool, "translation.translate_descriptions").await?;
+        if range.as_deref() != Some("true") {
+            repo::settings::upsert_setting(&pool, "translation.translate_descriptions", "true").await?;
+            tracing::info!(old = range.as_deref().unwrap_or("<none>"), new = "true", "normalized translation.translate_descriptions");
+        }
+        // Clean deprecated keys (safe no-op if absent)
+        let _ = repo::settings::delete_setting(&pool, "translation.baidu_app_id").await;
+        let _ = repo::settings::delete_setting(&pool, "translation.baidu_secret_key").await;
+        Ok::<(), anyhow::Error>(())
+    }
+    .await {
+        tracing::warn!(error = %err, "failed to normalize translation settings at startup");
+    }
+
     let translator = Arc::new(TranslationEngine::new(
         &config.http_client,
     )?);

@@ -17,7 +17,8 @@ pub async fn get_translation_settings(
 ) -> AppResult<TranslationSettingsOut> {
     let snapshot = translator.snapshot();
     Ok(TranslationSettingsOut {
-        provider: snapshot.provider.as_str().to_string(),
+        // 后台仅允许 Ollama 作为默认服务
+        provider: "ollama".to_string(),
         translation_enabled: snapshot.translation_enabled,
         deepseek_configured: snapshot.deepseek_configured,
         ollama_configured: snapshot.ollama_configured,
@@ -112,12 +113,9 @@ pub async fn update_translation_settings(
         return Err(AppError::Internal(err));
     }
 
-    if let Some(provider_raw) = payload.provider {
-        let provider = provider_raw
-            .trim()
-            .parse::<TranslatorProvider>()
-            .map_err(|_| AppError::BadRequest("不支持的翻译服务".into()))?;
-        repo::settings::upsert_setting(pool, "translation.provider", provider.as_str()).await?;
+    // 强制仅允许 Ollama 作为默认 provider
+    if payload.provider.is_some() || payload.translation_enabled == Some(true) {
+        repo::settings::upsert_setting(pool, "translation.provider", "ollama").await?;
     }
 
     get_translation_settings(translator).await

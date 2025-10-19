@@ -304,8 +304,8 @@ impl TranslationEngine {
 
     // 不做自动 provider 回退；保持用户后续显式设置
 
-        let verify_deepseek = state.deepseek_client.is_some();
-        let verify_ollama = state.ollama_client.is_some();
+        let _verify_deepseek = state.deepseek_client.is_some();
+        let _verify_ollama = state.ollama_client.is_some();
 
         
 
@@ -476,9 +476,9 @@ impl TranslationEngine {
             .write()
             .map_err(|_| anyhow!("failed to acquire translator state lock"))?;
 
-        let baidu_changed = false;
+        let _baidu_changed = false;
         let mut deepseek_changed = false;
-        let mut ollama_changed = false;
+        let mut _ollama_changed = false;
 
         // Baidu support removed
 
@@ -524,7 +524,7 @@ impl TranslationEngine {
                 drop(base_guard);
                 state.ollama_client = build_ollama_client(&self.http_config, &snapshot)?;
                 clear_verification(&mut state, TranslatorProvider::Ollama);
-                ollama_changed = true;
+                _ollama_changed = true;
             } else {
                 drop(base_guard);
             }

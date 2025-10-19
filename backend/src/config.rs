@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context};
+use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
