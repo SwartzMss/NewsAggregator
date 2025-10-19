@@ -291,6 +291,19 @@ pub async fn acquire_processing_lock(
     Ok(())
 }
 
+/// Try to acquire an advisory lock for the given feed without blocking.
+/// Returns true if the lock was acquired, false if it's already held.
+pub async fn try_acquire_processing_lock(
+    conn: &mut PgConnection,
+    feed_id: i64,
+) -> Result<bool, sqlx::Error> {
+    let acquired: bool = sqlx::query_scalar("SELECT pg_try_advisory_lock($1)")
+        .bind(feed_id)
+        .fetch_one(&mut *conn)
+        .await?;
+    Ok(acquired)
+}
+
 pub async fn release_processing_lock(
     conn: &mut PgConnection,
     feed_id: i64,

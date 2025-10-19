@@ -318,8 +318,11 @@ async fn process_feed(
     retry_delay: Duration,
 ) -> anyhow::Result<()> {
     let mut lock_conn = pool.acquire().await?;
-    feeds::acquire_processing_lock(&mut lock_conn, feed.id).await?;
-    // 获得分布式/数据库级锁，避免同一个 feed 并发抓取
+    // 非阻塞尝试获取分布式/数据库级锁；若未获取到，说明该 feed 正在处理，直接跳过本轮
+    if !feeds::try_acquire_processing_lock(&mut lock_conn, feed.id).await? {
+        info!(feed_id = feed.id, url = %feed.url, "feed busy, skip this round");
+        return Ok(());
+    }
 
     let feed_id = feed.id;
     let max_attempts = retry_attempts.saturating_add(1) as usize;
