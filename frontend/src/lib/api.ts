@@ -104,6 +104,21 @@ export class UnauthorizedError extends Error {
   }
 }
 
+const ADMIN_SESSION_KEY = "news-admin-session";
+
+const refreshAdminSessionExpiry = () => {
+  try {
+    if (typeof window === "undefined") return;
+    const raw = window.sessionStorage.getItem(ADMIN_SESSION_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as { token: string; expiresAt: number; ttlSecs?: number };
+    const ttl = typeof parsed.ttlSecs === "number" && parsed.ttlSecs > 0 ? parsed.ttlSecs : undefined;
+    if (!ttl) return;
+    const refreshed = { ...parsed, expiresAt: Date.now() + ttl * 1000 };
+    window.sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(refreshed));
+  } catch {}
+};
+
 const adminRequest = async (path: string, token: string, init?: RequestInit) => {
   const headers = new Headers(init?.headers ?? {});
   if (!token) {
@@ -115,6 +130,8 @@ const adminRequest = async (path: string, token: string, init?: RequestInit) => 
   if (res.status === 401) {
     throw new UnauthorizedError();
   }
+  // Sliding session: on any successful admin request, bump local expiry
+  refreshAdminSessionExpiry();
   return res;
 };
 

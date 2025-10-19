@@ -818,3 +818,4 @@
 2025-10-19T21:37:38.734382322+08:00  INFO backend::fetcher: src/fetcher/mod.rs:342: feed fetch succeeded feed_id=90 url=https://36kr.com/feed attempt=1 max_attempts=2
 2025-10-19T21:38:40.462054366+08:00  INFO backend::service::articles: src/service/articles.rs:44: articles list queried page=1 page_size=20 total=30
 2025-10-19T21:39:41.091250435+08:00  INFO backend::service::feeds: src/service/feeds.rs:180: feed and associated content deleted feed_id=90
+2025-10-19T21:42:13.618920086+08:00  INFO backend::fetcher: src/fetcher/mod.rs:260: no feeds eligible this round

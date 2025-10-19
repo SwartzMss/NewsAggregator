@@ -18,6 +18,7 @@ import { FeedsPage } from "../Feeds";
 type AdminSession = {
   token: string;
   expiresAt: number;
+  ttlSecs?: number;
 };
 
 type Section = {
@@ -106,6 +107,7 @@ export function AdminPage() {
       const next: AdminSession = {
         token: data.token,
         expiresAt: Date.now() + data.expires_in * 1000,
+        ttlSecs: data.expires_in,
       };
       setSession(next);
       persistSession(next);
