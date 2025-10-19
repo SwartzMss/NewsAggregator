@@ -430,8 +430,9 @@ impl TranslationEngine {
         };
 
         TranslatorSnapshot {
-            deepseek_configured: state.deepseek_client.is_some() && state.deepseek_verified,
-            ollama_configured: state.ollama_client.is_some() && state.ollama_verified,
+            // 实时检测：仅以客户端是否存在判定“已配置”，不依赖已验证标记
+            deepseek_configured: state.deepseek_client.is_some(),
+            ollama_configured: state.ollama_client.is_some(),
             deepseek_api_key_masked: state
                 .deepseek_api_key
                 .as_ref()
@@ -616,7 +617,7 @@ impl TranslationEngine {
     ) -> Result<TranslationResult, TranslationError> {
         match provider {
             TranslatorProvider::Deepseek => {
-                let (client, verified) = {
+                let (client, _verified) = {
                     let state = self.state.read().map_err(|_| {
                         TranslationError::Other(anyhow!("translator lock poisoned"))
                     })?;
@@ -624,10 +625,6 @@ impl TranslationEngine {
                 };
 
                 let client = client.ok_or(TranslationError::NotConfigured)?;
-
-                if !verified {
-                    return Err(TranslationError::NotConfigured);
-                }
                 client
                     .translate_news(title, description)
                     .await
@@ -646,7 +643,7 @@ impl TranslationEngine {
                     .map_err(TranslationError::Other)
             }
             TranslatorProvider::Ollama => {
-                let (client, verified) = {
+                let (client, _verified) = {
                     let state = self.state.read().map_err(|_| {
                         TranslationError::Other(anyhow!("translator lock poisoned"))
                     })?;
@@ -654,10 +651,6 @@ impl TranslationEngine {
                 };
 
                 let client = client.ok_or(TranslationError::NotConfigured)?;
-
-                if !verified {
-                    return Err(TranslationError::NotConfigured);
-                }
 
                 client
                     .translate_news(title, description)

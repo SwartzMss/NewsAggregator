@@ -291,7 +291,7 @@ struct ChatCompletionMessage {
 
 const SYSTEM_PROMPT: &str = "你是一名资深的新闻比对助手，需要判断两条新闻是否描述同一事件。输出必须是 JSON，字段 is_duplicate、reason、confidence。";
 
-pub(crate) const TRANSLATION_PROMPT: &str = "你是一名专业的财经翻译，请将输入的英文新闻标题和摘要翻译成自然、准确的简体中文。输出必须是 JSON，格式为 {\"title\": \"...\", \"description\": \"...\"}，如果没有摘要可返回 null。不得添加多余文字。";
+pub(crate) const TRANSLATION_PROMPT: &str = "你是一名专业的财经翻译。\n\n严格要求：\n- 将输入的英文新闻标题与摘要翻译为自然、准确的简体中文。\n- 输出必须为 JSON，且仅包含两个字段：{\"title\": string, \"description\": string|null}。\n- 当提供了非空摘要时，\"description\" 必须返回非空的中文摘要（1-3 句，简洁、忠实，不添加观点）。严禁返回空字符串或省略该字段。\n- 若未提供摘要或原摘要为空，则将 \"description\" 设置为 null。\n- 不得输出除上述 JSON 之外的任何多余字符（包括解释、前后缀、Markdown 代码块标记等）。";
 
 pub(crate) fn build_translation_input(title: &str, description: Option<&str>) -> String {
     let mut lines = vec![format!("Title: {title}")];
