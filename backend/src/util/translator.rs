@@ -353,8 +353,7 @@ impl TranslationEngine {
 
     // 已移除 available_providers，前端通过 snapshot 中的 *configured 字段判断哪些可用
 
-    #[allow(dead_code)]
-    pub fn is_baidu_available(&self) -> bool { false }
+    // Baidu has been removed
 
     #[allow(dead_code)]
     pub fn is_deepseek_available(&self) -> bool {
