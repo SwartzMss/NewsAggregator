@@ -37,3 +37,4 @@
 2025-10-19T08:30:26.892888478+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
 2025-10-19T08:33:49.549148938+08:00  INFO backend: src/main.rs:31: starting server addr=127.0.0.1:8081
 2025-10-19T08:33:49.572687175+08:00  INFO backend::app: src/app.rs:103: loaded translator provider from database: ollama
+2025-10-19T08:38:49.575273530+08:00  INFO backend::fetcher: src/fetcher/mod.rs:260: no feeds eligible this round

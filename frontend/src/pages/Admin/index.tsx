@@ -208,7 +208,11 @@ export function AdminPage() {
         label: "AI 去重",
         description: "配置是否启用模型二次相似判定以及使用的提供商。",
         render: () => (
-          <AiDedupSettingsPanel token={token} onUnauthorized={handleUnauthorized} />
+          <AiDedupSettingsPanel
+            token={token}
+            onUnauthorized={handleUnauthorized}
+            onGotoModelSettings={() => setActiveSection("model-config")}
+          />
         ),
       },
     ],
@@ -972,9 +976,11 @@ function TranslationSettingsPanel({
 function AiDedupSettingsPanel({
   token,
   onUnauthorized,
+  onGotoModelSettings,
 }: {
   token: string;
   onUnauthorized: () => void;
+  onGotoModelSettings: () => void;
 }) {
   const queryClient = useQueryClient();
   const settingsQuery = useQuery<AiDedupSettings, Error>({
@@ -1098,6 +1104,18 @@ function AiDedupSettingsPanel({
               : '已启用但未选择 provider，后台将跳过模型判定。'
             : '未启用，后台不会进行模型二次判定。'}
         </p>
+        {(!settings.deepseek_configured && !settings.ollama_configured) ||
+          (settings.provider === 'deepseek' && !settings.deepseek_configured) ||
+          (settings.provider === 'ollama' && !settings.ollama_configured) ||
+          !settings.provider ? (
+            <button
+              type="button"
+              onClick={onGotoModelSettings}
+              className="mt-2 rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
+            >
+              前往大模型配置
+            </button>
+          ) : null}
       </div>
     </div>
   );
