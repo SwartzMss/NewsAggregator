@@ -766,27 +766,9 @@ function TranslationSettingsPanel({
   }, [settings]);
   const busy = mutation.isPending;
   const translateDescriptions = true;
-  const currentOllamaBaseUrl = settings?.ollama_base_url ?? "";
-  const currentOllamaModel = settings?.ollama_model ?? "";
-  const hasOllamaConfig = Boolean(currentOllamaBaseUrl.trim());
-  const pendingOllamaVerification =
-    Boolean(settings) && hasOllamaConfig && !settings?.ollama_configured && !settings?.ollama_error;
-  const ollamaBaseUrlValue = ollamaBaseUrlDraft ?? currentOllamaBaseUrl;
-  const ollamaModelValue = ollamaModelDraft ?? currentOllamaModel;
+  // 翻译配置不再做 Ollama 连通性验证
 
-  useEffect(() => {
-    if (!token) return;
-    if (!pendingOllamaVerification)
-      return;
-  const timer = window.setInterval(() => {
-      queryClient.invalidateQueries({ queryKey: ["translation-settings", token] });
-    }, 4000);
-    return () => window.clearInterval(timer);
-  }, [
-    pendingOllamaVerification,
-    queryClient,
-    token,
-  ]);
+  // 取消轮询连通性验证
 
   const formatLabel = (value: string) => (value === "ollama" ? "Ollama 本地" : value);
   const available = (value: string) => {
@@ -809,9 +791,7 @@ function TranslationSettingsPanel({
   };
   const statusHints: string[] = [];
   // Deepseek 验证提示已移除（大模型配置面板内手动测试）
-  if (pendingOllamaVerification) {
-    statusHints.push("Ollama 连通性验证中…");
-  }
+  // 不展示 Ollama 连通性提示
   if (settings || localTranslate !== null) {
     statusHints.push(
       translateDescriptions ? "当前翻译标题和摘要。" : "当前仅翻译标题。"
@@ -872,9 +852,7 @@ function TranslationSettingsPanel({
             </div>
           </div>
 
-          <section className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm">
-            <p className="text-sm text-slate-600">当前默认翻译标题与摘要（不可更改）。</p>
-          </section>
+          {/* 翻译范围固定为“标题+摘要”，此处不再展示说明 */}
 
           <div className="grid gap-4 lg:grid-cols-2">
             {/* Deepseek 配置移至“⼤模型配置”面板 */}
