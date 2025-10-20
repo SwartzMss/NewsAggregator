@@ -56,6 +56,69 @@ struct CandidateArticle {
 
 const TRANSLATION_LANG: &str = "zh-CN";
 
+// 轻量级 HTML 实体解码：
+// 支持常见命名实体与十进制/十六进制数字实体，避免引入额外依赖。
+fn html_unescape_minimal(input: &str) -> String {
+    // 快速路径：没有'&'则直接返回原字符串拷贝
+    if !input.as_bytes().contains(&b'&') {
+        return input.to_string();
+    }
+
+    let mut out = String::with_capacity(input.len());
+    let bytes = input.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'&' {
+            // 查找下一个分号
+            if let Some(semi) = bytes[i + 1..].iter().position(|&b| b == b';') {
+                let end = i + 1 + semi; // 分号前位置
+                let entity = &input[i + 1..=end]; // 含分号
+                let decoded = match entity {
+                    // 常见命名实体（含分号）
+                    "amp;" => Some('&'),
+                    "lt;" => Some('<'),
+                    "gt;" => Some('>'),
+                    "quot;" => Some('"'),
+                    "apos;" => Some('\''),
+                    // 一些源里会出现没有分号的奇怪情况，这里不处理以避免误判
+                    _ => {
+                        // 数字实体：十进制 &#NNN; 或 十六进制 &#xHHH;
+                        if let Some(rest) = entity.strip_prefix("#x") {
+                            // 十六进制
+                            let hex = rest.trim_end_matches(';');
+                            if let Ok(code) = u32::from_str_radix(hex, 16) {
+                                std::char::from_u32(code)
+                            } else {
+                                None
+                            }
+                        } else if let Some(rest) = entity.strip_prefix('#') {
+                            // 十进制
+                            let dec = rest.trim_end_matches(';');
+                            if let Ok(code) = dec.parse::<u32>() {
+                                std::char::from_u32(code)
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    }
+                };
+
+                if let Some(ch) = decoded {
+                    out.push(ch);
+                    i = end + 2; // 跳过 &...[;]
+                    continue;
+                }
+            }
+        }
+        // 常规字符或未识别实体，原样写入
+        out.push(bytes[i] as char);
+        i += 1;
+    }
+    out
+}
+
 fn should_translate_title(title: &str) -> bool {
     // 翻译判定逻辑：
     // 1. 空标题不翻译
@@ -1077,9 +1140,13 @@ fn convert_entry(feed: &DueFeedRow, entry: &Entry) -> Option<NewArticle> {
         .map(|dt| dt.with_timezone(&Utc))
         .unwrap_or_else(Utc::now);
 
+    // 对标题与摘要做最小化 HTML 实体解码，避免出现 B&amp;M 等显示问题
+    let title = html_unescape_minimal(title);
+    let description = description.map(|s| html_unescape_minimal(s.trim()));
+
     Some(NewArticle {
         feed_id: Some(feed.id),
-        title: title.to_string(),
+        title,
         url,
         description,
         language,
