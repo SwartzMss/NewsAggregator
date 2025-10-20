@@ -32,6 +32,7 @@ use crate::{
     },
     util::{
         deepseek::ArticleSnippet,
+        html::strip_html_basic,
         title::{jaccard_similarity, prepare_title_signature},
         translator::TranslationEngine,
         url_norm::normalize_article_url,
@@ -1140,9 +1141,15 @@ fn convert_entry(feed: &DueFeedRow, entry: &Entry) -> Option<NewArticle> {
         .map(|dt| dt.with_timezone(&Utc))
         .unwrap_or_else(Utc::now);
 
-    // 对标题与摘要做最小化 HTML 实体解码，避免出现 B&amp;M 等显示问题
+    // 处理标题与摘要：
+    // 1) 先做基础 HTML 去标签，避免 RSS/Atom 的富文本摘要渗透
+    // 2) 再做最小化 HTML 实体解码，避免 B&amp;M 等问题
+    // 标题仅做实体解码，不进行 HTML 去标签（避免过度清理影响显示）
     let title = html_unescape_minimal(title);
-    let description = description.map(|s| html_unescape_minimal(s.trim()));
+    let description = description.map(|s| {
+        let stripped = strip_html_basic(s.trim());
+        html_unescape_minimal(stripped.as_str())
+    });
 
     Some(NewArticle {
         feed_id: Some(feed.id),

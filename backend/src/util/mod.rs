@@ -5,3 +5,4 @@ pub mod ollama;
 pub mod title;
 pub mod translator;
 pub mod url_norm;
+pub mod html;
