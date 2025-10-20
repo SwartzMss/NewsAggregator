@@ -60,7 +60,6 @@ export type TranslationSettings = {
   ollama_error?: string | null;
   ollama_base_url?: string | null;
   ollama_model?: string | null;
-  translate_descriptions: boolean;
 };
 
 export type TranslationSettingsUpdate = {
@@ -69,7 +68,6 @@ export type TranslationSettingsUpdate = {
   deepseek_api_key?: string;
   ollama_base_url?: string;
   ollama_model?: string;
-  translate_descriptions?: boolean;
 };
 
 export type AiDedupSettings = {

@@ -27,7 +27,6 @@ pub async fn get_translation_settings(
         ollama_error: snapshot.ollama_error,
         ollama_base_url: snapshot.ollama_base_url,
         ollama_model: snapshot.ollama_model,
-        translate_descriptions: snapshot.translate_descriptions,
     })
 }
 
@@ -83,11 +82,6 @@ pub async fn update_translation_settings(
         }
     }
 
-    if let Some(flag) = payload.translate_descriptions {
-        let value = if flag { "true" } else { "false" };
-        repo::settings::upsert_setting(pool, "translation.translate_descriptions", value).await?;
-        update.translate_descriptions = Some(flag);
-    }
     if let Some(flag) = payload.translation_enabled {
         let value = if flag { "true" } else { "false" };
         repo::settings::upsert_setting(pool, "translation.enabled", value).await?;

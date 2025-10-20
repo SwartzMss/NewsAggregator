@@ -215,7 +215,6 @@ struct TranslationState {
     ollama_client: Option<Arc<OllamaClient>>,
     ollama_verified: bool,
     ollama_error: Option<String>,
-    translate_descriptions: bool,
     translation_enabled: bool,
 }
 
@@ -239,7 +238,6 @@ pub struct TranslatorCredentialsUpdate {
     pub deepseek_api_key: Option<String>,
     pub ollama_base_url: Option<String>,
     pub ollama_model: Option<String>,
-    pub translate_descriptions: Option<bool>,
     pub translation_enabled: Option<bool>,
 }
 
@@ -252,7 +250,6 @@ pub struct TranslatorSnapshot {
     pub ollama_error: Option<String>,
     pub ollama_base_url: Option<String>,
     pub ollama_model: Option<String>,
-    pub translate_descriptions: bool,
     pub translation_enabled: bool,
 }
 
@@ -269,7 +266,6 @@ impl TranslationEngine {
             ollama_client: None,
             ollama_verified: false,
             ollama_error: None,
-            translate_descriptions: false,
             translation_enabled: false,
         };
 
@@ -441,16 +437,8 @@ impl TranslationEngine {
             ollama_error: state.ollama_error.clone(),
             ollama_base_url,
             ollama_model,
-            translate_descriptions: state.translate_descriptions,
             translation_enabled: state.translation_enabled,
         }
-    }
-
-    pub fn translate_descriptions(&self) -> bool {
-        self.state
-            .read()
-            .map(|state| state.translate_descriptions)
-            .unwrap_or(false)
     }
 
     pub fn translation_enabled(&self) -> bool {
@@ -530,9 +518,6 @@ impl TranslationEngine {
             state.ollama_client = build_ollama_client(&self.http_config, &base_guard)?;
         }
 
-        if let Some(flag) = update.translate_descriptions {
-            state.translate_descriptions = flag;
-        }
         if let Some(flag) = update.translation_enabled {
             state.translation_enabled = flag;
         }

@@ -616,19 +616,17 @@ async fn process_feed_locked(
                     );
                     // 不进行翻译但保留原始标题/描述
                 } else {
-                // 翻译流程：根据是否翻译摘要决定传入 description；若无可用 provider 返回 None
-                let translate_desc_flag = translation.translate_descriptions();
+                // 翻译流程：始终翻译摘要（已取消单独开关）；若无可用 provider 返回 None
                 let has_original_desc = article.description.is_some();
 
                 info!(
                     feed_id = feed.id,
                     url = %article.url,
-                    translate_descriptions = translate_desc_flag,
                     has_original_description = has_original_desc,
                     "pre-translation decision"
                 );
 
-                let desc_owned = if translate_desc_flag { article.description.clone() } else { None };
+                let desc_owned = article.description.clone();
 
                 // 开始进行翻译调用：记录 provider 与是否带描述
                 info!(
@@ -652,7 +650,7 @@ async fn process_feed_locked(
                         }
                         article.language = Some(TRANSLATION_LANG.to_string());
 
-                        if translate_desc_flag && has_original_desc && desc_owned.is_some() && article.description.is_none() {
+                        if has_original_desc && desc_owned.is_some() && article.description.is_none() {
                             warn!(
                                 feed_id = feed.id,
                                 url = %article.url,

@@ -98,7 +98,6 @@ pub struct TranslationSettingsOut {
     pub ollama_error: Option<String>,
     pub ollama_base_url: Option<String>,
     pub ollama_model: Option<String>,
-    pub translate_descriptions: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -127,8 +126,6 @@ pub struct TranslationSettingsUpdate {
     pub ollama_base_url: Option<String>,
     #[serde(default)]
     pub ollama_model: Option<String>,
-    #[serde(default)]
-    pub translate_descriptions: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]

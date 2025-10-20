@@ -46,12 +46,6 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
             repo::settings::upsert_setting(&pool, "translation.provider", "ollama").await?;
             tracing::info!(old = current.as_deref().unwrap_or("<none>"), new = "ollama", "normalized translation.provider");
         }
-        // Ensure range is always title+desc (frontend is fixed but keep consistent server-side)
-        let range = repo::settings::get_setting(&pool, "translation.translate_descriptions").await?;
-        if range.as_deref() != Some("true") {
-            repo::settings::upsert_setting(&pool, "translation.translate_descriptions", "true").await?;
-            tracing::info!(old = range.as_deref().unwrap_or("<none>"), new = "true", "normalized translation.translate_descriptions");
-        }
         // Clean deprecated keys (safe no-op if absent)
         let _ = repo::settings::delete_setting(&pool, "translation.baidu_app_id").await;
         let _ = repo::settings::delete_setting(&pool, "translation.baidu_secret_key").await;
@@ -71,23 +65,13 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
         repo::settings::get_setting(&pool, "translation.ollama_base_url").await?;
     let stored_ollama_model =
         repo::settings::get_setting(&pool, "translation.ollama_model").await?;
-    let stored_translate_descriptions =
-        repo::settings::get_setting(&pool, "translation.translate_descriptions").await?;
     let stored_translation_enabled =
         repo::settings::get_setting(&pool, "translation.enabled").await?;
-    let translate_flag = stored_translate_descriptions.as_ref().and_then(|value| {
-        match value.trim().to_ascii_lowercase().as_str() {
-            "true" | "1" | "yes" | "on" => Some(true),
-            "false" | "0" | "no" | "off" => Some(false),
-            _ => None,
-        }
-    });
 
     translator.update_credentials(TranslatorCredentialsUpdate {
         deepseek_api_key: stored_deepseek_key,
         ollama_base_url: stored_ollama_base_url,
         ollama_model: stored_ollama_model,
-        translate_descriptions: translate_flag,
         translation_enabled: stored_translation_enabled.as_ref().and_then(|v| {
             match v.trim().to_ascii_lowercase().as_str() {
                 "true" | "1" | "yes" | "on" => Some(true),
