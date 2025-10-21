@@ -18,6 +18,7 @@ impl EventsHub {
         Self { sender: tx }
     }
 
+    #[allow(dead_code)]
     pub fn broadcast(&self, ev: repo_events::EventRecord) {
         let _ = self.sender.send(ev);
     }
@@ -43,6 +44,7 @@ pub struct EmitEvent {
     pub source_domain: Option<String>,
 }
 
+#[allow(dead_code)]
 pub async fn emit(
     pool: &sqlx::PgPool,
     hub: &EventsHub,

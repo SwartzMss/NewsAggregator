@@ -24,7 +24,7 @@ use tracing::{info, warn};
 
 use crate::{
     config::{FetcherConfig, HttpClientConfig},
-    ops::events::{self as ops_events, EventsHub, EmitEvent},
+    ops::events::EventsHub,
     repo::{
         article_sources::{self, ArticleSourceRecord},
         articles::{self, ArticleRow, NewArticle},
@@ -346,7 +346,6 @@ impl Fetcher {
         for feed in feeds {
             // 每个 feed 使用 tokio JoinSet 并发处理，受 concurrency 限制
             let pool_cloned = pool.clone();
-            let pool_for_emit = pool.clone();
             let client_cloned = client.clone();
             let translation_cloned = Arc::clone(&translation);
             let delay = retry_delay;
@@ -733,8 +732,7 @@ async fn process_feed_locked(
                                     url = %article.url,
                                     "failed to translate article after retry"
                                 );
-                                let provider = translation.current_provider().as_str().to_string();
-                    // keep: TRANSLATION_FAILED is part of minimal set
+                            // translation failed after retry; logging only under minimal events
                 }
                         }
                     }
@@ -1133,7 +1131,7 @@ async fn record_article_source(
     }
 }
 
-fn convert_entry(pool: &sqlx::PgPool, events: &EventsHub, feed: &DueFeedRow, entry: &Entry) -> Option<NewArticle> {
+fn convert_entry(_pool: &sqlx::PgPool, _events: &EventsHub, feed: &DueFeedRow, entry: &Entry) -> Option<NewArticle> {
     // 将 feed_rs 的 Entry 转换为内部 NewArticle 结构
     // 处理标题、链接、描述、语言与发布时间（优先 published，其次 updated，最后当前时间）
     let title = entry.title.as_ref()?.content.trim();
@@ -1193,7 +1191,7 @@ fn convert_entry(pool: &sqlx::PgPool, events: &EventsHub, feed: &DueFeedRow, ent
 
 async fn record_failure(
     pool: &sqlx::PgPool,
-    events: &EventsHub,
+    _events: &EventsHub,
     feed_id: i64,
     http_status: Option<StatusCode>,
     persist: bool,

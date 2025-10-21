@@ -35,7 +35,7 @@ pub async fn get_translation_settings(
 pub async fn update_translation_settings(
     pool: &sqlx::PgPool,
     translator: &Arc<TranslationEngine>,
-    events: &EventsHub,
+    _events: &EventsHub,
     payload: TranslationSettingsUpdate,
 ) -> AppResult<TranslationSettingsOut> {
     let mut update = TranslatorCredentialsUpdate::default();

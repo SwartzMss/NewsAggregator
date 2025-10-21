@@ -157,7 +157,7 @@ pub async fn upsert(
 
 // no-op: events suppressed; keep minimal imports only where needed
 
-pub async fn delete(pool: &sqlx::PgPool, events: &EventsHub, id: i64) -> AppResult<()> {
+pub async fn delete(pool: &sqlx::PgPool, _events: &EventsHub, id: i64) -> AppResult<()> {
     let mut lock_conn = pool.acquire().await?;
     repo::feeds::acquire_processing_lock(&mut lock_conn, id).await?;
 
@@ -204,7 +204,7 @@ pub async fn delete(pool: &sqlx::PgPool, events: &EventsHub, id: i64) -> AppResu
 pub async fn test(
     pool: &sqlx::PgPool,
     http_client: &HttpClientConfig,
-    events: &EventsHub,
+    _events: &EventsHub,
     payload: FeedTestPayload,
 ) -> AppResult<FeedTestResult> {
     let url = payload.url.trim();
