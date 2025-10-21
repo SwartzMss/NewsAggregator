@@ -95,5 +95,5 @@ export type AlertRecord = {
   ts: string; // ISO8601
   level: "info" | "warn" | "error" | string;
   code: string;
-  source_domain?: string | null;
+  addition_info?: string | null;
 };

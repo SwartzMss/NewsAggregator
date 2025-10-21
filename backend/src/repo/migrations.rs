@@ -238,7 +238,7 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
           ts             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           level          TEXT NOT NULL,
           code           TEXT NOT NULL,
-          source_domain  TEXT
+          addition_info  TEXT
         );
         "#,
     )
@@ -253,6 +253,15 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
     )
     .await?;
 
+    // Ensure new column exists on older installs
+    tx.execute(
+        r#"
+        ALTER TABLE news.events
+          ADD COLUMN IF NOT EXISTS addition_info TEXT;
+        "#,
+    )
+    .await?;
+
     // Best-effort migration from legacy ops.events
     tx.execute(
         r#"
@@ -262,8 +271,8 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
                 SELECT 1 FROM information_schema.tables
                 WHERE table_schema='ops' AND table_name='events'
             ) THEN
-                INSERT INTO news.events (ts, level, code, source_domain)
-                SELECT COALESCE(ts, NOW()), COALESCE(level,'info'), COALESCE(code,'UNKNOWN'), NULL
+                INSERT INTO news.events (ts, level, code, addition_info)
+                SELECT COALESCE(ts, NOW()), COALESCE(level,'info'), COALESCE(code,'UNKNOWN'), source_domain
                 FROM ops.events
                 ON CONFLICT DO NOTHING;
             END IF;

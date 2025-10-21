@@ -14,7 +14,7 @@ import {
 } from "../../lib/api";
 import { TranslationSettings, TranslationSettingsUpdate, AiDedupSettings, AiDedupSettingsUpdate, AdminLoginResponse } from "../../types/api";
 import { FeedsPage } from "../Feeds";
-import { listAlerts, openAlertsStream, deleteAlerts } from "../../lib/api";
+import { listAlerts, openAlertsStream } from "../../lib/api";
 import type { AlertRecord } from "../../types/api";
 
 type AdminSession = {
@@ -533,8 +533,8 @@ export function AdminPage() {
 
 function AlertsPanel({ token, onUnauthorized }: { token: string; onUnauthorized: () => void }) {
   const [items, setItems] = useState<AlertRecord[]>([]);
-  const [level, setLevel] = useState<string>("");
-  const [code, setCode] = useState<string>("");
+  // UI 级别过滤：ALL/INFO/WRN/ERR -> 实际 level: ''/'info'/'warn'/'error'
+  const [uiLevel, setUiLevel] = useState<string>("ALL");
   // Source domain no longer a primary filter; keep minimal UI
   const [error, setError] = useState<string | null>(null);
   // Removed local hide/dismiss operations: list is read-only
@@ -573,15 +573,25 @@ function AlertsPanel({ token, onUnauthorized }: { token: string; onUnauthorized:
     return () => { es?.close(); };
   }, [token]);
 
-  const filtered = items.filter((it) => (!level || it.level === level) && (!code || it.code === code));
+  const levelMap: Record<string, string> = { ALL: "", INFO: "info", WRN: "warn", ERR: "error" };
+  const actualLevel = levelMap[uiLevel] ?? "";
+  const filtered = items.filter((it) => (!actualLevel || it.level === actualLevel));
 
-  const statusDot = (lvl: string) => (
-    <span className="inline-flex items-center">
-      <span className={`inline-block h-2.5 w-2.5 rounded-full ${
-        lvl === "error" ? "bg-red-500" : lvl === "warn" ? "bg-amber-400" : "bg-emerald-500"
-      }`}></span>
-    </span>
-  );
+  const levelPill = (lvl: string) => {
+    const map: Record<string, { text: string; color: string; bg: string }> = {
+      error: { text: 'ERR', color: 'text-red-700', bg: 'bg-red-100' },
+      warn:  { text: 'WRN', color: 'text-amber-700', bg: 'bg-amber-100' },
+      info:  { text: 'INFO', color: 'text-emerald-700', bg: 'bg-emerald-100' },
+    };
+    const v = map[lvl] || map.info;
+    const dot = lvl === 'error' ? 'bg-red-500' : lvl === 'warn' ? 'bg-amber-400' : 'bg-emerald-500';
+    return (
+      <span className={`inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-medium ${v.bg} ${v.color} whitespace-nowrap`}>
+        <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${dot}`}></span>
+        {v.text}
+      </span>
+    );
+  };
 
   const titleFor = (it: AlertRecord) => {
     // Simple mapping from code to human-friendly title
@@ -620,9 +630,9 @@ function AlertsPanel({ token, onUnauthorized }: { token: string; onUnauthorized:
       return `服务：${p}`;
     }
 
-    // 其他未知事件：仅在有源域名时展示；否则留空以避免噪音
-    if (it.source_domain) {
-      return `源域名：${it.source_domain}`;
+    // 其他未知事件：展示 addition_info（若有）
+    if (it.addition_info) {
+      return it.addition_info;
     }
     return '';
   };
@@ -633,41 +643,45 @@ function AlertsPanel({ token, onUnauthorized }: { token: string; onUnauthorized:
         <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
       )}
       <div className="flex flex-wrap gap-3 text-sm items-center">
-        <select value={level} onChange={(e) => setLevel(e.target.value)} className="rounded border border-slate-300 px-2 py-1">
-          <option value="">全部级别</option>
-          <option value="error">error</option>
-          <option value="warn">warn</option>
-          <option value="info">info</option>
-        </select>
-        <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="事件码 code" className="rounded border border-slate-300 px-2 py-1" />
+        <div className="inline-flex overflow-hidden rounded-full border border-slate-300 bg-white">
+          {(["ALL","INFO","WRN","ERR"] as const).map(opt => (
+            <button
+              key={opt}
+              onClick={() => setUiLevel(opt)}
+              className={`px-3 py-1 text-xs font-medium ${uiLevel===opt ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'}`}
+            >{opt}</button>
+          ))}
+        </div>
+        {/* 暂不提供事件码过滤，保持简洁 */}
         {/* 来源域名作为详情附加信息，不提供隐藏/清空操作 */}
       </div>
       <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-        <table className="min-w-full text-left text-sm">
+        <table className="min-w-full table-fixed text-sm">
           <thead className="bg-slate-50 text-slate-600">
             <tr>
-              <th className="px-3 py-2">时间</th>
-              <th className="px-3 py-2">状态</th>
-              <th className="px-3 py-2">标题</th>
-              <th className="px-3 py-2">详情</th>
+              <th className="px-3 py-2 w-20 text-center border-r border-slate-200 border-dashed">级别</th>
+              <th className="px-3 py-2 w-[28%] text-center border-r border-slate-200 border-dashed">标题</th>
+              <th className="px-3 py-2 border-r border-slate-200 border-dashed">详情</th>
+              <th className="px-3 py-2 w-44 pl-2">时间</th>
               {/* 操作列移除，列表纯只读 */}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td className="px-3 py-3 text-slate-500" colSpan={7}>暂无事件</td>
+                <td className="px-3 py-6 text-slate-500 text-center" colSpan={4}>暂无事件</td>
               </tr>
             ) : (
               filtered.map((it) => (
-                <tr key={it.id} className="border-t border-slate-100">
-                  <td className="px-3 py-2 whitespace-nowrap text-slate-500">{new Date(it.ts).toLocaleString()}</td>
-                  <td className="px-3 py-2">{statusDot(it.level)}</td>
-                  <td className="px-3 py-2 whitespace-nowrap text-slate-900">{titleFor(it)}</td>
-                  <td className="px-3 py-2 whitespace-nowrap text-slate-600">
-                    <span className="text-xs text-slate-500">{detailFor(it)}</span>
+                <tr key={it.id} className="border-t border-slate-100 align-middle hover:bg-slate-50/60">
+                  <td className="px-3 py-2 text-center border-r border-slate-200 border-dashed">{levelPill(it.level)}</td>
+                  <td className="pl-2 pr-3 py-2 text-slate-900 text-center border-r border-slate-200 border-dashed">
+                    <div className="truncate font-medium inline-block max-w-full">{titleFor(it)}</div>
                   </td>
-                  
+                  <td className="px-3 py-2 text-slate-500 border-r border-slate-200 border-dashed">
+                    <div className="truncate text-xs">{detailFor(it)}</div>
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-slate-500 pl-2">{new Date(it.ts).toLocaleString()}</td>
                 </tr>
               ))
             )}

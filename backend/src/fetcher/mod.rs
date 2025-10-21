@@ -39,6 +39,7 @@ use crate::{
         url_norm::normalize_article_url,
     },
 };
+use crate::repo::events as repo_events;
 
 // 最近文章的简要信息，用于与当前抓取文章做相似度比较
 struct ArticleSummary {
@@ -678,7 +679,16 @@ async fn process_feed_locked(
                                 elapsed_ms,
                                 "translator returned no description while description translation is enabled"
                             );
-                            // event suppressed per request to cancel all bindings
+                            // Insert minimal event with addition_info: "{source_domain}｜{title}"
+                            let _ = repo_events::upsert_event(
+                                &pool,
+                                &repo_events::NewEvent {
+                                    level: "warn".to_string(),
+                                    code: "TRANSLATION_DESC_MISSING".to_string(),
+                                    addition_info: Some(format!("{}｜{}", feed.source_domain, original_title)),
+                                },
+                                0,
+                            ).await;
                         }
                     }
                     Ok(None) => {

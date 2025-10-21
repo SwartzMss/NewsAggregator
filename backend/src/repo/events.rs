@@ -8,27 +8,27 @@ pub struct EventRecord {
     pub ts: DateTime<Utc>,
     pub level: String,
     pub code: String,
-    pub source_domain: Option<String>,
+    pub addition_info: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NewEvent {
     pub level: String,
     pub code: String,
-    pub source_domain: Option<String>,
+    pub addition_info: Option<String>,
 }
 
 pub async fn upsert_event(pool: &PgPool, ev: &NewEvent, _window_seconds: i64) -> Result<EventRecord, sqlx::Error> {
     let inserted = sqlx::query(
         r#"
-        INSERT INTO news.events (level, code, source_domain)
+        INSERT INTO news.events (level, code, addition_info)
         VALUES ($1,$2,$3)
-        RETURNING id, ts, level, code, source_domain
+        RETURNING id, ts, level, code, addition_info
         "#,
     )
     .bind(&ev.level)
     .bind(&ev.code)
-    .bind(&ev.source_domain)
+    .bind(&ev.addition_info)
     .fetch_one(pool)
     .await?;
     Ok(row_to_record(inserted))
@@ -40,7 +40,7 @@ fn row_to_record(row: sqlx::postgres::PgRow) -> EventRecord {
         ts: row.get("ts"),
         level: row.get("level"),
         code: row.get("code"),
-        source_domain: row.get("source_domain"),
+        addition_info: row.get("addition_info"),
     }
 }
 
@@ -57,7 +57,7 @@ pub struct ListParams {
 
 pub async fn list_events(pool: &PgPool, params: &ListParams) -> Result<Vec<EventRecord>, sqlx::Error> {
     let mut qb = QueryBuilder::<Postgres>::new(
-        "SELECT id, ts, level, code, source_domain FROM news.events WHERE 1=1",
+        "SELECT id, ts, level, code, addition_info FROM news.events WHERE 1=1",
     );
 
     if let Some(level) = &params.level {
