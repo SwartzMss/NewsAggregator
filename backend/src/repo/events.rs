@@ -21,7 +21,7 @@ pub struct NewEvent {
 pub async fn upsert_event(pool: &PgPool, ev: &NewEvent, _window_seconds: i64) -> Result<EventRecord, sqlx::Error> {
     let inserted = sqlx::query(
         r#"
-        INSERT INTO ops.events (level, code, source_domain)
+        INSERT INTO news.events (level, code, source_domain)
         VALUES ($1,$2,$3)
         RETURNING id, ts, level, code, source_domain
         "#,
@@ -57,7 +57,7 @@ pub struct ListParams {
 
 pub async fn list_events(pool: &PgPool, params: &ListParams) -> Result<Vec<EventRecord>, sqlx::Error> {
     let mut qb = QueryBuilder::<Postgres>::new(
-        "SELECT id, ts, level, code, source_domain FROM ops.events WHERE 1=1",
+        "SELECT id, ts, level, code, source_domain FROM news.events WHERE 1=1",
     );
 
     if let Some(level) = &params.level {
@@ -88,7 +88,7 @@ pub async fn list_events(pool: &PgPool, params: &ListParams) -> Result<Vec<Event
 
 pub async fn delete_events_by_ids(pool: &PgPool, ids: &[i64]) -> Result<u64, sqlx::Error> {
     if ids.is_empty() { return Ok(0); }
-    let mut qb = QueryBuilder::<Postgres>::new("DELETE FROM ops.events WHERE id = ANY(");
+    let mut qb = QueryBuilder::<Postgres>::new("DELETE FROM news.events WHERE id = ANY(");
     qb.push_bind(ids).push(")");
     let res = qb.build().execute(pool).await?;
     Ok(res.rows_affected())

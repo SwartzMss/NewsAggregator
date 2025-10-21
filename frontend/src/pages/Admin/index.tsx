@@ -535,31 +535,15 @@ function AlertsPanel({ token, onUnauthorized }: { token: string; onUnauthorized:
   const [items, setItems] = useState<AlertRecord[]>([]);
   const [level, setLevel] = useState<string>("");
   const [code, setCode] = useState<string>("");
-  const [sourceDomain, setSourceDomain] = useState<string>("");
+  // Source domain no longer a primary filter; keep minimal UI
   const [error, setError] = useState<string | null>(null);
-  const [hideDismissed, setHideDismissed] = useState<boolean>(true);
-  const [dismissed, setDismissed] = useState<Set<number>>(() => {
-    try {
-      const raw = typeof window !== 'undefined' ? window.sessionStorage.getItem('admin-alerts-dismissed') : null;
-      if (!raw) return new Set();
-      const arr = JSON.parse(raw) as number[];
-      return new Set(arr);
-    } catch { return new Set(); }
-  });
-
-  const persistDismissed = (next: Set<number>) => {
-    try {
-      if (typeof window !== 'undefined') {
-        window.sessionStorage.setItem('admin-alerts-dismissed', JSON.stringify(Array.from(next)));
-      }
-    } catch {}
-  };
+  // Removed local hide/dismiss operations: list is read-only
 
   useEffect(() => {
     let canceled = false;
     (async () => {
       try {
-        const list = await listAlerts(token, { limit: 50 });
+        const list = await listAlerts(token, { limit: 30 });
         if (!canceled) setItems(list);
       } catch (e) {
         if ((e as Error) instanceof UnauthorizedError) onUnauthorized();
@@ -589,41 +573,59 @@ function AlertsPanel({ token, onUnauthorized }: { token: string; onUnauthorized:
     return () => { es?.close(); };
   }, [token]);
 
-  const filtered = items.filter((it) =>
-    (!level || it.level === level) && (!code || it.code === code) && (!sourceDomain || (it.source_domain || "") === sourceDomain) && (!hideDismissed || !dismissed.has(it.id))
+  const filtered = items.filter((it) => (!level || it.level === level) && (!code || it.code === code));
+
+  const statusDot = (lvl: string) => (
+    <span className="inline-flex items-center">
+      <span className={`inline-block h-2.5 w-2.5 rounded-full ${
+        lvl === "error" ? "bg-red-500" : lvl === "warn" ? "bg-amber-400" : "bg-emerald-500"
+      }`}></span>
+    </span>
   );
 
-  const hiddenCount = items.reduce((acc, it) => acc + (dismissed.has(it.id) ? 1 : 0), 0);
-
-  const onDismiss = (id: number) => {
-    setDismissed((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      persistDismissed(next);
-      return next;
-    });
+  const titleFor = (it: AlertRecord) => {
+    // Simple mapping from code to human-friendly title
+    const code = (it.code || '').toUpperCase();
+    const map: Record<string, string> = {
+      SYSTEM_STARTED: "系统启动",
+      ADMIN_LOGIN: "管理员登录",
+      ADMIN_LOGOUT: "管理员登出",
+      TRANSLATION_ENABLED: "已开启翻译",
+      TRANSLATION_DISABLED: "已关闭翻译",
+      MODEL_SETTINGS_UPDATED: "大模型配置已更新",
+    };
+    if (code.startsWith("TRANSLATION_PROVIDER_SET_")) {
+      const p = code.replace("TRANSLATION_PROVIDER_SET_", "");
+      return `已切换翻译服务：${p}`;
+    }
+    return map[code] || code;
   };
 
-  const onRestoreAll = () => {
-    const next = new Set<number>();
-    setDismissed(next);
-    persistDismissed(next);
-  };
+  const detailFor = (it: AlertRecord) => {
+    const code = (it.code || '').toUpperCase();
+    // 对于纯系统/管理操作类事件，默认不显示详情
+    const noDetailCodes = new Set([
+      'SYSTEM_STARTED',
+      'ADMIN_LOGIN',
+      'ADMIN_LOGOUT',
+      'TRANSLATION_ENABLED',
+      'TRANSLATION_DISABLED',
+      'MODEL_SETTINGS_UPDATED',
+    ]);
+    if (noDetailCodes.has(code)) return '';
 
-  const onClearLocal = () => {
-    // 删除当前可见（过滤后）的事件
-    const ids = filtered.map((it) => it.id);
-    if (ids.length === 0) return;
-    deleteAlerts(token, ids)
-      .then(() => setItems((prev) => prev.filter((it) => !ids.includes(it.id))))
-      .catch((e) => setError((e as Error).message || "删除失败"));
-  };
+    // 翻译服务切换：展示 provider 名称
+    if (code.startsWith('TRANSLATION_PROVIDER_SET_')) {
+      const p = code.replace('TRANSLATION_PROVIDER_SET_', '');
+      return `服务：${p}`;
+    }
 
-  const badge = (lvl: string) => (
-    <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
-      lvl === "error" ? "bg-red-100 text-red-700" : lvl === "warn" ? "bg-amber-100 text-amber-700" : "bg-slate-200 text-slate-700"
-    }`}>{lvl}</span>
-  );
+    // 其他未知事件：仅在有源域名时展示；否则留空以避免噪音
+    if (it.source_domain) {
+      return `源域名：${it.source_domain}`;
+    }
+    return '';
+  };
 
   return (
     <div className="space-y-4">
@@ -638,26 +640,17 @@ function AlertsPanel({ token, onUnauthorized }: { token: string; onUnauthorized:
           <option value="info">info</option>
         </select>
         <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="事件码 code" className="rounded border border-slate-300 px-2 py-1" />
-        <input value={sourceDomain} onChange={(e) => setSourceDomain(e.target.value)} placeholder="来源域名 source_domain" className="rounded border border-slate-300 px-2 py-1" />
-        <label className="inline-flex items-center gap-2 select-none">
-          <input type="checkbox" checked={hideDismissed} onChange={(e) => setHideDismissed(e.target.checked)} />
-          隐藏已确认
-          {hiddenCount > 0 && (<span className="text-xs text-slate-500">（已隐藏 {hiddenCount} 条）</span>)}
-        </label>
-        <button onClick={onClearLocal} className="rounded border px-2 py-1 bg-slate-100 hover:bg-slate-200">清空本地</button>
-        {hiddenCount > 0 && (
-          <button onClick={onRestoreAll} className="rounded border px-2 py-1 bg-slate-100 hover:bg-slate-200">恢复全部</button>
-        )}
+        {/* 来源域名作为详情附加信息，不提供隐藏/清空操作 */}
       </div>
       <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
         <table className="min-w-full text-left text-sm">
           <thead className="bg-slate-50 text-slate-600">
             <tr>
               <th className="px-3 py-2">时间</th>
-              <th className="px-3 py-2">级别</th>
-              <th className="px-3 py-2">事件码</th>
-              <th className="px-3 py-2">来源域名</th>
-              <th className="px-3 py-2">操作</th>
+              <th className="px-3 py-2">状态</th>
+              <th className="px-3 py-2">标题</th>
+              <th className="px-3 py-2">详情</th>
+              {/* 操作列移除，列表纯只读 */}
             </tr>
           </thead>
           <tbody>
@@ -669,12 +662,12 @@ function AlertsPanel({ token, onUnauthorized }: { token: string; onUnauthorized:
               filtered.map((it) => (
                 <tr key={it.id} className="border-t border-slate-100">
                   <td className="px-3 py-2 whitespace-nowrap text-slate-500">{new Date(it.ts).toLocaleString()}</td>
-                  <td className="px-3 py-2">{badge(it.level)}</td>
-                  <td className="px-3 py-2 whitespace-nowrap text-slate-800">{it.code}</td>
-                  <td className="px-3 py-2 whitespace-nowrap text-slate-600">{it.source_domain || ""}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">
-                    <button onClick={() => onDismiss(it.id)} className="rounded border px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200">确认并隐藏</button>
+                  <td className="px-3 py-2">{statusDot(it.level)}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-slate-900">{titleFor(it)}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-slate-600">
+                    <span className="text-xs text-slate-500">{detailFor(it)}</span>
                   </td>
+                  
                 </tr>
               ))
             )}

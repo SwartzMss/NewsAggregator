@@ -223,17 +223,17 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
     )
     .await?;
 
-    // ops schema and events table for notification center (Phase 1)
+    // Move events table into news schema and ensure presence
     tx.execute(
         r#"
-        CREATE SCHEMA IF NOT EXISTS ops;
+        CREATE SCHEMA IF NOT EXISTS news;
         "#,
     )
     .await?;
 
     tx.execute(
         r#"
-        CREATE TABLE IF NOT EXISTS ops.events (
+        CREATE TABLE IF NOT EXISTS news.events (
           id             BIGSERIAL PRIMARY KEY,
           ts             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           level          TEXT NOT NULL,
@@ -244,45 +244,28 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
     )
     .await?;
 
-    // Ensure simplified column exists on pre-existing tables
     tx.execute(
         r#"
-        ALTER TABLE ops.events
-          ADD COLUMN IF NOT EXISTS source_domain TEXT;
+        CREATE INDEX IF NOT EXISTS idx_news_events_ts ON news.events(ts DESC);
+        CREATE INDEX IF NOT EXISTS idx_news_events_level ON news.events(level);
+        CREATE INDEX IF NOT EXISTS idx_news_events_code ON news.events(code);
         "#,
     )
     .await?;
 
-    tx.execute(
-        r#"
-        CREATE INDEX IF NOT EXISTS idx_ops_events_ts ON ops.events(ts DESC);
-        CREATE INDEX IF NOT EXISTS idx_ops_events_level ON ops.events(level);
-        CREATE INDEX IF NOT EXISTS idx_ops_events_code ON ops.events(code);
-        "#,
-    )
-    .await?;
-
+    // Best-effort migration from legacy ops.events
     tx.execute(
         r#"
         DO $$
         BEGIN
-            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='ops' AND table_name='events' AND column_name='title') THEN
-                ALTER TABLE ops.events DROP COLUMN IF EXISTS title;
-            END IF;
-            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='ops' AND table_name='events' AND column_name='message') THEN
-                ALTER TABLE ops.events DROP COLUMN IF EXISTS message;
-            END IF;
-            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='ops' AND table_name='events' AND column_name='attrs') THEN
-                ALTER TABLE ops.events DROP COLUMN IF EXISTS attrs;
-            END IF;
-            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='ops' AND table_name='events' AND column_name='source') THEN
-                ALTER TABLE ops.events DROP COLUMN IF EXISTS source;
-            END IF;
-            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='ops' AND table_name='events' AND column_name='dedupe_key') THEN
-                ALTER TABLE ops.events DROP COLUMN IF EXISTS dedupe_key;
-            END IF;
-            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='ops' AND table_name='events' AND column_name='count') THEN
-                ALTER TABLE ops.events DROP COLUMN IF EXISTS count;
+            IF EXISTS (
+                SELECT 1 FROM information_schema.tables
+                WHERE table_schema='ops' AND table_name='events'
+            ) THEN
+                INSERT INTO news.events (ts, level, code, source_domain)
+                SELECT COALESCE(ts, NOW()), COALESCE(level,'info'), COALESCE(code,'UNKNOWN'), NULL
+                FROM ops.events
+                ON CONFLICT DO NOTHING;
             END IF;
         END$$;
         "#,
