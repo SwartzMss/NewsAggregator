@@ -1086,29 +1086,6 @@ async fn process_feed_locked(
         let inserted = articles::insert_articles(&pool, articles).await?;
         let inserted_count = inserted.len();
         info!(feed_id = feed.id, inserted = inserted_count, "articles insert finished");
-        if inserted_count < article_count {
-            let skipped = article_count - inserted_count;
-            let sample_url = inserted.get(0).map(|(_, a)| a.url.clone()).unwrap_or_default();
-            let _ = ops_events::emit(
-                &pool,
-                &events,
-                EmitEvent{
-                    level: "warn".to_string(),
-                    code: "ARTICLE_INSERT_SKIPPED".to_string(),
-                    title: "部分文章入库失败或被跳过".to_string(),
-                    message: format!("attempted {}, inserted {}, skipped {}", article_count, inserted_count, skipped),
-                    attrs: serde_json::json!({
-                        "feed_id": feed.id,
-                        "attempted": article_count,
-                        "inserted": inserted_count,
-                        "skipped": skipped,
-                        "sample_url": sample_url,
-                    }),
-                    source: "fetcher".to_string(),
-                    dedupe_key: Some(format!("feed:{}", feed.id)),
-                }
-            ).await;
-        }
         for (article_id, article) in &inserted {
             // primary 决策：来源于当前 feed 的主插入
             record_article_source(&pool, &events, feed, article, *article_id, Some("primary"), None).await;
