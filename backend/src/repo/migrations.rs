@@ -272,6 +272,28 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
     )
     .await?;
 
+    // Best-effort drop of legacy ops.events and ops schema if empty
+    tx.execute(
+        r#"
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM information_schema.tables
+                WHERE table_schema='ops' AND table_name='events'
+            ) THEN
+                EXECUTE 'DROP TABLE IF EXISTS ops.events';
+            END IF;
+            -- Drop schema ops if no tables remain
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.tables WHERE table_schema='ops'
+            ) THEN
+                EXECUTE 'DROP SCHEMA IF EXISTS ops';
+            END IF;
+        END$$;
+        "#,
+    )
+    .await?;
+
     tx.commit().await?;
     Ok(())
 }
