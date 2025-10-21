@@ -120,7 +120,7 @@ pub async fn update_translation_settings(
         let code = if flag { "TRANSLATION_ENABLED" } else { "TRANSLATION_DISABLED" };
         let _ = repo_events::upsert_event(
             pool,
-            &repo_events::NewEvent { level: "info".to_string(), code: code.to_string(), source_domain: None },
+            &repo_events::NewEvent { level: "info".to_string(), code: code.to_string(), addition_info: None },
             0,
         ).await;
     }
@@ -129,7 +129,7 @@ pub async fn update_translation_settings(
         let code = format!("TRANSLATION_PROVIDER_SET_{}", prov);
         let _ = repo_events::upsert_event(
             pool,
-            &repo_events::NewEvent { level: "info".to_string(), code, source_domain: None },
+            &repo_events::NewEvent { level: "info".to_string(), code, addition_info: None },
             0,
         ).await;
     }
@@ -187,7 +187,7 @@ pub async fn update_model_settings(
         .map_err(|e| AppError::BadRequest(e.to_string()))?;
     let _ = repo_events::upsert_event(
         pool,
-        &repo_events::NewEvent { level: "info".to_string(), code: "MODEL_SETTINGS_UPDATED".to_string(), source_domain: None },
+        &repo_events::NewEvent { level: "info".to_string(), code: "MODEL_SETTINGS_UPDATED".to_string(), addition_info: None },
         0,
     ).await;
     get_model_settings(translator).await

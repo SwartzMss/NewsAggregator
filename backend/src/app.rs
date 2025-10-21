@@ -42,7 +42,7 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
     // Emit a simple system startup event (no source_domain)
     let _ = repo_events::upsert_event(
         &pool,
-        &repo_events::NewEvent { level: "info".to_string(), code: "SYSTEM_STARTED".to_string(), source_domain: None },
+        &repo_events::NewEvent { level: "info".to_string(), code: "SYSTEM_STARTED".to_string(), addition_info: None },
         0,
     ).await;
 

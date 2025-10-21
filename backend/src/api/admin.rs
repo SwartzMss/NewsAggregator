@@ -19,7 +19,7 @@ pub async fn login(
     // Record a simple admin login event (no source_domain)
     let _ = repo_events::upsert_event(
         &state.pool,
-        &NewEvent { level: "info".to_string(), code: "ADMIN_LOGIN".to_string(), source_domain: None },
+        &NewEvent { level: "info".to_string(), code: "ADMIN_LOGIN".to_string(), addition_info: None },
         0,
     ).await;
 
@@ -37,7 +37,7 @@ pub async fn logout(
     // Record an admin logout event
     let _ = repo_events::upsert_event(
         &state.pool,
-        &NewEvent { level: "info".to_string(), code: "ADMIN_LOGOUT".to_string(), source_domain: None },
+        &NewEvent { level: "info".to_string(), code: "ADMIN_LOGOUT".to_string(), addition_info: None },
         0,
     ).await;
     Ok(Json(serde_json::json!({ "ok": true })))

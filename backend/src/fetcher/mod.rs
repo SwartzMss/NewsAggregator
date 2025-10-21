@@ -679,16 +679,7 @@ async fn process_feed_locked(
                                 elapsed_ms,
                                 "translator returned no description while description translation is enabled"
                             );
-                            // Insert minimal event with addition_info: "{source_domain}｜{title}"
-                            let _ = repo_events::upsert_event(
-                                &pool,
-                                &repo_events::NewEvent {
-                                    level: "warn".to_string(),
-                                    code: "TRANSLATION_DESC_MISSING".to_string(),
-                                    addition_info: Some(format!("{}｜{}", feed.source_domain, original_title)),
-                                },
-                                0,
-                            ).await;
+                            // 不上报事件，仅记录日志（根据“仅失败重试后上报”的约定）
                         }
                     }
                     Ok(None) => {
@@ -742,8 +733,17 @@ async fn process_feed_locked(
                                     url = %article.url,
                                     "failed to translate article after retry"
                                 );
-                            // translation failed after retry; logging only under minimal events
-                }
+                                // 仅在重试后仍失败时上报事件
+                                let _ = repo_events::upsert_event(
+                                    &pool,
+                                    &repo_events::NewEvent {
+                                        level: "warn".to_string(),
+                                        code: "TRANSLATION_FAILED".to_string(),
+                                        addition_info: Some(format!("{}｜{}", feed.source_domain, original_title)),
+                                    },
+                                    0,
+                                ).await;
+                            }
                         }
                     }
                 }
