@@ -133,12 +133,10 @@ pub async fn upsert(
 
     if is_new_feed && response.enabled {
         let pool_fetch = pool.clone();
-        let pool_emit = pool.clone();
         let http_client = http_client.clone();
         let fetcher_config = fetcher_config.clone();
         let translator = Arc::clone(translator);
         let events = events.clone();
-        let events_clone = events.clone();
         tokio::spawn(async move {
             if let Err(err) =
                 fetcher::fetch_feed_once(pool_fetch, fetcher_config, http_client, translator, events.clone(), feed_id)
@@ -157,7 +155,7 @@ pub async fn upsert(
     Ok(response)
 }
 
-use crate::ops::events::{self as ops_events, EmitEvent};
+// no-op: events suppressed; keep minimal imports only where needed
 
 pub async fn delete(pool: &sqlx::PgPool, events: &EventsHub, id: i64) -> AppResult<()> {
     let mut lock_conn = pool.acquire().await?;

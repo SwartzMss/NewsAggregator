@@ -40,11 +40,7 @@ impl EventsHub {
 pub struct EmitEvent {
     pub level: String,
     pub code: String,
-    pub title: String,
-    pub message: String,
-    pub attrs: serde_json::Value,
-    pub source: String,
-    pub dedupe_key: Option<String>,
+    pub source_domain: Option<String>,
 }
 
 pub async fn emit(
@@ -57,11 +53,7 @@ pub async fn emit(
         &repo_events::NewEvent {
             level: payload.level,
             code: payload.code,
-            title: payload.title,
-            message: payload.message,
-            attrs: payload.attrs,
-            source: payload.source,
-            dedupe_key: payload.dedupe_key,
+            source_domain: payload.source_domain,
         },
         300,
     )
