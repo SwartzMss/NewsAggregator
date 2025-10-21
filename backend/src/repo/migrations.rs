@@ -223,6 +223,39 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
     )
     .await?;
 
+    // ops schema and events table for notification center (Phase 1)
+    tx.execute(
+        r#"
+        CREATE SCHEMA IF NOT EXISTS ops;
+        "#,
+    )
+    .await?;
+
+    tx.execute(
+        r#"
+        CREATE TABLE IF NOT EXISTS ops.events (
+          id          BIGSERIAL PRIMARY KEY,
+          ts          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          level       TEXT NOT NULL,
+          code        TEXT NOT NULL,
+          title       TEXT NOT NULL,
+          message     TEXT NOT NULL,
+          attrs       JSONB NOT NULL DEFAULT '{}'::jsonb,
+          source      TEXT NOT NULL,
+          dedupe_key  TEXT,
+          count       INTEGER NOT NULL DEFAULT 1
+        );
+        "#,
+    )
+    .await?;
+
+    tx.execute(
+        r#"
+        CREATE INDEX IF NOT EXISTS idx_ops_events_ts ON ops.events(ts DESC);
+        "#,
+    )
+    .await?;
+
     tx.commit().await?;
     Ok(())
 }

@@ -88,7 +88,19 @@ pub async fn require_admin(
     mut req: axum::http::Request<axum::body::Body>,
     next: Next,
 ) -> Result<Response, StatusCode> {
-    let token = extract_bearer(req.headers()).ok_or(StatusCode::UNAUTHORIZED)?;
+    let token = extract_bearer(req.headers()).or_else(|| {
+        // Fallback: allow query param `token` (for SSE/EventSource which can't set headers)
+        req.uri().query().and_then(|q| {
+            let params = form_urlencoded::parse(q.as_bytes());
+            for (k, v) in params {
+                if k == "token" {
+                    let s = v.trim().to_string();
+                    if !s.is_empty() { return Some(s); }
+                }
+            }
+            None
+        })
+    }).ok_or(StatusCode::UNAUTHORIZED)?;
     if state.admin.validate_session(&token).await {
         req.extensions_mut().insert(AdminIdentity {});
         Ok(next.run(req).await)

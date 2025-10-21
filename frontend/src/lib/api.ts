@@ -374,3 +374,23 @@ export async function updateAiDedupSettings(
   );
   return parseJSON<AiDedupSettings>(res);
 }
+
+// Alerts
+export async function listAlerts(
+  token: string,
+  params?: { level?: string; code?: string; source?: string; from?: string; to?: string; since_id?: number; limit?: number }
+): Promise<import("../types/api").AlertRecord[]> {
+  const res = await adminRequest(`/admin/api/alerts${toQueryString(params)}`, token, {
+    headers: { Accept: "application/json" },
+  });
+  return parseJSON(res);
+}
+
+export async function openAlertsStream(token: string): Promise<EventSource> {
+  const base = await getApiBase();
+  // EventSource 不支持自定义 header，这里改用带上 token 的查询参数，仅限 Admin 受信环境。
+  const url = new URL(`${base}/admin/api/alerts/stream`);
+  url.searchParams.set("token", token);
+  // 后端当前基于 Authorization 鉴权；若后续需要，可对 /alerts/stream 放宽并校验 query token。
+  return new EventSource(url.toString());
+}

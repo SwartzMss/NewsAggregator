@@ -24,6 +24,7 @@ pub async fn upsert_feed(
         &state.http_client,
         &state.fetcher_config,
         &state.translator,
+        &state.events,
         payload,
     )
     .await?;
@@ -34,7 +35,7 @@ pub async fn delete_feed(
     State(state): State<AppState>,
     Path(id): Path<i64>,
 ) -> AppResult<Json<serde_json::Value>> {
-    service::feeds::delete(&state.pool, id).await?;
+    service::feeds::delete(&state.pool, &state.events, id).await?;
     Ok(Json(serde_json::json!({ "ok": true })))
 }
 
@@ -42,6 +43,6 @@ pub async fn test_feed(
     State(state): State<AppState>,
     Json(payload): Json<FeedTestPayload>,
 ) -> AppResult<Json<FeedTestResult>> {
-    let result = service::feeds::test(&state.http_client, payload).await?;
+    let result = service::feeds::test(&state.pool, &state.http_client, &state.events, payload).await?;
     Ok(Json(result))
 }

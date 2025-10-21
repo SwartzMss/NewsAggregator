@@ -88,3 +88,17 @@ export type AdminLoginResponse = {
   token: string;
   expires_in: number;
 };
+
+// Alerts / Notification Center
+export type AlertRecord = {
+  id: number;
+  ts: string; // ISO8601
+  level: "info" | "warn" | "error" | string;
+  code: string;
+  title: string;
+  message: string;
+  attrs: Record<string, any>;
+  source: string;
+  dedupe_key?: string | null;
+  count: number;
+};

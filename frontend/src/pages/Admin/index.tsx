@@ -14,6 +14,8 @@ import {
 } from "../../lib/api";
 import { TranslationSettings, TranslationSettingsUpdate, AiDedupSettings, AiDedupSettingsUpdate, AdminLoginResponse } from "../../types/api";
 import { FeedsPage } from "../Feeds";
+import { listAlerts, openAlertsStream } from "../../lib/api";
+import type { AlertRecord } from "../../types/api";
 
 type AdminSession = {
   token: string;
@@ -215,6 +217,14 @@ export function AdminPage() {
             onUnauthorized={handleUnauthorized}
             onGotoModelSettings={() => setActiveSection("model-config")}
           />
+        ),
+      },
+      {
+        key: "alerts",
+        label: "通知中心",
+        description: "查看系统关键事件，实时更新。",
+        render: () => (
+          <AlertsPanel token={token} onUnauthorized={handleUnauthorized} />
         ),
       },
     ],
@@ -516,6 +526,116 @@ export function AdminPage() {
             </section>
           </div>
         </main>
+      </div>
+    </div>
+  );
+}
+
+function AlertsPanel({ token, onUnauthorized }: { token: string; onUnauthorized: () => void }) {
+  const [items, setItems] = useState<AlertRecord[]>([]);
+  const [level, setLevel] = useState<string>("");
+  const [code, setCode] = useState<string>("");
+  const [source, setSource] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let canceled = false;
+    (async () => {
+      try {
+        const list = await listAlerts(token, { limit: 50 });
+        if (!canceled) setItems(list);
+      } catch (e) {
+        if ((e as Error) instanceof UnauthorizedError) onUnauthorized();
+        else setError((e as Error).message || "加载事件失败");
+      }
+    })();
+    return () => { canceled = true; };
+  }, [token, onUnauthorized]);
+
+  useEffect(() => {
+    let es: EventSource | null = null;
+    (async () => {
+      try {
+        es = await openAlertsStream(token);
+        es.addEventListener("alert", (ev: MessageEvent) => {
+          try {
+            const rec = JSON.parse(ev.data) as AlertRecord;
+            setItems((prev) => [rec, ...prev].slice(0, 200));
+          } catch {}
+        });
+        es.onerror = () => {
+          // auto-close; UI 保持已有数据
+          es?.close();
+        };
+      } catch {}
+    })();
+    return () => { es?.close(); };
+  }, [token]);
+
+  const filtered = items.filter((it) =>
+    (!level || it.level === level) && (!code || it.code === code) && (!source || it.source === source)
+  );
+
+  const badge = (lvl: string) => (
+    <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
+      lvl === "error" ? "bg-red-100 text-red-700" : lvl === "warn" ? "bg-amber-100 text-amber-700" : "bg-slate-200 text-slate-700"
+    }`}>{lvl}</span>
+  );
+
+  return (
+    <div className="space-y-4">
+      {error && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
+      )}
+      <div className="flex flex-wrap gap-3 text-sm">
+        <select value={level} onChange={(e) => setLevel(e.target.value)} className="rounded border border-slate-300 px-2 py-1">
+          <option value="">全部级别</option>
+          <option value="error">error</option>
+          <option value="warn">warn</option>
+          <option value="info">info</option>
+        </select>
+        <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="事件码 code" className="rounded border border-slate-300 px-2 py-1" />
+        <input value={source} onChange={(e) => setSource(e.target.value)} placeholder="来源 source" className="rounded border border-slate-300 px-2 py-1" />
+      </div>
+      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <table className="min-w-full text-left text-sm">
+          <thead className="bg-slate-50 text-slate-600">
+            <tr>
+              <th className="px-3 py-2">时间</th>
+              <th className="px-3 py-2">级别</th>
+              <th className="px-3 py-2">事件</th>
+              <th className="px-3 py-2">消息</th>
+              <th className="px-3 py-2">来源</th>
+              <th className="px-3 py-2">次数</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr>
+                <td className="px-3 py-3 text-slate-500" colSpan={6}>暂无事件</td>
+              </tr>
+            ) : (
+              filtered.map((it) => (
+                <tr key={it.id} className="border-t border-slate-100">
+                  <td className="px-3 py-2 whitespace-nowrap text-slate-500">{new Date(it.ts).toLocaleString()}</td>
+                  <td className="px-3 py-2">{badge(it.level)}</td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    <div className="font-medium text-slate-900">{it.title}</div>
+                    <div className="text-xs text-slate-500">{it.code}</div>
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="text-slate-800">{it.message}</div>
+                    {it.attrs && (
+                      <pre className="mt-1 max-h-24 overflow-auto rounded bg-slate-50 p-2 text-xs text-slate-600">{JSON.stringify(it.attrs, null, 2)}</pre>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-slate-600">{it.source}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-slate-600">{it.count}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

@@ -14,6 +14,7 @@ use crate::{
     config::{AppConfig, FetcherConfig, FrontendPublicConfig, HttpClientConfig},
     fetcher, repo,
     util::translator::{TranslationEngine, TranslatorCredentialsUpdate, TranslatorProvider},
+    ops::events::EventsHub,
 };
 
 #[derive(Clone)]
@@ -24,6 +25,7 @@ pub struct AppState {
     pub http_client: HttpClientConfig,
     pub fetcher_config: FetcherConfig,
     pub translator: Arc<TranslationEngine>,
+    pub events: EventsHub,
 }
 
 pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
@@ -108,11 +110,15 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
         tracing::info!("no translator provider configured, translation disabled");
     }
 
+    // init events hub early so background tasks can broadcast
+    let events_hub = EventsHub::new(256);
+
     fetcher::spawn(
         pool.clone(),
         config.fetcher.clone(),
         config.http_client.clone(),
         Arc::clone(&translator),
+        events_hub.clone(),
     )?;
 
     let public_config = config.frontend_public_config();
@@ -129,6 +135,7 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
         http_client: config.http_client.clone(),
         fetcher_config: config.fetcher.clone(),
         translator,
+        events: events_hub,
     };
 
     let cors = CorsLayer::new()
@@ -144,6 +151,8 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
         )
         .route("/feeds/test", post(api::feeds::test_feed))
         .route("/feeds/:id", delete(api::feeds::delete_feed))
+        .route("/alerts", get(api::alerts::list_alerts))
+        .route("/alerts/stream", get(api::alerts::stream_alerts))
         .route(
             "/settings/translation",
             get(api::settings::get_translation_settings)
@@ -179,6 +188,8 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
         .route("/admin/logout", post(api::admin::logout))
         .nest("/admin/api", admin_api)
         .layer(middleware)
+        .layer(middleware::from_fn(crate::middleware::assign_trace_id))
+        .layer(middleware::from_fn_with_state(state.clone(), crate::middleware::report_internal_errors))
         .with_state(state);
 
     Ok(router)

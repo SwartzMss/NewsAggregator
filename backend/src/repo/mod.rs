@@ -4,3 +4,4 @@ pub mod feeds;
 pub mod maintenance;
 pub mod migrations;
 pub mod settings;
+pub mod events;
