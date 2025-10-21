@@ -159,7 +159,7 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
         )
         .route("/feeds/test", post(api::feeds::test_feed))
         .route("/feeds/:id", delete(api::feeds::delete_feed))
-        .route("/alerts", get(api::alerts::list_alerts).delete(api::alerts::delete_alerts))
+        .route("/alerts", get(api::alerts::list_alerts))
         .route("/alerts/stream", get(api::alerts::stream_alerts))
         .route(
             "/settings/translation",

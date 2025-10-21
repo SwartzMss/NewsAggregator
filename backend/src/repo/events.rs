@@ -86,10 +86,4 @@ pub async fn list_events(pool: &PgPool, params: &ListParams) -> Result<Vec<Event
     Ok(rows.into_iter().map(row_to_record).collect())
 }
 
-pub async fn delete_events_by_ids(pool: &PgPool, ids: &[i64]) -> Result<u64, sqlx::Error> {
-    if ids.is_empty() { return Ok(0); }
-    let mut qb = QueryBuilder::<Postgres>::new("DELETE FROM news.events WHERE id = ANY(");
-    qb.push_bind(ids).push(")");
-    let res = qb.build().execute(pool).await?;
-    Ok(res.rows_affected())
-}
+// Deletion API removed per read-only alerts design

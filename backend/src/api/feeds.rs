@@ -43,6 +43,6 @@ pub async fn test_feed(
     State(state): State<AppState>,
     Json(payload): Json<FeedTestPayload>,
 ) -> AppResult<Json<FeedTestResult>> {
-    let result = service::feeds::test(&state.pool, &state.http_client, &state.events, payload).await?;
+    let result = service::feeds::test(&state.http_client, payload).await?;
     Ok(Json(result))
 }

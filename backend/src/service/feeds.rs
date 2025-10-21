@@ -202,9 +202,7 @@ pub async fn delete(pool: &sqlx::PgPool, _events: &EventsHub, id: i64) -> AppRes
 }
 
 pub async fn test(
-    _pool: &sqlx::PgPool,
     http_client: &HttpClientConfig,
-    _events: &EventsHub,
     payload: FeedTestPayload,
 ) -> AppResult<FeedTestResult> {
     let url = payload.url.trim();

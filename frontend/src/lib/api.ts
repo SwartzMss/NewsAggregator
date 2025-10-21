@@ -394,13 +394,3 @@ export async function openAlertsStream(token: string): Promise<EventSource> {
   // 后端当前基于 Authorization 鉴权；若后续需要，可对 /alerts/stream 放宽并校验 query token。
   return new EventSource(url.toString());
 }
-
-export async function deleteAlerts(token: string, ids: number[]): Promise<number> {
-  const res = await adminRequest(`/admin/api/alerts`, token, {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ ids }),
-  });
-  const data = await parseJSON<{ deleted: number }>(res);
-  return data.deleted;
-}
