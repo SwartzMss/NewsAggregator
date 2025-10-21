@@ -244,6 +244,15 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
     )
     .await?;
 
+    // Ensure simplified column exists on pre-existing tables
+    tx.execute(
+        r#"
+        ALTER TABLE ops.events
+          ADD COLUMN IF NOT EXISTS source_domain TEXT;
+        "#,
+    )
+    .await?;
+
     tx.execute(
         r#"
         CREATE INDEX IF NOT EXISTS idx_ops_events_ts ON ops.events(ts DESC);
