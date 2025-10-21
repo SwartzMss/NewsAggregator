@@ -16,6 +16,7 @@ use crate::{
     util::translator::{TranslationEngine, TranslatorCredentialsUpdate, TranslatorProvider},
     ops::events::EventsHub,
 };
+use crate::repo::events as repo_events;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -37,6 +38,13 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
 
     repo::migrations::ensure_schema(&pool).await?;
     repo::maintenance::cleanup_orphan_content(&pool).await?;
+
+    // Emit a simple system startup event (no source_domain)
+    let _ = repo_events::upsert_event(
+        &pool,
+        &repo_events::NewEvent { level: "info".to_string(), code: "SYSTEM_STARTED".to_string(), source_domain: None },
+        0,
+    ).await;
 
     // Normalize translation-related settings at startup:
     // - Force default provider to 'ollama'
