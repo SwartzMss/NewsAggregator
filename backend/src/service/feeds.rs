@@ -202,7 +202,7 @@ pub async fn delete(pool: &sqlx::PgPool, _events: &EventsHub, id: i64) -> AppRes
 }
 
 pub async fn test(
-    pool: &sqlx::PgPool,
+    _pool: &sqlx::PgPool,
     http_client: &HttpClientConfig,
     _events: &EventsHub,
     payload: FeedTestPayload,
