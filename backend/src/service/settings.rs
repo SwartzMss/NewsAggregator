@@ -10,8 +10,9 @@ use crate::{
     },
     repo,
     util::translator::{TranslationEngine, TranslatorCredentialsUpdate, TranslatorProvider},
-    ops::events::{self as ops_events, EmitEvent, EventsHub},
+    ops::events::EventsHub,
 };
+use crate::repo::events as repo_events;
 
 pub async fn get_translation_settings(
     translator: &Arc<TranslationEngine>,
@@ -97,9 +98,6 @@ pub async fn update_translation_settings(
                 error = %err,
                 "translator provider unavailable when updating credentials"
             );
-            // emit alert event (non-blocking best-effort)
-            let provider = payload.provider.as_deref().unwrap_or("").to_string();
-            // event suppressed per new minimal set
             let user_message = if message.contains("Deepseek") {
                 "Deepseek 翻译暂不可用，请检查 API Key 或稍后重试"
             } else if message.contains("Ollama") {
@@ -115,6 +113,25 @@ pub async fn update_translation_settings(
     // 强制仅允许 Ollama 作为默认 provider
     if payload.provider.is_some() || payload.translation_enabled == Some(true) {
         repo::settings::upsert_setting(pool, "translation.provider", "ollama").await?;
+    }
+
+    // Emit minimal events for translation toggles / provider changes
+    if let Some(flag) = payload.translation_enabled {
+        let code = if flag { "TRANSLATION_ENABLED" } else { "TRANSLATION_DISABLED" };
+        let _ = repo_events::upsert_event(
+            pool,
+            &repo_events::NewEvent { level: "info".to_string(), code: code.to_string(), source_domain: None },
+            0,
+        ).await;
+    }
+    if let Some(ref provider_raw) = payload.provider {
+        let prov = provider_raw.trim().to_ascii_lowercase();
+        let code = format!("TRANSLATION_PROVIDER_SET_{}", prov);
+        let _ = repo_events::upsert_event(
+            pool,
+            &repo_events::NewEvent { level: "info".to_string(), code, source_domain: None },
+            0,
+        ).await;
     }
 
     get_translation_settings(translator).await
@@ -168,6 +185,11 @@ pub async fn update_model_settings(
     translator
         .update_credentials(update)
         .map_err(|e| AppError::BadRequest(e.to_string()))?;
+    let _ = repo_events::upsert_event(
+        pool,
+        &repo_events::NewEvent { level: "info".to_string(), code: "MODEL_SETTINGS_UPDATED".to_string(), source_domain: None },
+        0,
+    ).await;
     get_model_settings(translator).await
 }
 
