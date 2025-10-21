@@ -234,16 +234,11 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
     tx.execute(
         r#"
         CREATE TABLE IF NOT EXISTS ops.events (
-          id          BIGSERIAL PRIMARY KEY,
-          ts          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          level       TEXT NOT NULL,
-          code        TEXT NOT NULL,
-          title       TEXT NOT NULL,
-          message     TEXT NOT NULL,
-          attrs       JSONB NOT NULL DEFAULT '{}'::jsonb,
-          source      TEXT NOT NULL,
-          dedupe_key  TEXT,
-          count       INTEGER NOT NULL DEFAULT 1
+          id             BIGSERIAL PRIMARY KEY,
+          ts             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          level          TEXT NOT NULL,
+          code           TEXT NOT NULL,
+          source_domain  TEXT
         );
         "#,
     )
@@ -252,6 +247,35 @@ pub async fn ensure_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
     tx.execute(
         r#"
         CREATE INDEX IF NOT EXISTS idx_ops_events_ts ON ops.events(ts DESC);
+        CREATE INDEX IF NOT EXISTS idx_ops_events_level ON ops.events(level);
+        CREATE INDEX IF NOT EXISTS idx_ops_events_code ON ops.events(code);
+        "#,
+    )
+    .await?;
+
+    tx.execute(
+        r#"
+        DO $$
+        BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='ops' AND table_name='events' AND column_name='title') THEN
+                ALTER TABLE ops.events DROP COLUMN IF EXISTS title;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='ops' AND table_name='events' AND column_name='message') THEN
+                ALTER TABLE ops.events DROP COLUMN IF EXISTS message;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='ops' AND table_name='events' AND column_name='attrs') THEN
+                ALTER TABLE ops.events DROP COLUMN IF EXISTS attrs;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='ops' AND table_name='events' AND column_name='source') THEN
+                ALTER TABLE ops.events DROP COLUMN IF EXISTS source;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='ops' AND table_name='events' AND column_name='dedupe_key') THEN
+                ALTER TABLE ops.events DROP COLUMN IF EXISTS dedupe_key;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='ops' AND table_name='events' AND column_name='count') THEN
+                ALTER TABLE ops.events DROP COLUMN IF EXISTS count;
+            END IF;
+        END$$;
         "#,
     )
     .await?;

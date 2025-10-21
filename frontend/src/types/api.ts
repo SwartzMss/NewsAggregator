@@ -95,10 +95,5 @@ export type AlertRecord = {
   ts: string; // ISO8601
   level: "info" | "warn" | "error" | string;
   code: string;
-  title: string;
-  message: string;
-  attrs: Record<string, any>;
-  source: string;
-  dedupe_key?: string | null;
-  count: number;
+  source_domain?: string | null;
 };

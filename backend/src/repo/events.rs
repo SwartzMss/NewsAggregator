@@ -8,73 +8,29 @@ pub struct EventRecord {
     pub ts: DateTime<Utc>,
     pub level: String,
     pub code: String,
-    pub title: String,
-    pub message: String,
-    pub attrs: serde_json::Value,
-    pub source: String,
-    pub dedupe_key: Option<String>,
-    pub count: i32,
+    pub source_domain: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NewEvent {
     pub level: String,
     pub code: String,
-    pub title: String,
-    pub message: String,
-    pub attrs: serde_json::Value,
-    pub source: String,
-    pub dedupe_key: Option<String>,
+    pub source_domain: Option<String>,
 }
 
-pub async fn upsert_event(pool: &PgPool, ev: &NewEvent, window_seconds: i64) -> Result<EventRecord, sqlx::Error> {
-    // try update latest row in time window with same (code, dedupe_key)
-    let updated = sqlx::query(
-        r#"
-        UPDATE ops.events
-        SET count = count + 1, ts = NOW(), level = $1, title = $2, message = $3, attrs = $4, source = $5
-        WHERE id = (
-          SELECT id FROM ops.events
-          WHERE code = $6 AND ((dedupe_key IS NULL AND $7 IS NULL) OR dedupe_key = $7)
-            AND ts >= NOW() - make_interval(secs := $8)
-          ORDER BY ts DESC
-          LIMIT 1
-        )
-        RETURNING id, ts, level, code, title, message, attrs, source, dedupe_key, count
-        "#,
-    )
-    .bind(&ev.level)
-    .bind(&ev.title)
-    .bind(&ev.message)
-    .bind(&ev.attrs)
-    .bind(&ev.source)
-    .bind(&ev.code)
-    .bind(&ev.dedupe_key)
-    .bind(window_seconds)
-    .fetch_optional(pool)
-    .await?;
-
-    if let Some(row) = updated {
-        return Ok(row_to_record(row));
-    }
-
+pub async fn upsert_event(pool: &PgPool, ev: &NewEvent, _window_seconds: i64) -> Result<EventRecord, sqlx::Error> {
     let inserted = sqlx::query(
         r#"
-        INSERT INTO ops.events (level, code, title, message, attrs, source, dedupe_key)
-        VALUES ($1,$2,$3,$4,$5,$6,$7)
-        RETURNING id, ts, level, code, title, message, attrs, source, dedupe_key, count
+        INSERT INTO ops.events (level, code, source_domain)
+        VALUES ($1,$2,$3)
+        RETURNING id, ts, level, code, source_domain
         "#,
     )
     .bind(&ev.level)
     .bind(&ev.code)
-    .bind(&ev.title)
-    .bind(&ev.message)
-    .bind(&ev.attrs)
-    .bind(&ev.source)
-    .bind(&ev.dedupe_key)
+    .bind(&ev.source_domain)
     .fetch_one(pool)
     .await?;
-
     Ok(row_to_record(inserted))
 }
 
@@ -84,12 +40,7 @@ fn row_to_record(row: sqlx::postgres::PgRow) -> EventRecord {
         ts: row.get("ts"),
         level: row.get("level"),
         code: row.get("code"),
-        title: row.get("title"),
-        message: row.get("message"),
-        attrs: row.get("attrs"),
-        source: row.get("source"),
-        dedupe_key: row.get("dedupe_key"),
-        count: row.get("count"),
+        source_domain: row.get("source_domain"),
     }
 }
 
@@ -106,7 +57,7 @@ pub struct ListParams {
 
 pub async fn list_events(pool: &PgPool, params: &ListParams) -> Result<Vec<EventRecord>, sqlx::Error> {
     let mut qb = QueryBuilder::<Postgres>::new(
-        "SELECT id, ts, level, code, title, message, attrs, source, dedupe_key, count FROM ops.events WHERE 1=1",
+        "SELECT id, ts, level, code, source_domain FROM ops.events WHERE 1=1",
     );
 
     if let Some(level) = &params.level {

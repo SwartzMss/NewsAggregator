@@ -535,7 +535,7 @@ function AlertsPanel({ token, onUnauthorized }: { token: string; onUnauthorized:
   const [items, setItems] = useState<AlertRecord[]>([]);
   const [level, setLevel] = useState<string>("");
   const [code, setCode] = useState<string>("");
-  const [source, setSource] = useState<string>("");
+  const [sourceDomain, setSourceDomain] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [hideDismissed, setHideDismissed] = useState<boolean>(true);
   const [dismissed, setDismissed] = useState<Set<number>>(() => {
@@ -590,7 +590,7 @@ function AlertsPanel({ token, onUnauthorized }: { token: string; onUnauthorized:
   }, [token]);
 
   const filtered = items.filter((it) =>
-    (!level || it.level === level) && (!code || it.code === code) && (!source || it.source === source) && (!hideDismissed || !dismissed.has(it.id))
+    (!level || it.level === level) && (!code || it.code === code) && (!sourceDomain || (it.source_domain || "") === sourceDomain) && (!hideDismissed || !dismissed.has(it.id))
   );
 
   const hiddenCount = items.reduce((acc, it) => acc + (dismissed.has(it.id) ? 1 : 0), 0);
@@ -638,7 +638,7 @@ function AlertsPanel({ token, onUnauthorized }: { token: string; onUnauthorized:
           <option value="info">info</option>
         </select>
         <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="事件码 code" className="rounded border border-slate-300 px-2 py-1" />
-        <input value={source} onChange={(e) => setSource(e.target.value)} placeholder="来源 source" className="rounded border border-slate-300 px-2 py-1" />
+        <input value={sourceDomain} onChange={(e) => setSourceDomain(e.target.value)} placeholder="来源域名 source_domain" className="rounded border border-slate-300 px-2 py-1" />
         <label className="inline-flex items-center gap-2 select-none">
           <input type="checkbox" checked={hideDismissed} onChange={(e) => setHideDismissed(e.target.checked)} />
           隐藏已确认
@@ -655,10 +655,8 @@ function AlertsPanel({ token, onUnauthorized }: { token: string; onUnauthorized:
             <tr>
               <th className="px-3 py-2">时间</th>
               <th className="px-3 py-2">级别</th>
-              <th className="px-3 py-2">事件</th>
-              <th className="px-3 py-2">消息</th>
-              <th className="px-3 py-2">来源</th>
-              <th className="px-3 py-2">次数</th>
+              <th className="px-3 py-2">事件码</th>
+              <th className="px-3 py-2">来源域名</th>
               <th className="px-3 py-2">操作</th>
             </tr>
           </thead>
@@ -672,18 +670,8 @@ function AlertsPanel({ token, onUnauthorized }: { token: string; onUnauthorized:
                 <tr key={it.id} className="border-t border-slate-100">
                   <td className="px-3 py-2 whitespace-nowrap text-slate-500">{new Date(it.ts).toLocaleString()}</td>
                   <td className="px-3 py-2">{badge(it.level)}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">
-                    <div className="font-medium text-slate-900">{it.title}</div>
-                    <div className="text-xs text-slate-500">{it.code}</div>
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="text-slate-800">{it.message}</div>
-                    {it.attrs && (
-                      <pre className="mt-1 max-h-24 overflow-auto rounded bg-slate-50 p-2 text-xs text-slate-600">{JSON.stringify(it.attrs, null, 2)}</pre>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-slate-600">{it.source}</td>
-                  <td className="px-3 py-2 whitespace-nowrap text-slate-600">{it.count}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-slate-800">{it.code}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-slate-600">{it.source_domain || ""}</td>
                   <td className="px-3 py-2 whitespace-nowrap">
                     <button onClick={() => onDismiss(it.id)} className="rounded border px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200">确认并隐藏</button>
                   </td>
