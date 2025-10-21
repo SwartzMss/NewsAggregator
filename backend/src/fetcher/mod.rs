@@ -1151,30 +1151,6 @@ fn convert_entry(pool: &sqlx::PgPool, events: &EventsHub, feed: &DueFeedRow, ent
         Ok(normalized) => normalized,
         Err(err) => {
             warn!(error = ?err, url = %raw_url, "failed to normalize article url");
-            // emit alert event (best-effort, without blocking)
-            let pool = pool.clone();
-            let events = events.clone();
-            let raw = raw_url.clone();
-            let feed_id = feed.id;
-            tokio::spawn(async move {
-                let domain = url::Url::parse(&raw)
-                    .ok()
-                    .and_then(|u| u.host_str().map(|s| s.to_string()))
-                    .unwrap_or_default();
-                let _ = ops_events::emit(
-                    &pool,
-                    &events,
-                    EmitEvent{
-                        level: "warn".to_string(),
-                        code: "URL_NORMALIZE_FAILED".to_string(),
-                        title: "URL 归一化失败".to_string(),
-                        message: format!("failed to normalize url: {}", raw),
-                        attrs: serde_json::json!({"feed_id": feed_id, "url": raw}),
-                        source: "fetcher".to_string(),
-                        dedupe_key: Some(format!("domain:{}", domain)),
-                    }
-                ).await;
-            });
             raw_url
         }
     };
