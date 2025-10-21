@@ -14,7 +14,7 @@ import {
 } from "../../lib/api";
 import { TranslationSettings, TranslationSettingsUpdate, AiDedupSettings, AiDedupSettingsUpdate, AdminLoginResponse } from "../../types/api";
 import { FeedsPage } from "../Feeds";
-import { listAlerts, openAlertsStream } from "../../lib/api";
+import { listAlerts, openAlertsStream, deleteAlerts } from "../../lib/api";
 import type { AlertRecord } from "../../types/api";
 
 type AdminSession = {
@@ -537,6 +537,23 @@ function AlertsPanel({ token, onUnauthorized }: { token: string; onUnauthorized:
   const [code, setCode] = useState<string>("");
   const [source, setSource] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+  const [hideDismissed, setHideDismissed] = useState<boolean>(true);
+  const [dismissed, setDismissed] = useState<Set<number>>(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? window.sessionStorage.getItem('admin-alerts-dismissed') : null;
+      if (!raw) return new Set();
+      const arr = JSON.parse(raw) as number[];
+      return new Set(arr);
+    } catch { return new Set(); }
+  });
+
+  const persistDismissed = (next: Set<number>) => {
+    try {
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem('admin-alerts-dismissed', JSON.stringify(Array.from(next)));
+      }
+    } catch {}
+  };
 
   useEffect(() => {
     let canceled = false;
@@ -573,8 +590,34 @@ function AlertsPanel({ token, onUnauthorized }: { token: string; onUnauthorized:
   }, [token]);
 
   const filtered = items.filter((it) =>
-    (!level || it.level === level) && (!code || it.code === code) && (!source || it.source === source)
+    (!level || it.level === level) && (!code || it.code === code) && (!source || it.source === source) && (!hideDismissed || !dismissed.has(it.id))
   );
+
+  const hiddenCount = items.reduce((acc, it) => acc + (dismissed.has(it.id) ? 1 : 0), 0);
+
+  const onDismiss = (id: number) => {
+    setDismissed((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      persistDismissed(next);
+      return next;
+    });
+  };
+
+  const onRestoreAll = () => {
+    const next = new Set<number>();
+    setDismissed(next);
+    persistDismissed(next);
+  };
+
+  const onClearLocal = () => {
+    // 删除当前可见（过滤后）的事件
+    const ids = filtered.map((it) => it.id);
+    if (ids.length === 0) return;
+    deleteAlerts(token, ids)
+      .then(() => setItems((prev) => prev.filter((it) => !ids.includes(it.id))))
+      .catch((e) => setError((e as Error).message || "删除失败"));
+  };
 
   const badge = (lvl: string) => (
     <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
@@ -587,7 +630,7 @@ function AlertsPanel({ token, onUnauthorized }: { token: string; onUnauthorized:
       {error && (
         <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
       )}
-      <div className="flex flex-wrap gap-3 text-sm">
+      <div className="flex flex-wrap gap-3 text-sm items-center">
         <select value={level} onChange={(e) => setLevel(e.target.value)} className="rounded border border-slate-300 px-2 py-1">
           <option value="">全部级别</option>
           <option value="error">error</option>
@@ -596,6 +639,15 @@ function AlertsPanel({ token, onUnauthorized }: { token: string; onUnauthorized:
         </select>
         <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="事件码 code" className="rounded border border-slate-300 px-2 py-1" />
         <input value={source} onChange={(e) => setSource(e.target.value)} placeholder="来源 source" className="rounded border border-slate-300 px-2 py-1" />
+        <label className="inline-flex items-center gap-2 select-none">
+          <input type="checkbox" checked={hideDismissed} onChange={(e) => setHideDismissed(e.target.checked)} />
+          隐藏已确认
+          {hiddenCount > 0 && (<span className="text-xs text-slate-500">（已隐藏 {hiddenCount} 条）</span>)}
+        </label>
+        <button onClick={onClearLocal} className="rounded border px-2 py-1 bg-slate-100 hover:bg-slate-200">清空本地</button>
+        {hiddenCount > 0 && (
+          <button onClick={onRestoreAll} className="rounded border px-2 py-1 bg-slate-100 hover:bg-slate-200">恢复全部</button>
+        )}
       </div>
       <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
         <table className="min-w-full text-left text-sm">
@@ -607,12 +659,13 @@ function AlertsPanel({ token, onUnauthorized }: { token: string; onUnauthorized:
               <th className="px-3 py-2">消息</th>
               <th className="px-3 py-2">来源</th>
               <th className="px-3 py-2">次数</th>
+              <th className="px-3 py-2">操作</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td className="px-3 py-3 text-slate-500" colSpan={6}>暂无事件</td>
+                <td className="px-3 py-3 text-slate-500" colSpan={7}>暂无事件</td>
               </tr>
             ) : (
               filtered.map((it) => (
@@ -631,6 +684,9 @@ function AlertsPanel({ token, onUnauthorized }: { token: string; onUnauthorized:
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-slate-600">{it.source}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-slate-600">{it.count}</td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    <button onClick={() => onDismiss(it.id)} className="rounded border px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200">确认并隐藏</button>
+                  </td>
                 </tr>
               ))
             )}

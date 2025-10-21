@@ -99,19 +99,7 @@ pub async fn update_translation_settings(
             );
             // emit alert event (non-blocking best-effort)
             let provider = payload.provider.as_deref().unwrap_or("").to_string();
-            let _ = ops_events::emit(
-                pool,
-                events,
-                EmitEvent{
-                    level: "warn".to_string(),
-                    code: "TRANSLATOR_PROVIDER_UNAVAILABLE".to_string(),
-                    title: "翻译服务配置不可用".to_string(),
-                    message: format!("provider '{}' unavailable after update", provider),
-                    attrs: serde_json::json!({"provider": provider}),
-                    source: "models".to_string(),
-                    dedupe_key: Some(format!("provider:{}", payload.provider.unwrap_or_default())),
-                }
-            ).await;
+            // event suppressed per new minimal set
             let user_message = if message.contains("Deepseek") {
                 "Deepseek 翻译暂不可用，请检查 API Key 或稍后重试"
             } else if message.contains("Ollama") {

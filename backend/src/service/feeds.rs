@@ -124,19 +124,7 @@ pub async fn upsert(
                     );
                 }
                 Err(err) => {
-                    let _ = crate::ops::events::emit(
-                        pool,
-                        events,
-                        crate::ops::events::EmitEvent{
-                            level: "warn".to_string(),
-                            code: "FEED_FILTER_APPLY_FAILED".to_string(),
-                            title: "应用过滤条件失败".to_string(),
-                            message: format!("failed to apply feed filter condition: {}", err),
-                            attrs: serde_json::json!({"feed_id": feed_id}),
-                            source: "feeds".to_string(),
-                            dedupe_key: Some(format!("feed:{}", feed_id)),
-                        }
-                    ).await;
+                    // event suppressed per new minimal set
                     return Err(AppError::from(err));
                 }
             }
@@ -161,19 +149,7 @@ pub async fn upsert(
                     feed_id,
                     "failed to perform immediate fetch for new feed"
                 );
-                let _ = ops_events::emit(
-                    &pool_emit,
-                    &events_clone,
-                    EmitEvent{
-                        level: "warn".to_string(),
-                        code: "FEED_IMMEDIATE_FETCH_FAILED".to_string(),
-                        title: "新建订阅源立即拉取失败".to_string(),
-                        message: format!("immediate fetch failed for feed {}: {}", feed_id, err),
-                        attrs: serde_json::json!({"feed_id": feed_id, "error": err.to_string()}),
-                        source: "feeds".to_string(),
-                        dedupe_key: Some(format!("feed:{}", feed_id)),
-                    }
-                ).await;
+                // event suppressed per new minimal set
             }
         });
     }
@@ -221,19 +197,7 @@ pub async fn delete(pool: &sqlx::PgPool, events: &EventsHub, id: i64) -> AppResu
                 feed_id = id,
                 "failed to release feed lock after error"
             );
-            let _ = ops_events::emit(
-                pool,
-                events,
-                EmitEvent{
-                    level: "error".to_string(),
-                    code: "FEED_LOCK_RELEASE_FAILED".to_string(),
-                    title: "释放订阅源锁失败".to_string(),
-                    message: format!("failed to release feed lock after error: {}", release_err),
-                    attrs: serde_json::json!({"feed_id": id, "error": release_err.to_string()}),
-                    source: "feeds".to_string(),
-                    dedupe_key: Some(format!("feed:{}", id)),
-                }
-            ).await;
+            // event suppressed per new minimal set
             Err(err)
         }
     }
@@ -266,26 +230,7 @@ pub async fn test(
             chain = %format_error_chain(&err),
             "feed test request failed"
         );
-        let _ = tokio::spawn({
-            let events = events.clone();
-            let url = url.to_string();
-            let pool = pool.clone();
-            async move {
-                let _ = crate::ops::events::emit(
-                    &pool,
-                    &events,
-                    crate::ops::events::EmitEvent{
-                        level: "warn".to_string(),
-                        code: "FEED_TEST_FAILED".to_string(),
-                        title: "订阅源测试失败".to_string(),
-                        message: format!("feed test failed: {}", url),
-                        attrs: serde_json::json!({"url": url}),
-                        source: "feeds".to_string(),
-                        dedupe_key: Some("feeds:test".to_string()),
-                    }
-                ).await;
-            }
-        });
+        // event suppressed per new minimal set
         AppError::BadRequest(format!("请求订阅源失败: {err}"))
     })?;
 

@@ -196,19 +196,7 @@ pub fn spawn(
     tokio::spawn(async move {
         if let Err(err) = fetcher.run().await {
             tracing::error!(error = ?err, "fetcher stopped");
-            let _ = ops_events::emit(
-                &pool,
-                &events,
-                EmitEvent{
-                    level: "error".to_string(),
-                    code: "FETCHER_STOPPED".to_string(),
-                    title: "抓取任务已停止".to_string(),
-                    message: format!("fetcher stopped: {}", err),
-                    attrs: serde_json::json!({"error": err.to_string()}),
-                    source: "fetcher".to_string(),
-                    dedupe_key: Some("system:fetcher".to_string()),
-                }
-            ).await;
+            // event suppressed per request to cancel all bindings
         }
     });
     Ok(())
@@ -383,19 +371,7 @@ impl Fetcher {
                         url = %feed.url,
                         "failed to process feed"
                     );
-                    let _ = ops_events::emit(
-                        &pool_for_emit,
-                        &events_cloned,
-                        EmitEvent{
-                            level: "warn".to_string(),
-                            code: "FEED_PROCESS_FAILED".to_string(),
-                            title: "订阅源抓取处理失败".to_string(),
-                            message: format!("failed to process feed {}: {}", feed.id, err),
-                            attrs: serde_json::json!({"feed_id": feed.id, "url": feed.url, "error": err.to_string()}),
-                            source: "fetcher".to_string(),
-                            dedupe_key: Some(format!("feed:{}", feed.id)),
-                        }
-                    ).await;
+                    // event suppressed per new minimal set
                 }
             });
 
@@ -670,13 +646,15 @@ async fn process_feed_locked(
 
                 let desc_owned = article.description.clone();
 
-                // 开始进行翻译调用：记录 provider 与是否带描述
+                // 开始进行翻译调用：记录 provider 与摘要长度
+                let started = std::time::Instant::now();
+                let desc_in_len = desc_owned.as_ref().map(|s| s.len()).unwrap_or(0);
                 info!(
                     feed_id = feed.id,
                     url = %article.url,
                     title = %original_title,
-                    include_description = desc_owned.is_some(),
                     provider = ?translation.current_provider(),
+                    desc_in_len,
                     "translation start"
                 );
 
@@ -693,11 +671,15 @@ async fn process_feed_locked(
                         article.language = Some(TRANSLATION_LANG.to_string());
 
                         if has_original_desc && desc_owned.is_some() && article.description.is_none() {
+                            let elapsed_ms = started.elapsed().as_millis() as u64;
                             warn!(
                                 feed_id = feed.id,
                                 url = %article.url,
+                                provider = %translation.current_provider().as_str(),
+                                elapsed_ms,
                                 "translator returned no description while description translation is enabled"
                             );
+                            // event suppressed per request to cancel all bindings
                         }
                     }
                     Ok(None) => {
@@ -714,6 +696,7 @@ async fn process_feed_locked(
                             provider_available,
                             "translation skipped (provider unavailable)"
                         );
+                        // event suppressed per request to cancel all bindings
                     }
                     Err(err) => {
                         // 第一次失败后短暂重试一次，降低瞬时网络抖动影响
@@ -751,24 +734,8 @@ async fn process_feed_locked(
                                     "failed to translate article after retry"
                                 );
                                 let provider = translation.current_provider().as_str().to_string();
-                                let _ = ops_events::emit(
-                                    &pool,
-                                    &events,
-                                    EmitEvent{
-                                        level: "warn".to_string(),
-                                        code: "TRANSLATION_FAILED".to_string(),
-                                        title: "翻译失败".to_string(),
-                                        message: format!("translation failed after retry: {}", err2),
-                                        attrs: serde_json::json!({
-                                            "feed_id": feed.id,
-                                            "url": article.url,
-                                            "provider": provider,
-                                        }),
-                                        source: "fetcher".to_string(),
-                                        dedupe_key: Some(format!("provider:{}:feed:{}", provider, feed.id)),
-                                    }
-                                ).await;
-                            }
+                    // keep: TRANSLATION_FAILED is part of minimal set
+                }
                         }
                     }
                 }
@@ -838,7 +805,6 @@ async fn process_feed_locked(
                         // 与历史文章严格匹配：直接标记来源并跳过
                         record_article_source(
                             &pool,
-                            &events,
                             feed,
                             &article,
                             candidate.summary.article_id,
@@ -970,7 +936,6 @@ async fn process_feed_locked(
                                             .unwrap_or("deepseek_duplicate");
                                         record_article_source(
                                             &pool,
-                                            &events,
                                             feed,
                                             &article,
                                             candidate.summary.article_id,
@@ -1021,36 +986,12 @@ async fn process_feed_locked(
                 }
                 Ok(Err(_)) => {
                     warn!(feed_id = feed.id, url = %entry_url_clone, "entry processing aborted");
-                    let _ = ops_events::emit(
-                        &pool,
-                        &events,
-                        EmitEvent{
-                            level: "warn".to_string(),
-                            code: "ENTRY_PROCESS_ABORTED".to_string(),
-                            title: "条目处理中断".to_string(),
-                            message: "entry processing aborted".to_string(),
-                            attrs: serde_json::json!({"feed_id": feed.id, "url": entry_url_clone}),
-                            source: "fetcher".to_string(),
-                            dedupe_key: Some(format!("feed:{}", feed.id)),
-                        }
-                    ).await;
+                    // event suppressed per new minimal set
                     continue;
                 }
                 Err(_) => {
                     warn!(feed_id = feed.id, url = %entry_url_clone, "entry processing timed out; skip");
-                    let _ = ops_events::emit(
-                        &pool,
-                        &events,
-                        EmitEvent{
-                            level: "warn".to_string(),
-                            code: "ENTRY_PROCESS_TIMEOUT".to_string(),
-                            title: "条目处理超时".to_string(),
-                            message: "entry processing timed out".to_string(),
-                            attrs: serde_json::json!({"feed_id": feed.id, "url": entry_url_clone}),
-                            source: "fetcher".to_string(),
-                            dedupe_key: Some(format!("feed:{}", feed.id)),
-                        }
-                    ).await;
+                    // event suppressed per new minimal set
                     continue;
                 }
             }
@@ -1088,7 +1029,7 @@ async fn process_feed_locked(
         info!(feed_id = feed.id, inserted = inserted_count, "articles insert finished");
         for (article_id, article) in &inserted {
             // primary 决策：来源于当前 feed 的主插入
-            record_article_source(&pool, &events, feed, article, *article_id, Some("primary"), None).await;
+            record_article_source(&pool, feed, article, *article_id, Some("primary"), None).await;
         }
         if let Some(condition) = feed
             .filter_condition
@@ -1113,19 +1054,7 @@ async fn process_feed_locked(
                         feed_id = feed.id,
                         "failed to apply feed filter condition"
                     );
-                    let _ = ops_events::emit(
-                        &pool,
-                        &events,
-                        EmitEvent{
-                            level: "warn".to_string(),
-                            code: "FEED_FILTER_APPLY_FAILED".to_string(),
-                            title: "应用过滤条件失败".to_string(),
-                            message: format!("failed to apply feed filter condition: {}", err),
-                            attrs: serde_json::json!({"feed_id": feed.id}),
-                            source: "fetcher".to_string(),
-                            dedupe_key: Some(format!("feed:{}", feed.id)),
-                        }
-                    ).await;
+                    // event suppressed per new minimal set
                 }
             }
         }
@@ -1178,7 +1107,6 @@ fn format_error_chain(err: &(dyn std::error::Error + 'static)) -> String {
 
 async fn record_article_source(
     pool: &sqlx::PgPool,
-    events: &EventsHub,
     feed: &DueFeedRow,
     article: &NewArticle,
     article_id: i64,
@@ -1202,19 +1130,6 @@ async fn record_article_source(
             article_id,
             "failed to record article source"
         );
-        let _ = ops_events::emit(
-            pool,
-            events,
-            EmitEvent{
-                level: "warn".to_string(),
-                code: "ARTICLE_SOURCE_RECORD_FAILED".to_string(),
-                title: "文章来源记录失败".to_string(),
-                message: format!("failed to record article source: {}", err),
-                attrs: serde_json::json!({"feed_id": feed.id, "article_id": article_id}),
-                source: "fetcher".to_string(),
-                dedupe_key: Some(format!("feed:{}", feed.id)),
-            }
-        ).await;
     }
 }
 
@@ -1312,20 +1227,7 @@ async fn record_failure(
         // 持久记录失败（超过快速重试次数或不再重试）
         feeds::mark_failure(pool, feed_id, status).await?;
         warn!(feed_id, status, "marked feed fetch failure");
-        // emit alert event (best-effort)
-        let _ = ops_events::emit(
-            pool,
-            events,
-            EmitEvent{
-                level: "warn".to_string(),
-                code: "FEED_MARKED_FAILURE".to_string(),
-                title: "订阅源抓取失败".to_string(),
-                message: format!("feed {} marked failure with status {}", feed_id, status),
-                attrs: serde_json::json!({"feed_id": feed_id, "status": status}),
-                source: "fetcher".to_string(),
-                dedupe_key: Some(format!("feed:{}", feed_id)),
-            }
-        ).await;
+        // event suppressed per new minimal set
     } else {
         info!(
             feed_id,

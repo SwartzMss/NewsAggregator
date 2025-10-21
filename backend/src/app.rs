@@ -151,7 +151,7 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
         )
         .route("/feeds/test", post(api::feeds::test_feed))
         .route("/feeds/:id", delete(api::feeds::delete_feed))
-        .route("/alerts", get(api::alerts::list_alerts))
+        .route("/alerts", get(api::alerts::list_alerts).delete(api::alerts::delete_alerts))
         .route("/alerts/stream", get(api::alerts::stream_alerts))
         .route(
             "/settings/translation",
@@ -188,8 +188,6 @@ pub async fn build_router(config: &AppConfig) -> anyhow::Result<Router> {
         .route("/admin/logout", post(api::admin::logout))
         .nest("/admin/api", admin_api)
         .layer(middleware)
-        .layer(middleware::from_fn(crate::middleware::assign_trace_id))
-        .layer(middleware::from_fn_with_state(state.clone(), crate::middleware::report_internal_errors))
         .with_state(state);
 
     Ok(router)

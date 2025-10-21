@@ -37,3 +37,12 @@ pub async fn stream_alerts(State(state): State<AppState>) -> Sse<impl futures::S
     ops_events::sse_response(&state.events)
 }
 
+#[derive(Deserialize)]
+pub struct DeleteBody { ids: Vec<i64> }
+
+pub async fn delete_alerts(State(state): State<AppState>, Json(body): Json<DeleteBody>) -> impl IntoResponse {
+    match crate::repo::events::delete_events_by_ids(&state.pool, &body.ids).await {
+        Ok(affected) => Json(serde_json::json!({"deleted": affected})).into_response(),
+        Err(err) => (axum::http::StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
+    }
+}
