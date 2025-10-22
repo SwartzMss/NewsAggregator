@@ -27,3 +27,5 @@ tokio-stream = { version = "0.1", features = ["sync"] }
 futures = "0.3"
 form_urlencoded = "1"
 url = "2"
+encoding_rs = "0.8"
+chardetng = "0.1"

@@ -16,6 +16,7 @@ use anyhow::{anyhow, Context};
 use chrono::{DateTime, Utc};
 use feed_rs::{model::Entry, parser};
 use reqwest::{Client, StatusCode};
+use reqwest::header::CONTENT_TYPE;
 use tokio::{
     task::JoinSet,
     time::{interval, sleep, timeout, MissedTickBehavior},
@@ -40,6 +41,41 @@ use crate::{
     },
 };
 use crate::repo::events as repo_events;
+
+// 编码探测与转码
+use encoding_rs::Encoding;
+use chardetng::EncodingDetector;
+
+fn transcode_to_utf8(bytes: &[u8], content_type: Option<&str>) -> Vec<u8> {
+    // 优先使用 HTTP Content-Type 中的 charset 指示
+    if let Some(ct) = content_type {
+        if let Some(pos) = ct.to_ascii_lowercase().find("charset=") {
+            let charset = ct[pos + 8..].trim();
+            // 去掉可能的分号与引号
+            let charset = charset
+                .trim_matches(|c: char| c == '\'' || c == '"')
+                .trim_end_matches(';')
+                .trim();
+            if let Some(enc) = Encoding::for_label(charset.as_bytes()) {
+                if enc.name() != "UTF-8" {
+                    let (cow, _, _) = enc.decode(bytes);
+                    return cow.into_owned().into_bytes();
+                }
+            }
+        }
+    }
+
+    // 使用 chardetng 探测（当没有或不可信的 charset）
+    let mut detector = EncodingDetector::new();
+    detector.feed(bytes, true);
+    let enc = detector.guess(None, true);
+    if enc.name() != "UTF-8" {
+        let (cow, _, _) = enc.decode(bytes);
+        cow.into_owned().into_bytes()
+    } else {
+        bytes.to_vec()
+    }
+}
 
 // 最近文章的简要信息，用于与当前抓取文章做相似度比较
 struct ArticleSummary {
@@ -536,14 +572,20 @@ async fn process_feed_locked(
         }
     };
 
-    let mut parsed_feed = match parser::parse(&bytes[..]) {
+    // 统一转为 UTF-8 再解析，修复部分源错误的编码声明/头部导致的乱码
+    let content_type_hdr = headers
+        .get(CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok());
+    let bytes_utf8 = transcode_to_utf8(&bytes, content_type_hdr);
+
+    let mut parsed_feed = match parser::parse(&bytes_utf8[..]) {
         Ok(feed) => {
             let entry_count = feed.entries.len();
             info!(
                 feed_id = feed.id,
                 status = status.as_u16(),
                 entry_count,
-                bytes_len = bytes.len(),
+                bytes_len = bytes_utf8.len(),
                 "feed xml parsed"
             );
             feed
