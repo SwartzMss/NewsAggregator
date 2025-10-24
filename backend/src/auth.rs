@@ -22,6 +22,13 @@ pub struct AdminManager {
     sessions: Arc<RwLock<HashMap<String, Instant>>>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SessionStatus {
+    Valid,
+    Expired,
+    Invalid,
+}
+
 impl AdminManager {
     pub fn new(username: String, password: String, session_ttl: Duration) -> Self {
         let ttl = if session_ttl.is_zero() {
@@ -57,17 +64,19 @@ impl AdminManager {
         token
     }
 
-    pub async fn validate_session(&self, token: &str) -> bool {
+    pub async fn validate_session(&self, token: &str) -> SessionStatus {
         let mut guard = self.sessions.write().await;
         let now = Instant::now();
         if let Some(expiry) = guard.get_mut(token) {
             if *expiry > now {
                 *expiry = now + self.session_ttl;
-                return true;
+                return SessionStatus::Valid;
             }
+            // expired -> remove and signal Expired
             guard.remove(token);
+            return SessionStatus::Expired;
         }
-        false
+        SessionStatus::Invalid
     }
 
     pub async fn revoke_session(&self, token: &str) {
@@ -101,11 +110,29 @@ pub async fn require_admin(
             None
         })
     }).ok_or(StatusCode::UNAUTHORIZED)?;
-    if state.admin.validate_session(&token).await {
-        req.extensions_mut().insert(AdminIdentity {});
-        Ok(next.run(req).await)
-    } else {
-        Err(StatusCode::UNAUTHORIZED)
+
+    match state.admin.validate_session(&token).await {
+        SessionStatus::Valid => {
+            req.extensions_mut().insert(AdminIdentity {});
+            Ok(next.run(req).await)
+        }
+        SessionStatus::Expired => {
+            // 写入一条“管理员登出（会话过期）”事件，避免敏感信息泄露，不记录 token
+            let pool = state.pool.clone();
+            tokio::spawn(async move {
+                let _ = crate::repo::events::upsert_event(
+                    &pool,
+                    &crate::repo::events::NewEvent {
+                        level: "info".to_string(),
+                        code: "ADMIN_LOGOUT".to_string(),
+                        addition_info: Some("会话已过期，自动登出".to_string()),
+                    },
+                    0,
+                ).await;
+            });
+            Err(StatusCode::UNAUTHORIZED)
+        }
+        SessionStatus::Invalid => Err(StatusCode::UNAUTHORIZED),
     }
 }
 

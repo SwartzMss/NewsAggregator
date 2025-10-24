@@ -613,11 +613,14 @@ function AlertsPanel({ token, onUnauthorized }: { token: string; onUnauthorized:
 
   const detailFor = (it: AlertRecord) => {
     const code = (it.code || '').toUpperCase();
+    // 优先：对 ADMIN_LOGOUT 展示 addition_info，用于区分“主动登出/自动登出”
+    if (code === 'ADMIN_LOGOUT' && it.addition_info) {
+      return it.addition_info;
+    }
     // 对于纯系统/管理操作类事件，默认不显示详情
     const noDetailCodes = new Set([
       'SYSTEM_STARTED',
       'ADMIN_LOGIN',
-      'ADMIN_LOGOUT',
       'TRANSLATION_ENABLED',
       'TRANSLATION_DISABLED',
       'MODEL_SETTINGS_UPDATED',

@@ -34,10 +34,14 @@ pub async fn logout(
     Json(payload): Json<model::AdminLogoutPayload>,
 ) -> AppResult<Json<serde_json::Value>> {
     state.admin.revoke_session(&payload.token).await;
-    // Record an admin logout event
+    // Record a manual logout event
     let _ = repo_events::upsert_event(
         &state.pool,
-        &NewEvent { level: "info".to_string(), code: "ADMIN_LOGOUT".to_string(), addition_info: None },
+        &NewEvent {
+            level: "info".to_string(),
+            code: "ADMIN_LOGOUT".to_string(),
+            addition_info: Some("主动登出".to_string()),
+        },
         0,
     ).await;
     Ok(Json(serde_json::json!({ "ok": true })))
