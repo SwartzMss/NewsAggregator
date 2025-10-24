@@ -47,7 +47,13 @@ use encoding_rs::Encoding;
 use chardetng::EncodingDetector;
 
 fn transcode_to_utf8(bytes: &[u8], content_type: Option<&str>) -> Vec<u8> {
-    // 优先使用 HTTP Content-Type 中的 charset 指示
+    // 快速路径：若本身是有效 UTF-8，直接返回原始字节，避免误判造成的乱码
+    if std::str::from_utf8(bytes).is_ok() {
+        return bytes.to_vec();
+    }
+
+    // 提取 HTTP 头中的 charset 提示
+    let mut header_enc: Option<&'static Encoding> = None;
     if let Some(ct) = content_type {
         if let Some(pos) = ct.to_ascii_lowercase().find("charset=") {
             let charset = ct[pos + 8..].trim();
@@ -56,24 +62,31 @@ fn transcode_to_utf8(bytes: &[u8], content_type: Option<&str>) -> Vec<u8> {
                 .trim_matches(|c: char| c == '\'' || c == '"')
                 .trim_end_matches(';')
                 .trim();
-            if let Some(enc) = Encoding::for_label(charset.as_bytes()) {
-                if enc.name() != "UTF-8" {
-                    let (cow, _, _) = enc.decode(bytes);
-                    return cow.into_owned().into_bytes();
-                }
-            }
+            header_enc = Encoding::for_label(charset.as_bytes());
         }
     }
 
-    // 使用 chardetng 探测（当没有或不可信的 charset）
+    // 使用 chardetng 探测编码
     let mut detector = EncodingDetector::new();
     detector.feed(bytes, true);
-    let enc = detector.guess(None, true);
-    if enc.name() != "UTF-8" {
-        let (cow, _, _) = enc.decode(bytes);
+    let detected_enc = detector.guess(None, true);
+
+    // 决策策略：
+    // - 若头部与探测一致，则采用该编码；
+    // - 若不一致，优先采用探测结果（许多站点头部 charset 错误，例如误报 ISO-8859-1）。
+    let chosen = match (header_enc, detected_enc) {
+        (Some(h), d) if h.name() == d.name() => h,
+        (_, d) => d,
+    };
+
+    if chosen.name() == "UTF-8" {
+        // 探测认为是 UTF-8，但上面的 from_utf8 校验失败，
+        // 可能是带有 BOM 或混合编码，交给 encoding_rs 做稳健解码。
+        let (cow, _, _) = chosen.decode(bytes);
         cow.into_owned().into_bytes()
     } else {
-        bytes.to_vec()
+        let (cow, _, _) = chosen.decode(bytes);
+        cow.into_owned().into_bytes()
     }
 }
 
